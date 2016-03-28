@@ -47,8 +47,8 @@ public class VerveineCParser {
 		}
 		System.out.println("VerveineCParser created all helpers for project: " + project.getElementName());
 		
-		parseSourceFile("/home/anquetil/Documents/RMod/Tools/workspace/mongo/src/mongo/client/fetcher.h");
-		parseSourceFile("/home/anquetil/Documents/RMod/Tools/workspace/mongo/src/mongo/client/fetcher.cpp");
+//		parseSourceFile("/home/anquetil/Documents/RMod/Tools/workspace/mongo/src/mongo/client/fetcher.h");
+		parseSourceFile("/home/anquetil/Documents/RMod/Tools/workspace/mongo/src/mongo/client/fetcher_test.cpp");
 	}
 
 	private void parseSourceFile(String filename) {

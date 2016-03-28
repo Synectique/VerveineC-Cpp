@@ -7,6 +7,7 @@ import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.internal.core.index.IndexFileLocation;
 
 public class VerveineVisitor extends ASTVisitor {
 
@@ -27,12 +28,7 @@ public class VerveineVisitor extends ASTVisitor {
 	}
 
 	protected boolean isBound(IASTName name) {
-		if (name == null) {
-			return false;
-		}
-		else {
-			return name.getBinding() != null;
-		}
+		return name.getBinding() != null;
 	}
 	
 	// TRACING
