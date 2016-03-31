@@ -1,5 +1,7 @@
 package eu.synectique.verveine.extractor.cpp;
 
+import java.io.FileNotFoundException;
+import java.io.RandomAccessFile;
 import java.util.Map;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
@@ -38,35 +40,71 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.internal.core.dom.parser.ASTAmbiguousNode;
 
+import eu.synectique.verveine.core.Dictionary;
+import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Entity;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Method;
+import eu.synectique.verveine.core.gen.famix.Namespace;
 
 public class MainVisitor extends VerveineVisitor {
 
-	public MainVisitor(Map<IBinding,Entity> dico) {
+	/**
+	 * A stack that keeps the current definition context (package/class/method)
+	 */
+	protected EntityStack context;
+
+	/**
+	 * The source code of the visited AST.
+	 * Used to find back the contents of non-javadoc comments
+	 */
+	protected RandomAccessFile source;
+
+	/**
+	 * Whether a variable access is lhs (write) or not
+	 */
+	protected boolean inAssignmentLHS = false;
+
+	
+	public MainVisitor(CDictionary dico) {
 		super(dico);
+		this.context = new EntityStack();
 	}
 
 	@Override
 	public int visit(IASTTranslationUnit node) {
-		traceup("IASTTranslationUnit: "+node.getFilePath());
-		
+//		traceup("IASTTranslationUnit: "+node.getFilePath());
+/*
+		// As this is the first node visited in an AST, set's the source file for this AST
+		try {
+			source = new RandomAccessFile( node.getFilePath(), "r");
+		} catch (FileNotFoundException e) {
+			source = null;
+			e.printStackTrace();
+		}
+*/
 		return super.visit(node);
 	}
 
 	@Override
 	public int visit(ICPPASTNamespaceDefinition node) {
 //		traceup("ICPPASTNamespaceDefinition: "+node.getName());
+		IASTName nodeName = node.getName();
+		Namespace fmx = dico.ensureFamixNamespace(nodeName.resolveBinding(), nodeName.toString());
+			fmx.setIsStub(false);
+		
+		this.context.pushPckg(fmx);
 		return super.visit(node);
 	}
 
 	@Override
 	public int leave(ICPPASTNamespaceDefinition node) {
+		this.context.popPckg();
 //		tracedown();
 		return super.leave(node);
 	}
@@ -79,7 +117,7 @@ public class MainVisitor extends VerveineVisitor {
 
 	@Override
 	public int visit(IASTDeclarator node) {
-		traceup("IASTDeclarator:");
+//		traceup("IASTDeclarator:");
 
 		if (node instanceof IASTFunctionDeclarator) {
 			this.visit((IASTFunctionDeclarator)node);
@@ -94,16 +132,16 @@ public class MainVisitor extends VerveineVisitor {
 			this.leave((IASTFunctionDeclarator)node);
 		}
 
-		tracedown("IASTDeclarator: ");
-		tracename(node.getName());
+//		tracedown("IASTDeclarator: ");
+//		tracename(node.getName());
 		return super.leave(node);
 	}
 
 	@Override
 	public int visit(IASTDeclSpecifier node) {
-		String trace=node.getRawSignature();
-		int cr = trace.indexOf('\n');
-		traceup("IASTDeclSpecifier: "+ (cr<0 ? trace : trace.substring(0, cr)+"..."));
+//		String trace=node.getRawSignature();
+//		int cr = trace.indexOf('\n');
+//		traceup("IASTDeclSpecifier: "+ (cr<0 ? trace : trace.substring(0, cr)+"..."));
 
 		if (node instanceof ICPPASTElaboratedTypeSpecifier) {
 			// -> struct/class)
@@ -119,8 +157,18 @@ public class MainVisitor extends VerveineVisitor {
 
 	@Override
 	public int leave(IASTDeclSpecifier node) {
-		tracedown();
-	
+//		tracedown();
+
+		if (node instanceof ICPPASTElaboratedTypeSpecifier) {
+			// -> struct/class)
+		}
+		else if (node instanceof ICPPASTNamedTypeSpecifier) {
+			// -> struct/class)
+		}
+		else if (node instanceof IASTCompositeTypeSpecifier) {
+			this.leave( (IASTCompositeTypeSpecifier)node );
+		}
+
 		return super.leave(node);
 	}
 
@@ -154,22 +202,6 @@ public class MainVisitor extends VerveineVisitor {
 		else if (node instanceof IASTFieldReference) {
 			tracemsg("    ->  FieldReference:");
 			tracename( ((IASTFieldReference)node).getFieldName() );
-
-			IASTName fname = ((IASTFieldReference)node).getFieldName();
-			if (fname!= null) {
-				IBinding bnd = ((IASTName)fname).getBinding();
-				if (bnd != null) {
-					Entity fmx = (BehaviouralEntity) dico.get(bnd);
-					if (fmx != null) {
-						System.out.println("Found invocation of known "+ fmx.getClass()+" "+ ((BehaviouralEntity)fmx).getName());
-					}
-					else {
-						System.out.println("Found invocation of unknown BehaviouralEntity ");
-					}
-
-				}
-			}
-
 			traceup("Field owner:");
 			visit( ((IASTFieldReference)node).getFieldOwner() );
 			tracedown();
@@ -197,21 +229,16 @@ public class MainVisitor extends VerveineVisitor {
 
 	@Override
 	public int visit(IASTParameterDeclaration node) {
-		tracemsg("IASTParameterDeclaration: ");
-		IASTDeclarator decl = node.getDeclarator();
-		if (decl != null) {
-			this.tracename(decl.getName());
+//		tracemsg("IASTParameterDeclaration: ");
+		if (context.topMethod() != null) {
+			node.accept( new ParamDeclVisitor(dico, context.topMethod()) );
 		}
-		else {
-			tracemsg("    -> null declarator");
-		}
-
 		return PROCESS_SKIP;
 	}
 
 	@Override
  	public int leave(IASTParameterDeclaration node) {
-		// never called
+		// never actually called
 		return super.leave(node);
 	}
 
@@ -312,6 +339,7 @@ public class MainVisitor extends VerveineVisitor {
 		return super.leave(node);
 	}
 
+	@SuppressWarnings("restriction")
 	@Override
 	public int visit(ASTAmbiguousNode node) {
 		tracemsg("ASTAmbiguousNode ");
@@ -409,8 +437,25 @@ public class MainVisitor extends VerveineVisitor {
 		IBinding bnd = nodeName.resolveBinding();
 
 		if ( (bnd != null) && (bnd instanceof ICPPClassType) ) {
-			tracemsg("    -> IASTCompositeTypeSpecifier (and a class)");
+//			tracemsg("    -> IASTCompositeTypeSpecifier (and a class)");
 
+			eu.synectique.verveine.core.gen.famix.Class fmx = dico.ensureFamixClass(bnd, nodeName.toString(), /*owner*/context.top(), /*persistIt*/true);
+			if (fmx != null) {
+				fmx.setIsStub(false);
+				
+				this.context.pushType(fmx);
+				// dico.addSourceAnchor(fmx, node, /*oneLineAnchor*/false);
+				// if (dico.createFamixComment(node.getJavadoc(), fmx, source) == null) {
+			}
+		}
+	}
+
+	public void leave(IASTCompositeTypeSpecifier node) {
+		IASTName nodeName = ((IASTCompositeTypeSpecifier)node).getName();
+		IBinding bnd = nodeName.resolveBinding();
+
+		if ( (bnd != null) && (bnd instanceof ICPPClassType) && (context.topType().getName().equals(nodeName.toString())) ) {
+			this.context.popType();
 		}
 	}
 
@@ -419,37 +464,47 @@ public class MainVisitor extends VerveineVisitor {
 		return PROCESS_SKIP;
 	
 	}
+
+	public int leave(ICPPASTFunctionDefinition node) {
+		tracedown("CPPASTFunctionDefinition ");
+		return PROCESS_SKIP;
+	}
 	
 	public void visit(IASTFunctionDeclarator node) {
-		tracemsg("    -> IASTFunctionDeclarator");
-		BehaviouralEntity fmx;
-
 		IASTFunctionDeclarator func = (IASTFunctionDeclarator)node;
 		IASTName nodeName = func.getName();
-		if (nodeName != null) {
-			IBinding bnd = nodeName.resolveBinding();
+		IBinding bnd = nodeName.resolveBinding();
+		BehaviouralEntity fmx;
 
-			if (bnd != null) {
-				boolean iscpp = (bnd instanceof ICPPMethod);
+//		tracemsg("    -> IASTFunctionDeclarator");
+
+		if (bnd != null) {
+			boolean iscpp = (bnd instanceof ICPPMethod);
+			
+			if (iscpp) {
+				fmx = dico.ensureFamixMethod(bnd, nodeName.toString(), /*signature*/nodeName.toString()+"(", /*ret.type*/null, context.topType(), /*persitIt*/true);
+			}
+			else {
+				fmx = dico.ensureFamixFunction(bnd, nodeName.toString(), /*signature*/nodeName.toString()+"(", /*ret.type*/null, context.top(), /*persitIt*/true);				
+			}
+
+			if (fmx != null) {
+				fmx.setIsStub(false);
 				if (iscpp) {
-					fmx = new Method();
-				}
-				else {
-					fmx = new Function();
-				}
-				if (fmx != null) {
-					dico.put(bnd, fmx);
-					fmx.setName(nodeName.toString());
+					this.context.pushMethod((Method) fmx);
+					if (bnd instanceof ICPPConstructor) {
+						((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
+					}
 				}
 			}
-		}
-		else {
-			//TODO ANONYMOUS function
 		}
 	}
 	
 	protected void leave(IASTFunctionDeclarator node) {
-
+		if ( context.top().getName().equals(node.getName().toString()) ) {
+			BehaviouralEntity fmx = context.popMethod();
+			fmx.setSignature(fmx.getSignature()+")");
+		}
 	}
 
 }

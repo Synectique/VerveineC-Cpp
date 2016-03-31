@@ -1,37 +1,36 @@
 package eu.synectique.verveine.extractor.cpp;
 
 import java.io.File;
-import java.util.Map;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTName;
-import org.eclipse.cdt.core.dom.ast.IBinding;
 
-import eu.synectique.verveine.core.gen.famix.Entity;
+import ch.akuhn.fame.Repository;
 
+/**
+ * AST Visitor that defines all the (Famix) entities of interest
+ * Famix entities are stored in a Map along with the IBindings to which they correspond
+ */
 public class VerveineVisitor extends ASTVisitor {
 
 	/** 
 	 * A dictionary allowing to recover created FAMIX Entities
 	 */
-	protected Map<IBinding,Entity> dico;
+	protected CDictionary dico;
 
-	public VerveineVisitor(Map<IBinding,Entity> dico) {
+	protected Repository famixRepo;
+	
+	public VerveineVisitor(CDictionary dico) {
 		super(/*visitNodes*/true);
 	    /* fine-tuning if visitNodes=false
 	    shouldVisitDeclarations = true;
 	    shouldVisitEnumerators = true;
 	    shouldVisitProblems = true;
 	    shouldVisitTranslationUnit = true;*/
-	    
-		this.dico = dico;
+	    this.dico = dico;
 	}
 
-	protected boolean isBound(IASTName name) {
-		return name.getBinding() != null;
-	}
-	
 	// TRACING
 	
 	private String traceIndent="#";
@@ -47,7 +46,10 @@ public class VerveineVisitor extends ASTVisitor {
 		System.err.println(traceIndent+msg);
 	}
 	protected void tracedown() {
-		traceIndent = traceIndent.substring(0, traceIndent.length()-2);
+		// protect against too may tracedown()
+		if (traceIndent.length() > 2) {
+			traceIndent = traceIndent.substring(0, traceIndent.length()-2);
+		}
 	}
 	protected void tracedown(String msg) {
 		tracedown();

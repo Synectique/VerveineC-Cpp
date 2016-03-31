@@ -1,10 +1,6 @@
 package eu.synectique.verveine.extractor.cpp;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICContainer;
@@ -19,19 +15,20 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
-import eu.synectique.verveine.core.gen.famix.Entity;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 
 public class VerveineCParser extends VerveineParser {
 
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 	
-	protected Map<IBinding,Entity> dico = new HashMap<IBinding,Entity>();
+	protected CDictionary dico;
 	protected String projName;
 
 	public void parse() {
 		// projName set in setOptions()
         ICProject project = createProject(projName);
+        
+        dico = new CDictionary(getFamixRepo());
         
 		try {
 			visitTranslationUnits(project.getAllSourceRoots());
