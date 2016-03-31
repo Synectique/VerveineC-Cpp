@@ -11,9 +11,13 @@ public class PluginApplication implements IApplication {
 	public Object start(IApplicationContext ctxt) throws Exception {
 		System.out.println("Starting VerveineC");
 		
-		String[] appArg = (String[])ctxt.getArguments().get(IApplicationContext.APPLICATION_ARGS);
+		String[] appArgs = (String[])ctxt.getArguments().get(IApplicationContext.APPLICATION_ARGS);
 
-		new VerveineCParser().parse(appArg[0]);
+		VerveineCParser verveine = new VerveineCParser();
+
+		verveine.setOptions(appArgs);
+		verveine.parse();
+		verveine.emitMSE();
 		return null;
 	}
 
