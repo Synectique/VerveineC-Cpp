@@ -58,7 +58,7 @@ public class VerveineVisitor extends ASTVisitor {
 
 	protected void tracename(IASTName name) {
 		if (name != null) {
-			tracemsg("    -> '"+name.toString()+ "' " +(isBound(name)?"is":"not") +" bound");
+			tracemsg("    -> '"+name.toString()+ "' " +(name.resolveBinding()!=null ?"is":"not") +" bound");
 		}
 		else {
 			tracemsg("    -> null name");

@@ -3,7 +3,6 @@ package eu.synectique.verveine.extractor.cpp;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.model.CModelException;
@@ -12,8 +11,6 @@ import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -26,7 +23,7 @@ public class VerveineCParser {
 
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 	
-	Map<IBinding,Entity> dico;
+	Map<IBinding,Entity> dico = new HashMap<IBinding,Entity>();
 
 	public void parse(String projName) {
         

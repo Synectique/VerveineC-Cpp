@@ -38,9 +38,13 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.internal.core.dom.parser.ASTAmbiguousNode;
 
+import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Entity;
+import eu.synectique.verveine.core.gen.famix.Function;
+import eu.synectique.verveine.core.gen.famix.Method;
 
 public class MainVisitor extends VerveineVisitor {
 
@@ -150,6 +154,22 @@ public class MainVisitor extends VerveineVisitor {
 		else if (node instanceof IASTFieldReference) {
 			tracemsg("    ->  FieldReference:");
 			tracename( ((IASTFieldReference)node).getFieldName() );
+
+			IASTName fname = ((IASTFieldReference)node).getFieldName();
+			if (fname!= null) {
+				IBinding bnd = ((IASTName)fname).getBinding();
+				if (bnd != null) {
+					Entity fmx = (BehaviouralEntity) dico.get(bnd);
+					if (fmx != null) {
+						System.out.println("Found invocation of known "+ fmx.getClass()+" "+ ((BehaviouralEntity)fmx).getName());
+					}
+					else {
+						System.out.println("Found invocation of unknown BehaviouralEntity ");
+					}
+
+				}
+			}
+
 			traceup("Field owner:");
 			visit( ((IASTFieldReference)node).getFieldOwner() );
 			tracedown();
@@ -402,6 +422,7 @@ public class MainVisitor extends VerveineVisitor {
 	
 	public void visit(IASTFunctionDeclarator node) {
 		tracemsg("    -> IASTFunctionDeclarator");
+		BehaviouralEntity fmx;
 
 		IASTFunctionDeclarator func = (IASTFunctionDeclarator)node;
 		IASTName nodeName = func.getName();
@@ -409,7 +430,17 @@ public class MainVisitor extends VerveineVisitor {
 			IBinding bnd = nodeName.resolveBinding();
 
 			if (bnd != null) {
-				//boolean iscpp = (bnd instanceof ICPPMethod);
+				boolean iscpp = (bnd instanceof ICPPMethod);
+				if (iscpp) {
+					fmx = new Method();
+				}
+				else {
+					fmx = new Function();
+				}
+				if (fmx != null) {
+					dico.put(bnd, fmx);
+					fmx.setName(nodeName.toString());
+				}
 			}
 		}
 		else {
