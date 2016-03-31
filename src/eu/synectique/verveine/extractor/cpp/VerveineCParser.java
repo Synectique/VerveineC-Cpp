@@ -3,25 +3,15 @@ package eu.synectique.verveine.extractor.cpp;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.dom.ast.gnu.cpp.GPPLanguage;
-import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.core.parser.FileContent;
-import org.eclipse.cdt.core.parser.IParserLogService;
-import org.eclipse.cdt.core.parser.IScannerInfo;
-import org.eclipse.cdt.core.parser.IncludeFileContentProvider;
-import org.eclipse.cdt.core.parser.ParserFactory;
-import org.eclipse.cdt.core.parser.ScannerInfo;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -30,65 +20,41 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
+import eu.synectique.verveine.core.gen.famix.Entity;
+
 public class VerveineCParser {
 
-	private IParserLogService log;
-	private Map<String,String> definedSymbols;
-	private String[] includePaths;
-	private IScannerInfo info;
-	private IncludeFileContentProvider provider;
-	private IIndex indexer;
+	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 	
-	Map<IBinding,IASTName> dico;
+	Map<IBinding,Entity> dico;
 
 	public void parse(String projName) {
-		dico = new HashMap<IBinding,IASTName>();
-		
-        log = ParserFactory.createDefaultLogService();
-        definedSymbols = new HashMap<String,String>();
-        includePaths = new String[0];
-        info = new ScannerInfo(definedSymbols,includePaths);
-        provider = IncludeFileContentProvider.getEmptyFilesProvider();
         
         ICProject project = createProject(projName);
-        indexer = createIndex(project);
-		//System.out.println("VerveineCParser created all helpers for project: " + project.getElementName());
-
+        //indexer = createIndex(project);
+        
 		try {
-			System.out.println("got description of project: "+ project.getProject().getDescription().getName());
-			for (String nat : project.getProject().getDescription().getNatureIds()) {
-				System.out.println("project nature: " + nat);
-			}
-		} catch (CoreException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		
-		try {
-			findTU(project.getChildren()); //getAllSourceRoots());
+			findTranslationUnits(project.getAllSourceRoots());
 		} catch (CModelException e) {
-			System.err.println("Got CModelException (\""+ e.getMessage() +"\") while trying to getAllSourceRoots");
+			System.err.println("*** Got CModelException (\""+ e.getMessage() +"\") while trying to getAllSourceRoots");
 		}	
 	}
 	
-	protected void findTU(ICElement[] elts) {
-		for (ICElement icElement : elts) {
-			if (icElement instanceof ICContainer) {
+	protected void findTranslationUnits(ICElement[] elts) {
+		for (ICElement icElt : elts) {
+			if (icElt instanceof ICContainer) {
 				try {
-					findTU( ((ICContainer) icElement).getChildren());
+					findTranslationUnits( ((ICContainer) icElt).getChildren());
 				} catch (CModelException e) {
-					System.err.println("Got CModelException (\""+ e.getMessage() +"\") while trying to getChildren of "+icElement.getElementName());
+					System.err.println("*** Got CModelException (\""+ e.getMessage() +"\") while trying to getChildren of "+icElt.getElementName());
 				}
 			}
-			else if (icElement instanceof ITranslationUnit) {
-				System.out.println("found TU:" + icElement.getElementName());
+			else if (icElt instanceof ITranslationUnit) {
 				try {
-					visitTU( ((ITranslationUnit)icElement).getAST());
+					IASTTranslationUnit ast = ((ITranslationUnit)icElt).getAST();
+					ast.accept(new MainVisitor(dico));
 				} catch (CoreException e) {
-					System.err.println("Got CoreException (\""+ e.getMessage() +"\") while getting AST of: "+ icElement.getElementName() );
-					e.printStackTrace();
-					System.err.println("I give up, this is too difficult  ;-(");
-					System.exit(2);
+					System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of: "+ icElt.getElementName() );
 				}
 			}
 			else {
@@ -97,83 +63,21 @@ public class VerveineCParser {
 		}
 	}
 
-	private IIndex createIndex(ICProject proj) {
-		IIndex index = null;
-		try {
-			IIndexManager manager = CCorePlugin.getIndexManager();
-			manager.reindex(proj);
-			manager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor());
-			index = manager.getIndex(proj);
-			index.acquireReadLock();
-		}
-		catch (CoreException excp) {
-			System.err.println(excp.getMessage());			
-		} catch (InterruptedException excp) {
-			System.err.println(excp.getMessage());			
-		}
-
-		return index;
-	}
-
 	private ICProject createProject(String projName) {
-		IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		System.out.println("workspace located in: "+root.getLocation());
-		
-		IProject projEclipse = root.getProject(projName);
+		System.err.println("INFO: workspace located in: "+root.getLocation());
+
 		ICProject proj;
-
-		try {
-			if (! projEclipse.exists()) {
-				System.out.println("now creating project");
-				projEclipse.create(NULL_PROGRESS_MONITOR);
-			}
-			projEclipse.open(NULL_PROGRESS_MONITOR);
-			projEclipse.refreshLocal(IResource.DEPTH_INFINITE, NULL_PROGRESS_MONITOR);
-			
-			System.out.println("IProject located in: "+projEclipse.getRawLocation());
-		}
-		catch (final CoreException e) {
-			System.err.println("Got CoreException (\""+ e.getMessage() +"\") while trying to create IProject: "+ projName);
-		}
-
-		proj = CoreModel.getDefault().getCModel().getCProject(projEclipse.getName());
+		proj = CoreModel.getDefault().getCModel().getCProject(projName);
 		try {
 			proj.open(NULL_PROGRESS_MONITOR);
 			proj.makeConsistent(NULL_PROGRESS_MONITOR);
 		}
 		catch (final CoreException e) {
-			System.err.println("Got CoreException (\""+ e.getMessage() +"\") while trying to create CppProject: "+ projName);
+			System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while trying to open CppProject: "+ projName);
 		}
 
 		return proj;
 	}
 
-	private void parseSourceFile(String filename) {
-        FileContent reader = FileContent.createForExternalFileLocation(filename);
-
-        System.out.println("\n ---------- parsing: " + filename +" ----------");
-
-		try {
-			IASTTranslationUnit ast;
-			ast = GPPLanguage.getDefault().getASTTranslationUnit(reader, info, provider, indexer, 0, log);
-			visitTU(ast);
-		} catch (CoreException e) {
-			System.err.println("Got CoreException (\""+ e.getMessage() +"\") while trying to parse: "+ filename );
-			e.printStackTrace();
-			System.err.println("I give up, this is too difficult  ;-(");
-			System.exit(2);
-		}
-		catch (IllegalArgumentException e) {
-			System.err.println("Got IllegalArgumentException (\""+ e.getMessage() +"\") while trying to parse: "+ filename );
-			e.printStackTrace();
-			System.err.println("I give up, this is too difficult  ;-(");
-			System.exit(2);
-		}
-
-	}
-
-	private void visitTU(IASTTranslationUnit ast) {
-        ast.accept(new MainVisitor(dico));
-	}
 }

@@ -31,20 +31,20 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCapture;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTClassVirtSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDecltypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTElaboratedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.internal.core.dom.parser.ASTAmbiguousNode;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTElaboratedTypeSpecifier;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTFunctionCallExpression;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTFunctionDefinition;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTNamedTypeSpecifier;
+
+import eu.synectique.verveine.core.gen.famix.Entity;
 
 public class MainVisitor extends VerveineVisitor {
 
-	public MainVisitor(Map<IBinding,IASTName> dico) {
+	public MainVisitor(Map<IBinding,Entity> dico) {
 		super(dico);
 	}
 
@@ -76,15 +76,6 @@ public class MainVisitor extends VerveineVisitor {
 	@Override
 	public int visit(IASTDeclarator node) {
 		traceup("IASTDeclarator:");
-		IASTName nodeName = node.getName();
-		tracename(nodeName);
-		nodeName.resolveBinding();
-		tracemsg("       /// and after resolveBinding() ...");
-		tracename(nodeName);
-
-		if (isBound(nodeName)) {
-			dico.put(nodeName.getBinding(), nodeName);
-		}
 
 		if (node instanceof IASTFunctionDeclarator) {
 			this.visit((IASTFunctionDeclarator)node);
@@ -108,12 +99,12 @@ public class MainVisitor extends VerveineVisitor {
 	public int visit(IASTDeclSpecifier node) {
 		String trace=node.getRawSignature();
 		int cr = trace.indexOf('\n');
-		traceup("IASTDeclSpecifier: "+(cr<0?trace:trace.substring(0, cr)+"..."));
+		traceup("IASTDeclSpecifier: "+ (cr<0 ? trace : trace.substring(0, cr)+"..."));
 
-		if (node instanceof CPPASTElaboratedTypeSpecifier) {
+		if (node instanceof ICPPASTElaboratedTypeSpecifier) {
 			// -> struct/class)
 		}
-		else if (node instanceof CPPASTNamedTypeSpecifier) {
+		else if (node instanceof ICPPASTNamedTypeSpecifier) {
 			// -> struct/class)
 		}
 		else if (node instanceof IASTCompositeTypeSpecifier) {
@@ -403,7 +394,7 @@ public class MainVisitor extends VerveineVisitor {
 		}
 	}
 
-	public int visit(CPPASTFunctionDefinition node) {
+	public int visit(ICPPASTFunctionDefinition node) {
 		traceup("CPPASTFunctionDefinition ");
 		return PROCESS_SKIP;
 	
@@ -418,7 +409,7 @@ public class MainVisitor extends VerveineVisitor {
 			IBinding bnd = nodeName.resolveBinding();
 
 			if (bnd != null) {
-				boolean iscpp = (bnd instanceof ICPPMethod);
+				//boolean iscpp = (bnd instanceof ICPPMethod);
 			}
 		}
 		else {
@@ -427,12 +418,7 @@ public class MainVisitor extends VerveineVisitor {
 	}
 	
 	protected void leave(IASTFunctionDeclarator node) {
-		try {
-			IASTName nodeName = null;
-		}
-		catch (Exception e) {
-			// ignore
-		}
+
 	}
 
 }

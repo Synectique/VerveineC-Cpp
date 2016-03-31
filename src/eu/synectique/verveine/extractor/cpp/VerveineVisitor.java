@@ -8,14 +8,16 @@ import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 
+import eu.synectique.verveine.core.gen.famix.Entity;
+
 public class VerveineVisitor extends ASTVisitor {
 
 	/** 
 	 * A dictionary allowing to recover created FAMIX Entities
 	 */
-	protected Map<IBinding,IASTName> dico;
+	protected Map<IBinding,Entity> dico;
 
-	public VerveineVisitor(Map<IBinding,IASTName> dico) {
+	public VerveineVisitor(Map<IBinding,Entity> dico) {
 		super(/*visitNodes*/true);
 	    /* fine-tuning if visitNodes=false
 	    shouldVisitDeclarations = true;
