@@ -78,7 +78,10 @@ public class MainVisitor extends VerveineVisitor {
 		traceup("IASTDeclarator:");
 		IASTName nodeName = node.getName();
 		tracename(nodeName);
-		
+		nodeName.resolveBinding();
+		tracemsg("       /// and after resolveBinding() ...");
+		tracename(nodeName);
+
 		if (isBound(nodeName)) {
 			dico.put(nodeName.getBinding(), nodeName);
 		}

@@ -7,7 +7,6 @@ import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.internal.core.index.IndexFileLocation;
 
 public class VerveineVisitor extends ASTVisitor {
 
@@ -39,7 +38,7 @@ public class VerveineVisitor extends ASTVisitor {
 		traceIndent += "  ";
 	}
 	protected void traceup(String msg) {
-		tracemsg("Entering "+msg);
+		tracemsg("Visiting "+msg);
 		traceup();
 	}
 	protected void tracemsg(String msg) {
@@ -57,7 +56,7 @@ public class VerveineVisitor extends ASTVisitor {
 
 	protected void tracename(IASTName name) {
 		if (name != null) {
-			tracemsg("    -> "+name.toString()+ (isBound(name)?" is ":" not ") +"bound");
+			tracemsg("    -> '"+name.toString()+ "' " +(isBound(name)?"is":"not") +" bound");
 		}
 		else {
 			tracemsg("    -> null name");

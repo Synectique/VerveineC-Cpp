@@ -8,9 +8,12 @@ import eu.synectique.verveine.extractor.cpp.VerveineCParser;
 public class PluginApplication implements IApplication {
 
 	@Override
-	public Object start(IApplicationContext arg0) throws Exception {
+	public Object start(IApplicationContext ctxt) throws Exception {
 		System.out.println("Verveine running in: " + System.getenv("PWD"));
-		new VerveineCParser().parse();
+		
+		String[] appArg = (String[])ctxt.getArguments().get(IApplicationContext.APPLICATION_ARGS);
+
+		new VerveineCParser().parse(appArg[0]);
 		return null;
 	}
 
