@@ -13,7 +13,7 @@ import eu.synectique.verveine.core.gen.famix.Type;
  * This simplifies visiting IASTDeclSpecifier (type of parameters) and IASTDeclarator (parameter itself)
  * @author anquetil
  */
-public class ParamDeclVisitor extends VerveineVisitor {
+public class ParamDeclVisitor extends AbstractRefVisitor {
 
 	/** the FamixMethod for which we are visiting the IASTParameterDeclaration
 	 */
@@ -54,7 +54,7 @@ public class ParamDeclVisitor extends VerveineVisitor {
 	
 	@Override
 	public int visit(IASTParameterDeclaration node) {
-		traceup("### IASTParameterDeclaration ");
+		tracer.up("### IASTParameterDeclaration ");
 		return super.visit(node);
 	}
 
