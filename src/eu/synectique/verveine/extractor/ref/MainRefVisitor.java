@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.cpp;
+package eu.synectique.verveine.extractor.ref;
 
 import java.io.File;
 import java.io.RandomAccessFile;
@@ -79,69 +79,16 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	 */
 	protected boolean inAssignmentLHS = false;
 	
-	/** name of the current file (TranslationUnit) being visited
-	 */
-	protected String filename;
-	
-	public MainRefVisitor(CDictionary dico) {
-		super(dico);
-	}
-
-	private void prepareVisit(String filename) {
-		this.context = new EntityStack2();
-		this.filename = filename;
+	public MainRefVisitor(CDictionaryRef dicoRef) {
+		super(dicoRef);
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ======================================================================================================
-	
+
 	@Override
-	public boolean visit(ICElement elt) {
-		switch (elt.getElementType()) {
-		case ICElement.C_PROJECT:
-			visit( (ICProject) elt);
-			return false;
-		case ICElement.C_CCONTAINER:
-			visit( (ICContainer) elt);
-			return false;
-		case ICElement.C_UNIT:
-			visit( (ITranslationUnit) elt);
-			return false;
-		default:
-			//  don't know what it is, don't know what to do with it
-			return true;
-		}
-	}
-
-	private void visit(ICProject project) {
-		try {
-			for (ISourceRoot src : project.getAllSourceRoots()) {
-				this.visit(src);
-			}
-		} catch (CModelException e) {
-			System.err.println("*** Got CModelException (\""+ e.getMessage() +"\") while trying to getAllSourceRoots of project "+project.getElementName());
-//			e.printStacktracer.();
-		}
-	}
-	
-	private void visit(ICContainer cont) {
-		try {
-			for (ICElement child : cont.getChildren()) {
-				this.visit( child);
-			}
-		} catch (CModelException e) {
-			System.err.println("*** Got CModelException (\""+ e.getMessage() +"\") while trying to getChildren of "+cont.getElementName());
-//			e.printStacktracer.();
-		}
-	}
-
-	private void visit(ITranslationUnit tu) {
-		try {
-			this.prepareVisit( tu.getFile().getName() );
-			tu.getAST().accept(this);
-		} catch (CoreException e) {
-			System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ tu.getElementName() );
-		}
-
+	public void visit(ITranslationUnit tu) {
+		context = new EntityStack2();
+		super.visit(tu);
 	}
 
 	// CDT VISITING METODS ON AST ==========================================================================================================
@@ -171,7 +118,8 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	public int visit(ICPPASTNamespaceDefinition node) {
 		tracer.up("ICPPASTNamespaceDefinition: "+node.getName());
 		IASTName nodeName = node.getName();
-		Namespace fmx = dico.ensureFamixNamespace(nodeName.resolveBinding(), nodeName.toString());
+		Namespace fmx = null;
+//		fmx = dico.ensureFamixNamespace(nodeName.resolveBinding(), nodeName.toString());
 			fmx.setIsStub(false);
 		
 		this.context.push(fmx);
@@ -559,12 +507,13 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 
 		if ( (bnd != null) && (loc != null) && (loc.getFileName().equals(this.filename)) ) {
 			tracer.msg("creating famix class:"+nodeName.toString());
-			eu.synectique.verveine.core.gen.famix.Class fmx = dico.ensureFamixClass(bnd, nodeName.toString(), /*owner*/(ContainerEntity)context.top(), /*persistIt*/true);
+			eu.synectique.verveine.core.gen.famix.Class fmx = null;
+//			fmx = dico.ensureFamixClass(bnd, nodeName.toString(), /*owner*/(ContainerEntity)context.top(), /*persistIt*/true);
 			if (fmx != null) {
 				fmx.setIsStub(false);
 
 				this.context.push(fmx);
-				dico.addSourceAnchor(fmx, node, /*oneLineAnchor*/false);
+//				dico.addSourceAnchor(fmx, node, /*oneLineAnchor*/false);
 			}
 		}
 
@@ -617,7 +566,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		IASTName nodeName = func.getName();
 		IBinding bnd = nodeName.resolveBinding();
 		IASTFileLocation loc = nodeName.getFileLocation();
-		BehaviouralEntity fmx;
+		BehaviouralEntity fmx = null;
 
 		tracer.msg("    -> IASTFunctionDeclarator");
 		tracename(nodeName);
@@ -628,11 +577,11 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 			
 			if (iscpp) {
 				tracer.msg("creating famix method:"+nodeName.toString());
-				fmx = dico.ensureFamixMethod(bnd, nodeName.toString(), /*signature*/nodeName.toString()+"(", /*ret.type*/null, context.topType(), /*persitIt*/true);
+//				fmx = dico.ensureFamixMethod(bnd, nodeName.toString(), /*signature*/nodeName.toString()+"(", /*ret.type*/null, context.topType(), /*persitIt*/true);
 			}
 			else {
 				tracer.msg("creating famix function:"+nodeName.toString());
-				fmx = dico.ensureFamixFunction(bnd, nodeName.toString(), /*signature*/nodeName.toString()+"(", /*ret.type*/null, (ContainerEntity)context.top(), /*persitIt*/true);				
+//				fmx = dico.ensureFamixFunction(bnd, nodeName.toString(), /*signature*/nodeName.toString()+"(", /*ret.type*/null, (ContainerEntity)context.top(), /*persitIt*/true);				
 			}
 
 			if (fmx != null) {
@@ -657,7 +606,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		}
 	}
 
-	// more specialized tracer. functions
+	// more specialized trace methods
 
 	protected void tracename(IASTName name) {
 		if (name != null) {

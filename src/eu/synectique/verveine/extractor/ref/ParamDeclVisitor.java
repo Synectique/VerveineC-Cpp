@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.cpp;
+package eu.synectique.verveine.extractor.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
@@ -8,6 +8,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.extractor.def.CDictionaryDef;
 
 /** Specialized visitor for parameter declaration of a FunctionDeclarator
  * This simplifies visiting IASTDeclSpecifier (type of parameters) and IASTDeclarator (parameter itself)
@@ -29,7 +30,7 @@ public class ParamDeclVisitor extends AbstractRefVisitor {
 
 	/** constructor, receives the FamixMethod for which we are visiting the IASTParameterDeclaration 
 	 */
-	public ParamDeclVisitor(CDictionary dico, Method fmx) {
+	public ParamDeclVisitor(CDictionaryRef dico, Method fmx) {
 		super(dico);
 		this.fmxMth = fmx;
 	}
@@ -60,7 +61,7 @@ public class ParamDeclVisitor extends AbstractRefVisitor {
 
 	@Override
 	public int leave(IASTParameterDeclaration node) {
-		dico.ensureFamixParameter((IBinding)null, name, paramType, fmxMth, /*persistIt*/true);
+//		dico.ensureFamixParameter((IBinding)null, name, paramType, fmxMth, /*persistIt*/true);
 		return super.visit(node);
 	}
 

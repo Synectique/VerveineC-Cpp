@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.cpp;
+package eu.synectique.verveine.extractor.parse;
 
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
@@ -11,22 +11,32 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
+import eu.synectique.verveine.extractor.def.CDictionaryDef;
+import eu.synectique.verveine.extractor.def.DefVisitor;
+import eu.synectique.verveine.extractor.ref.CDictionaryRef;
+import eu.synectique.verveine.extractor.ref.MainRefVisitor;
 
 public class VerveineCParser extends VerveineParser {
 
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
-	
-	protected CDictionary dico;
+
 	protected String projName;
 
 	public void parse() {
 		// projName set in setOptions()
         ICProject project = createProject(projName);
         
-        dico = new CDictionary(getFamixRepo());
         
         try {
-			project.accept(new DefVisitor(dico));
+        	// 1st step: create structural entities
+        	CDictionaryDef dicoDef = new CDictionaryDef(getFamixRepo());
+			project.accept(new DefVisitor(dicoDef));
+			// 2nd step: switch dictionnary (ref-key=position ; ref-key=binding)
+			CDictionaryRef dicoRef = new CDictionaryRef(getFamixRepo());
+			new DefToRefDictionariesVisitor(dicoDef,dicoRef).visit(project);
+			dicoDef = null;  // free memory
+			// 3rd step: create references to entities
+			new MainRefVisitor(dicoRef).visit(project);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}

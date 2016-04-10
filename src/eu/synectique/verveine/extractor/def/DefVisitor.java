@@ -1,5 +1,7 @@
-package eu.synectique.verveine.extractor.cpp;
+package eu.synectique.verveine.extractor.def;
 
+import org.eclipse.cdt.core.model.CModelException;
+import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.IEnumeration;
@@ -12,6 +14,7 @@ import org.eclipse.cdt.core.model.INamespace;
 import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.IStructure;
 import org.eclipse.cdt.core.model.IStructureDeclaration;
+import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.model.ITypeDef;
 import org.eclipse.cdt.core.model.IVariable;
 import org.eclipse.cdt.core.model.IVariableDeclaration;
@@ -35,16 +38,20 @@ public class DefVisitor implements ICElementVisitor {
 	/** 
 	 * The dictionary that creates FAMIX Entities and hold the FAMIX repository
 	 */
-	protected CDictionary dico;
+	protected CDictionaryDef dico;
 
 	/**
 	 * A stack that keeps the current definition context (package/class/method)
 	 */
 	protected EntityStack2 context;
 
+	protected eu.synectique.verveine.core.gen.famix.Package currentPackage;
+
+	protected String currentFile;
+	
 	protected Tracer tracer = new Tracer();
 
-	public DefVisitor(CDictionary dico) {
+	public DefVisitor(CDictionaryDef dico) {
 	    this.dico = dico;
 		this.context = new EntityStack2();
 	}
@@ -53,13 +60,17 @@ public class DefVisitor implements ICElementVisitor {
 	
 	@Override
 	public boolean visit(ICElement elt) {
-		tracer.up("visit_ICElement:"+elt.getElementName());
+		tracer.up("ICElement:"+elt.getElementName()+"    child of:"+elt.getParent().getElementName());
 		switch (elt.getElementType()) {
 		case ICElement.C_PROJECT:
+			tracer.down();
+			return true; // visit children and we don't care about knowing when these visits end
 		case ICElement.C_CCONTAINER:
+			visit( (ICContainer) elt);
+			break;
 		case ICElement.C_UNIT:
-			return true; // visit children and we don't care about knowing when these visit ends
-
+			visit( (ITranslationUnit) elt);
+			break;
 		case ICElement.C_NAMESPACE:
 			visit( (INamespace) elt);
 			break;
@@ -99,11 +110,12 @@ public class DefVisitor implements ICElementVisitor {
 		case ICElement.C_TYPEDEF:
 			visit( (ITypeDef) elt);
 			break;
+		case ICElement.C_INCLUDE:
 		default:
 			//  don't know what it is, don't know what to do with it
 		}
 		
-		tracer.down("end visit_ICElement:"+elt.getElementName());
+		tracer.down("ICElement:"+elt.getElementName());
 		/* 
 		 * Return false in most cases so that we can handle the visiting of children of the nodes ourselves
 		 * so that we can manage properly the context stack.
@@ -113,15 +125,31 @@ public class DefVisitor implements ICElementVisitor {
 		return false;
 	}
 
-	private void visit(INamespace elt) {
-		Namespace fmx = dico.createNamespace(elt.getElementName(), (ScopingEntity) this.context.top());
+
+	private void visit(ICContainer elt) {
+		eu.synectique.verveine.core.gen.famix.Package fmx = null;
+		fmx = dico.ensurePackage(elt.getElementName(), currentPackage);
 		fmx.setIsStub(false);
-		tracer.up("created Namespace:"+fmx.getName());
+
+		currentPackage = fmx;                        // kind of pushing new package on a virtual package stack
+		visitChildren(elt);
+		currentPackage = fmx.getParentPackage();    // kind of poping new package from the package stack
+	}
+
+	private void visit(ITranslationUnit elt) {
+		currentFile = elt.getElementName();
+		visitChildren(elt);
+		currentFile = null;
+	}
+
+	private void visit(INamespace elt) {
+		Namespace fmx = dico.ensureNamespace(elt.getElementName(), (ScopingEntity) this.context.top());
+		fmx.setIsStub(false);
+		tracer.msg("     -> Namespace:"+fmx.getName());
 
 		this.context.push(fmx);
 		visitChildren(elt);
 		this.context.pop();
-		tracer.down("done with Namespace:"+fmx.getName());
 	}
 
 	private void visit(IEnumeration elt) {
@@ -132,21 +160,31 @@ public class DefVisitor implements ICElementVisitor {
 
 	private void visit(IStructure elt) {
 		if (elt.getElementType() == ICElement.C_CLASS) {
-			eu.synectique.verveine.core.gen.famix.Class fmx = dico.createClass(elt.getElementName(), (ContainerEntity)context.top());
-			fmx.setIsStub(false);
-			tracer.up("created Class:"+fmx.getName());
+			eu.synectique.verveine.core.gen.famix.Class fmx;
+			try {
+				fmx = dico.createClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());
+				fmx.setIsStub(false);
+				fmx.setParentPackage(currentPackage);
+				tracer.msg("     ->Class:"+fmx.getName());
 
-			this.context.push(fmx);
-			visitChildren(elt);
-			this.context.pop();
-			tracer.down("done with Class:"+fmx.getName());
+				this.context.push(fmx);
+				visitChildren(elt);
+				this.context.pop();
+			} catch (CModelException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
 	private void visit(IMethodDeclaration elt) {
-		Method fmx = dico.createMethod(elt.getElementName(), (Type)context.top());
-		fmx.setIsStub(false);
-		tracer.msg("created Method:"+fmx.getName());
+		Method fmx;
+		try {
+			fmx = dico.createMethod(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.top());
+			fmx.setIsStub(false);
+			tracer.msg("created Method:"+fmx.getName());
+		} catch (CModelException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void visit(IMethod elt) {
@@ -159,9 +197,14 @@ public class DefVisitor implements ICElementVisitor {
 	}
 
 	private void visit(IField elt) {
-		Attribute fmx = dico.createAttribute(elt.getElementName(), (Type)context.top());
-		fmx.setIsStub(false);
-		tracer.msg("created Method:"+fmx.getName());
+		Attribute fmx;
+		try {
+			fmx = dico.createAttribute(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.top());
+			fmx.setIsStub(false);
+			tracer.msg("created Field:"+fmx.getName());
+		} catch (CModelException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private void visit(IVariable elt) {

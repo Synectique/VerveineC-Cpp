@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: Blah
 Bundle-SymbolicName: verveine.extractor.Cpp;singleton:=true
 Bundle-Version: 1.0.0.qualifier
-Bundle-Activator: eu.synectique.verveine.extractor.Activator
+Bundle-Activator: eu.synectique.verveine.extractor.plugin.Activator
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.cdt.core;bundle-version="5.11.0",
  org.eclipse.core.resources;bundle-version="3.10.1"

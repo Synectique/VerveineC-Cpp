@@ -5,7 +5,7 @@
          id="Main"
          point="org.eclipse.core.runtime.applications">
       <application cardinality="singleton-global" thread="main" visible="true"> 
-         <run class="eu.synectique.verveine.extractor.PluginApplication"/>
+         <run class="eu.synectique.verveine.extractor.plugin.PluginApplication"/>
       </application> 
    </extension>
 

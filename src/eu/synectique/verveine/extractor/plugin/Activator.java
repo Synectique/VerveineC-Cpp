@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor;
+package eu.synectique.verveine.extractor.plugin;
 
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
