@@ -10,6 +10,7 @@ import org.eclipse.cdt.core.dom.ast.IASTAttribute;
 import org.eclipse.cdt.core.dom.ast.IASTAttributeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTComment;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
@@ -86,6 +87,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	public MainRefVisitor(CDictionaryDef dicoDef, CDictionaryRef dicoRef) {
 		super(dicoRef, /*visitNodes*/true);
 		this.dicoDef = dicoDef;
+
 		tracer = new Tracer();
 	}
 
@@ -117,12 +119,12 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		IBinding bnd = nodeName.resolveBinding();
 
 		if (bnd == null) {
-			return PROCESS_SKIP;
+			return PROCESS_CONTINUE;
 		}
 
 		Namespace fmx = dicoDef.removeUniqEntity(nodeName.getLastName().toString(), Namespace.class);
 		if (fmx == null) {
-			return PROCESS_SKIP;
+			return PROCESS_CONTINUE;
 		}
 		dico.remapEntityToKey(nodeName.resolveBinding(), fmx);		
 		this.context.push(fmx);
@@ -141,14 +143,24 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	public int visit(IASTExpression node) {
 		if (node instanceof IASTFieldReference) {
 			visit( (IASTFieldReference)node);
-			return ASTVisitor.PROCESS_SKIP;
 		}
 		else if (node instanceof IASTFunctionCallExpression) {
 			visit((IASTFunctionCallExpression)node);
-			return ASTVisitor.PROCESS_SKIP;  // because we already visited the FunctionNameExpression
+			return ASTVisitor.PROCESS_CONTINUE;  // should be skip because we already visited the FunctionNameExpression
 		}
 		else if (node instanceof IASTIdExpression) {
-			tracer.msg("IASTExpression ("+node.getClass().getSimpleName()+") @ "+node.getFileLocation().getStartingLineNumber());
+			IASTName nodeName = null;
+			IBinding bnd;
+			NamedEntity fmx = null;
+
+			nodeName = ((IASTIdExpression) node).getName();
+			if (nodeName != null) {
+				bnd = nodeName.resolveBinding();
+				if (bnd != null) {
+					fmx = dico.getEntityByKey(bnd);
+					System.err.println("found reference to entity: "+fmx);
+				}
+			}
 		}
 
 		return super.visit(node);
@@ -166,7 +178,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		if (context.topMethod() != null) {
 			node.accept( new ParamDeclVisitor(dico, context.topMethod()) );
 		}*/
-		return PROCESS_SKIP;
+		return super.visit(node);
 	}
 
 	@Override
@@ -194,6 +206,13 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		return super.leave(node);
 	}
 
+	@Override
+	public int visit(IASTDeclaration node) {
+		// includes CPPASTVisibilityLabel
+//		tracer.msg("IASTDeclaration");
+		return super.visit(node);
+	}
+
 
 	// ABSTRACT_REF_VISITOR VISITING METODS ON AST =======================================================================================================
 
@@ -201,28 +220,24 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		tracer.msg("    -> ICPPASTCompositeTypeSpecifier");
 		IASTName nodeName = node.getName();
 		IASTImageLocation loc;
 		IBinding bnd;
 		Class fmx;
 		
 		if (nodeName == null) {
-			System.err.println("ERROR nodeName=null");
 			return PROCESS_CONTINUE;
 		}
 
 		loc = nodeName.getImageLocation();
 		bnd = nodeName.resolveBinding();
 		if ( (loc == null) || (bnd == null) ) {
-			System.err.println("ERROR loc/bnd=null");
-			return PROCESS_SKIP;
+			return PROCESS_CONTINUE;
 		}
 
 		fmx = dicoDef.removeEntity(simpleFilename(loc), loc.getNodeOffset(), nodeName.toString(), eu.synectique.verveine.core.gen.famix.Class.class);
 		if (fmx == null) {
-			System.err.println("ERROR fmx=null");
-			return PROCESS_SKIP;
+			return PROCESS_CONTINUE;
 		}
 
 		dico.remapEntityToKey(nodeName.resolveBinding(), fmx);
@@ -248,8 +263,6 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		IBinding bnd;
 		BehaviouralEntity fmx = null;
 
-		tracer.msg("    -> IASTFunctionDeclarator");
-
 		if (nodeName == null) {
 			return PROCESS_CONTINUE;
 		}
@@ -258,7 +271,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		bnd = nodeName.resolveBinding();
 		
 		if ( (loc == null) || (bnd==null) ) {
-			return PROCESS_SKIP;
+			return PROCESS_CONTINUE;
 		}
 
 		if (bnd instanceof ICPPMethod) {   // C++ method
@@ -269,7 +282,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		}
 
 		if (fmx == null) {
-			return PROCESS_SKIP;
+			return PROCESS_CONTINUE;
 		}
 
 		dico.remapEntityToKey(bnd, fmx);
@@ -314,8 +327,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 
 	@Override
 	protected int leave(ICPPASTDeclarator node) {
-		// TODO Auto-generated method stub
-		return 0;
+		return PROCESS_CONTINUE;
 	}
 
 	public void visit(IASTFunctionCallExpression node) {

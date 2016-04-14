@@ -25,7 +25,6 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
-import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.def.CDictionaryDef;
 import eu.synectique.verveine.extractor.def.DefVisitor;
@@ -46,26 +45,19 @@ public class VerveineCParser extends VerveineParser {
 	public void parse() {
 
 		tracer = new Tracer();
-		tracer.msg("step 1 / 4: indexing");
+		tracer.msg("step 1 / 3: indexing");
 
         ICProject project = createProject(projName, projectPath);  		// projPath set in setOptions()
         
         try {
-        	// 1st step: create structural entities
-    		tracer.msg("step 2 / 4: creating structural entities");
+    		tracer.msg("step 2 / 3: creating structural entities");
         	CDictionaryDef dicoDef = new CDictionaryDef(getFamixRepo());
 			project.accept(new DefVisitor(dicoDef));
-			// 2nd step: switch dictionnary (ref-key=position ; ref-key=binding)
-    		tracer.msg("step 3 / 4: preparing for references");
+
+    		tracer.msg("step 3 / 3: creating references");
 			CDictionaryRef dicoRef = new CDictionaryRef(getFamixRepo());
        		dicoDef.sizes();
        		dicoRef.sizes();
-       		//dicoDef.listAll(Attribute.class);
-       		
-			//new DefToRefDictionariesVisitor(dicoDef,dicoRef).visit(project);
-
-			// 3rd step: create references to entities
-    		tracer.msg("step 4 / 4: creating references");
 			new MainRefVisitor(dicoDef, dicoRef).visit(project);
 			dicoDef.sizes();
        		dicoRef.sizes();
