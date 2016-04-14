@@ -27,7 +27,8 @@ import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
-import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.utils.ITracer;
+import eu.synectique.verveine.extractor.utils.NullTracer;
 
 /**
  * Not a Visitor  on an AST, visits the tree of ICElement and defines all entities
@@ -49,11 +50,12 @@ public class DefVisitor implements ICElementVisitor {
 
 	protected String currentFile;
 	
-	protected Tracer tracer = new Tracer();
+	protected ITracer tracer;
 
 	public DefVisitor(CDictionaryDef dico) {
 	    this.dico = dico;
 		this.context = new EntityStack2();
+		tracer = new NullTracer();
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ======================================================================================================
@@ -124,7 +126,6 @@ public class DefVisitor implements ICElementVisitor {
 		 */
 		return false;
 	}
-
 
 	private void visit(ICContainer elt) {
 		eu.synectique.verveine.core.gen.famix.Package fmx = null;
@@ -215,7 +216,6 @@ public class DefVisitor implements ICElementVisitor {
 
 	private void visit(ITypeDef elt) {
 	}
-
 
 	// UTILITIES ======================================================================================================
 
