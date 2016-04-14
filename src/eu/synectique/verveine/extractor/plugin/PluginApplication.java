@@ -3,8 +3,6 @@ package eu.synectique.verveine.extractor.plugin;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 
-import eu.synectique.verveine.extractor.parse.VerveineCParser;
-
 public class PluginApplication implements IApplication {
 
 	@Override

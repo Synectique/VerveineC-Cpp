@@ -1,20 +1,16 @@
-package eu.synectique.verveine.extractor.parse;
+package eu.synectique.verveine.extractor.plugin;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
@@ -26,7 +22,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.OperationCanceledException;
 
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
@@ -46,17 +41,15 @@ public class VerveineCParser extends VerveineParser {
 
 	static final public String projName = "tempProj";
 
-	private String projectPath;
+	private String projectPath = "/home/anquetil/Documents/RMod/Tools/pluginzone/CodeExamples/simple/src";
 
 	public void parse() {
-		projectPath = null;
 
 		tracer = new Tracer();
 		tracer.msg("step 1 / 4: indexing");
 
         ICProject project = createProject(projName, projectPath);  		// projPath set in setOptions()
         
-        /*
         try {
         	// 1st step: create structural entities
     		tracer.msg("step 2 / 4: creating structural entities");
@@ -67,19 +60,18 @@ public class VerveineCParser extends VerveineParser {
 			CDictionaryRef dicoRef = new CDictionaryRef(getFamixRepo());
        		dicoDef.sizes();
        		dicoRef.sizes();
-       		dicoDef.listAll(Attribute.class);
+       		//dicoDef.listAll(Attribute.class);
        		
-			new DefToRefDictionariesVisitor(dicoDef,dicoRef).visit(project);
+			//new DefToRefDictionariesVisitor(dicoDef,dicoRef).visit(project);
 
-			dicoDef.sizes();
-       		dicoRef.sizes();
-			dicoDef = null;  // free memory
 			// 3rd step: create references to entities
     		tracer.msg("step 4 / 4: creating references");
-			//new MainRefVisitor(dicoRef).visit(project);
+			new MainRefVisitor(dicoDef, dicoRef).visit(project);
+			dicoDef.sizes();
+       		dicoRef.sizes();
 		} catch (CoreException e) {
 			e.printStackTrace();
-		}*/
+		}
 	}
 
 	/**
@@ -91,7 +83,7 @@ public class VerveineCParser extends VerveineParser {
 	private ICProject createProject(String projName, String sourcePath) {
 		IProject project = createNewProject(projName);
 
-		attachSourceFolder(project);
+		//attachSourceFolder(project);
 		createSourceFilesInProject(project, new File(sourcePath));
 		
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
@@ -114,7 +106,7 @@ public class VerveineCParser extends VerveineParser {
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
 		IWorkspaceRoot root = workspace.getRoot();
 		// we make a directory at the workspace root to copy source files
-		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append("tempWS");
+		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append("dummyProject");
 		
 		if (projectWSPath != null) {
 			new File(projectWSPath.toOSString()).mkdirs();
@@ -157,23 +149,6 @@ public class VerveineCParser extends VerveineParser {
 			exc.printStackTrace();
 		}
 		return cProject;
-	}
-
-	/**
-	 * Creates a src folder in the project
-	 * @param project were the source folder is created
-	 */
-	private void attachSourceFolder(IProject project) {
-		// create a source folder in the workspace
-		IFolder sourceFolder = project.getFolder("src");
-		try {
-			System.err.println("Creating src folder: "+sourceFolder.getFullPath());
-			if (!sourceFolder.exists()) {
-				sourceFolder.create(/*force*/false, /*local*/true, NULL_PROGRESS_MONITOR);
-			}
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
 	}
 
 	/**
@@ -247,10 +222,6 @@ public class VerveineCParser extends VerveineParser {
 				}
 			}
 		}
-		while (i < args.length) {
-			projectPath = args[i++];
-		}
-
 	}
 
 	protected void usage() {
