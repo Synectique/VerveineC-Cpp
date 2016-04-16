@@ -134,11 +134,11 @@ public class DefVisitor implements ICElementVisitor {
 
 		currentPackage = fmx;                        // kind of pushing new package on a virtual package stack
 		visitChildren(elt);
-		currentPackage = fmx.getParentPackage();    // kind of poping new package from the package stack
+		currentPackage = fmx.getParentPackage();    // kind of poping out the new package from the package stack
 	}
 
 	private void visit(ITranslationUnit elt) {
-		currentFile = elt.getElementName();
+		currentFile = elt.getFile().getRawLocation().toString();
 		visitChildren(elt);
 		currentFile = null;
 	}

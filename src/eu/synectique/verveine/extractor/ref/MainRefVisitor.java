@@ -4,16 +4,11 @@ import java.io.File;
 import java.io.RandomAccessFile;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
-import org.eclipse.cdt.core.dom.ast.IASTArrayModifier;
-import org.eclipse.cdt.core.dom.ast.IASTAttribute;
-import org.eclipse.cdt.core.dom.ast.IASTAttributeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTComment;
-import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
-import org.eclipse.cdt.core.dom.ast.IASTFieldDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
@@ -23,38 +18,33 @@ import org.eclipse.cdt.core.dom.ast.IASTImageLocation;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
-import org.eclipse.cdt.core.dom.ast.IASTProblem;
-import org.eclipse.cdt.core.dom.ast.IASTStatement;
-import org.eclipse.cdt.core.dom.ast.IASTToken;
-import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
-import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.c.ICASTDesignator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCapture;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTClassVirtSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDecltypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVirtSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
+import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.internal.core.dom.parser.ASTAmbiguousNode;
 
-import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack2;
+import eu.synectique.verveine.core.gen.famix.Access;
+import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.Class;
+import eu.synectique.verveine.core.gen.famix.Function;
+import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.StructuralEntity;
+import eu.synectique.verveine.extractor.def.CDictionaryDef;
+import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
@@ -73,175 +63,82 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	 * Whether a variable access is lhs (write) or not
 	 */
 	protected boolean inAssignmentLHS = false;
-	
-	public MainRefVisitor(CDictionaryRef dicoRef) {
-		super(dicoRef);
+
+	private CDictionaryDef dicoDef;
+
+	public MainRefVisitor(CDictionaryDef dicoDef, CDictionaryRef dicoRef) {
+		super(dicoRef, /*visitNodes*/true);
+		this.dicoDef = dicoDef;
+
+		tracer = new NullTracer();
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ======================================================================================================
 
 	@Override
 	public void visit(ITranslationUnit tu) {
-		context = new EntityStack2();
+		context = new EntityStack2();    // "reseting" context
 		super.visit(tu);
 	}
+
+	/**
+	 * Removes the package corresponding to elt from dicoDef.<BR>
+	 * No need to put it in dicoRef as it is not used here
+	 */
+	@Override
+	public void visit(ICContainer elt) {
+		dicoDef.removeUniqEntity(elt.getElementName(), eu.synectique.verveine.core.gen.famix.Package.class);
+		super.visit(elt);
+	}
+
 
 	// CDT VISITING METODS ON AST ==========================================================================================================
 
 	@Override
-	public int visit(IASTTranslationUnit node) {
-//		tracer.up("IASTTranslationUnit: "+node.getFilePath());
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTTranslationUnit node) {
-//		tracer.down("IASTTranslationUnit: "+node.getFilePath());
-		return super.leave(node);
-	}
-
-	@Override
 	public int visit(ICPPASTNamespaceDefinition node) {
-/*		tracer.up("ICPPASTNamespaceDefinition: "+node.getName());
+		tracer.up("ICPPASTNamespaceDefinition: "+node.getName());
 		IASTName nodeName = node.getName();
-		Namespace fmx = null;
-//		fmx = dico.ensureFamixNamespace(nodeName.resolveBinding(), nodeName.toString());
-			fmx.setIsStub(false);
-		
-		this.context.push(fmx);*/
+		IBinding bnd = nodeName.resolveBinding();
+
+		if (bnd == null) {
+			return PROCESS_CONTINUE;
+		}
+
+		Namespace fmx = dicoDef.removeUniqEntity(nodeName.getLastName().toString(), Namespace.class);
+		if (fmx == null) {
+			return PROCESS_CONTINUE;
+		}
+		dico.remapEntityToKey(nodeName.resolveBinding(), fmx);		
+		this.context.push(fmx);
+
 		return super.visit(node);
 	}
 
 	@Override
 	public int leave(ICPPASTNamespaceDefinition node) {
-/*		this.context.pop();
-		tracer.down();*/
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(IASTArrayModifier node) {
-//		tracer.up("IASTArrayModifier ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTArrayModifier node) {
-//		tracer.down("IASTArrayModifier ");
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(IASTDeclarator node) {
-/*		tracer.up("IASTDeclarator:");
-
-		if (node instanceof IASTFieldDeclarator) {
-			this.visit((IASTFieldDeclarator)node);
-		}
-		else if (node instanceof IASTFunctionDeclarator) {
-			this.visit((IASTFunctionDeclarator)node);
-		}
-*/
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTDeclarator node) {
-/*		if (node instanceof IASTFieldDeclarator) {
-			this.leave((IASTFieldDeclarator)node);
-		}
-		else if (node instanceof IASTFunctionDeclarator) {
-			this.leave((IASTFunctionDeclarator)node);
-		}
-		tracer.down("IASTDeclarator: ");
-		tracename(node.getName());*/
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(IASTDeclSpecifier node) {
-/*		String trace=node.getRawSignature();
-		int cr = trace.indexOf('\n');
-		tracer.up("IASTDeclSpecifier: "+ (cr<0 ? trace : trace.substring(0, cr)+"..."));
-
-		if (node instanceof ICASTCompositeTypeSpecifier) {
-			// -> struct/union
-			this.visit((ICASTCompositeTypeSpecifier)node);
-		}
-		else if (node instanceof ICPPASTCompositeTypeSpecifier) {
-			// -> class
-			this.visit((ICPPASTCompositeTypeSpecifier)node);
-		}
-		else if (node instanceof IASTEnumerationSpecifier) {
-			// -> enum
-			this.visit((IASTEnumerationSpecifier)node);
-		}
-		else if (node instanceof ICPPASTNamedTypeSpecifier) {
-			// -> typedef
-			this.visit((ICPPASTNamedTypeSpecifier)node);
-		}
-*/
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTDeclSpecifier node) {
-/*		tracer.down();
-
-		if (node instanceof ICASTCompositeTypeSpecifier) {
-			// -> struct/union
-			this.leave((ICASTCompositeTypeSpecifier)node);
-		}
-		else if (node instanceof ICPPASTCompositeTypeSpecifier) {
-			// -> class
-			this.leave((ICPPASTCompositeTypeSpecifier)node);
-		}
-		else if (node instanceof IASTEnumerationSpecifier) {
-			// -> enum
-			this.leave((IASTEnumerationSpecifier)node);
-		}
-		else if (node instanceof ICPPASTNamedTypeSpecifier) {
-			// -> typedef
-			this.leave((ICPPASTNamedTypeSpecifier)node);
-		}
-*/
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(IASTEnumerator node) {
-		// enumeration member (i.e. a constant in an enum)
-//		tracer.up("IASTEnumerator ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTEnumerator node) {
-//		tracer.down();
+		this.context.pop();
+		tracer.down();
 		return super.leave(node);
 	}
 
 	@Override
 	public int visit(IASTExpression node) {
 		if (node instanceof IASTFieldReference) {
-			visit( (IASTFieldReference)node);
-			return ASTVisitor.PROCESS_SKIP;
+			// nothing for now
 		}
 		else if (node instanceof IASTFunctionCallExpression) {
 			visit((IASTFunctionCallExpression)node);
-			return ASTVisitor.PROCESS_SKIP;  // because we already visited the FunctionNameExpression
+			return ASTVisitor.PROCESS_CONTINUE;  // should be skip because we already visited the FunctionNameExpression
 		}
 		else if (node instanceof IASTIdExpression) {
-			// ???
+			referenceToName(((IASTIdExpression) node).getName());
+		}
+		else if (node instanceof IASTBinaryExpression) {
+			visit((IASTBinaryExpression)node);   // to check whether this is an assignement
+			return ASTVisitor.PROCESS_SKIP;
 		}
 
 		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTExpression node) {
-		// never called
-		return super.leave(node);
 	}
 
 	@Override
@@ -251,84 +148,12 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	}
 
 	@Override
-	public int leave(IASTInitializer node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
 	public int visit(IASTParameterDeclaration node) {
 /*		tracer.msg("IASTParameterDeclaration: ");
 		if (context.topMethod() != null) {
 			node.accept( new ParamDeclVisitor(dico, context.topMethod()) );
 		}*/
-		return PROCESS_SKIP;
-	}
-
-	@Override
- 	public int leave(IASTParameterDeclaration node) {
-		// never actually called
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(IASTPointerOperator node) {
-//		tracer.up("IASTPointerOperator ");
 		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTPointerOperator node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(IASTProblem node) {
-//		tracer.up("IASTProblem ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTProblem node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(IASTStatement node) {
-//		tracer.up("IASTStatement ("+node.getClass().getSimpleName()+")");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTStatement node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(IASTTypeId node) {
-//		tracer.up("IASTTypeId ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTTypeId node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(ICASTDesignator node) {
-//		tracer.up("ICASTDesignator ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(ICASTDesignator node) {
-//		tracer.down();
-		return super.leave(node);
 	}
 
 	@Override
@@ -340,61 +165,6 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 
 	@Override
 	public int leave(ICPPASTBaseSpecifier node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(ICPPASTCapture node) {
-//		tracer.up("ICPPASTCapture ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(ICPPASTCapture node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(ICPPASTTemplateParameter node) {
-//		tracer.up("ICPPASTTemplateParameter ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(ICPPASTTemplateParameter node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@SuppressWarnings("restriction")
-	@Override
-	public int visit(ASTAmbiguousNode node) {
-//		tracer.msg("ASTAmbiguousNode ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int visit(IASTAttribute node) {
-//		tracer.up("IASTAttribute: "+node.getName());
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTAttribute node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(IASTAttributeSpecifier node) {
-//		tracer.up("IASTAttributeSpecifier ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTAttributeSpecifier node) {
 //		tracer.down();
 		return super.leave(node);
 	}
@@ -412,71 +182,127 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	}
 
 	@Override
-	public int visit(IASTToken node) {
-//		tracer.up("IASTToken type="+node.getTokenType());
+	public int visit(IASTDeclaration node) {
+		// includes CPPASTVisibilityLabel
+//		tracer.msg("IASTDeclaration");
 		return super.visit(node);
 	}
 
-	@Override
-	public int leave(IASTToken node) {
-//		tracer.down();
-		return super.leave(node);
-	}
 
-	@Override
-	public int visit(ICPPASTClassVirtSpecifier node) {
-//		tracer.up("ICPPASTClassVirtSpecifier ");
-		return super.visit(node);
-	}
+	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
 
-	@Override
-	public int leave(ICPPASTClassVirtSpecifier node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(ICPPASTDecltypeSpecifier node) {
-//		tracer.up("ICPPASTDecltypeSpecifier ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(ICPPASTDecltypeSpecifier node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	@Override
-	public int visit(ICPPASTVirtSpecifier node) {
-//		tracer.up("ICPPASTVirtSpecifier ");
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(ICPPASTVirtSpecifier node) {
-//		tracer.down();
-		return super.leave(node);
-	}
-
-	// ADDITIONAL VISITING METODS ON AST =======================================================================================================
-
-	/** reference to a Field of a struct
+	/** Visiting a class definition
 	 */
-	public void visit( IASTFieldReference node) {
-		IASTName nodeName = null;
-		Attribute fmx = null;
+	@Override
+	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		IASTName nodeName = node.getName();
+		IASTImageLocation loc;
 		IBinding bnd;
+		Class fmx;
+		
+		if (nodeName == null) {
+			return PROCESS_CONTINUE;
+		}
 
-		nodeName = node.getFieldName();
+		loc = nodeName.getImageLocation();
+		bnd = nodeName.resolveBinding();
+		if ( (loc == null) || (bnd == null) ) {
+			return PROCESS_CONTINUE;
+		}
+
+		fmx = dicoDef.removeEntity(filename, loc.getNodeOffset(), nodeName.toString(), eu.synectique.verveine.core.gen.famix.Class.class);
+		if (fmx == null) {
+			return PROCESS_CONTINUE;
+		}
+
+		dico.remapEntityToKey(nodeName.resolveBinding(), fmx);
+
+		this.context.push(fmx);
+//		dico.addSourceAnchor(fmx, node, /*oneLineAnchor*/false);
+
+		return PROCESS_CONTINUE;
+	}
+
+	@Override
+	protected int leave(ICPPASTCompositeTypeSpecifier node) {
+		context.pop();
+
+		return PROCESS_CONTINUE;		
+	}
+
+	@Override
+	protected int visit(IASTFunctionDeclarator node) {
+		IASTFunctionDeclarator func = (IASTFunctionDeclarator)node;
+		IASTName nodeName = func.getName();
+		IASTImageLocation loc;
+		IBinding bnd;
+		BehaviouralEntity fmx = null;
+
+		if (nodeName == null) {
+			return PROCESS_CONTINUE;
+		}
+
+		loc = nodeName.getImageLocation();
+		bnd = nodeName.resolveBinding();
+		
+		if ( (loc == null) || (bnd==null) ) {
+			return PROCESS_CONTINUE;
+		}
+
+		if (bnd instanceof ICPPMethod) {   // C++ method
+			fmx = dicoDef.removeEntity(filename, loc.getNodeOffset(), nodeName.toString(), Method.class);
+		}
+		else {                    //   C function ?
+			fmx = dicoDef.removeEntity(filename, loc.getNodeOffset(), nodeName.toString(), Function.class);
+		}
+
+		if (fmx == null) {
+			return PROCESS_CONTINUE;
+		}
+
+		dico.remapEntityToKey(bnd, fmx);
+
+		fmx.setSignature(bnd.toString());
+
+		this.context.push(fmx);
+
+		return PROCESS_CONTINUE;
+	}
+
+	@Override
+	protected int leave(IASTFunctionDeclarator node) {
+/*		NamedEntity top = context.top();
+		if ( (top != null) &&
+			 (top instanceof eu.synectique.verveine.core.gen.famix.Type) &&
+			 (top.getName().equals(node.getName().toString())) ) {
+			BehaviouralEntity fmx = (BehaviouralEntity) context.pop();
+		}*/
+		return PROCESS_CONTINUE;
+	}
+
+	@Override
+	protected int visit(ICPPASTDeclarator node) {
+		IASTName nodeName = null;
+		IASTImageLocation loc = null;
+		Attribute fmx = null;
+
+		nodeName = node.getName();
+		loc = nodeName.getImageLocation();
 		if (nodeName != null) {
-			bnd = nodeName.resolveBinding();
-			fmx = (Attribute) dico.getEntityByKey(bnd);
-			if (fmx != null) {
-				IASTImageLocation loc = nodeName.getImageLocation();
-				tracer.msg("IASTFieldReference to:"+fmx.getName()+" @ "+loc.getFileName()+"/"+loc.getStartingLineNumber());
+			loc = nodeName.getImageLocation();
+			if (loc != null) {
+				fmx = dicoDef.removeEntity(filename, loc.getNodeOffset(), nodeName.toString(), Attribute.class);
+				if (fmx != null) {
+					dico.remapEntityToKey(nodeName.resolveBinding(), fmx);
+				}
 			}
 		}
+		return PROCESS_CONTINUE;
+	}
+
+	@Override
+	protected int leave(ICPPASTDeclarator node) {
+		return PROCESS_CONTINUE;
 	}
 
 	public void visit(IASTFunctionCallExpression node) {
@@ -495,129 +321,102 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		}*/
 	}
 
-	
-	public int visit(ICASTCompositeTypeSpecifier node) {
+	public void visit(IASTBinaryExpression node) {
+		Access prevAccess = context.getLastAccess();
+		node.getOperand1().accept(this);
+		switch (node.getOperator()) {
+		case IASTBinaryExpression.op_assign:
+		case IASTBinaryExpression.op_binaryAndAssign:
+		case IASTBinaryExpression.op_binaryOrAssign:
+		case IASTBinaryExpression.op_binaryXorAssign:
+		case IASTBinaryExpression.op_divideAssign:
+		case IASTBinaryExpression.op_minusAssign:
+		case IASTBinaryExpression.op_moduloAssign:
+		case IASTBinaryExpression.op_multiplyAssign:
+		case IASTBinaryExpression.op_plusAssign:
+		case IASTBinaryExpression.op_shiftLeftAssign:
+		case IASTBinaryExpression.op_shiftRightAssign:
+			if (context.getLastAccess() != prevAccess) {
+				context.getLastAccess().setIsWrite(true);
+			}
+		}
+		node.getOperand2().accept(this);
+	}
+
+	@Override
+	protected int visit(ICASTCompositeTypeSpecifier node) {
 //		tracer.msg("    -> ICASTCompositeTypeSpecifier");
 		return PROCESS_CONTINUE;
 	}
 
-	public int leave(ICASTCompositeTypeSpecifier node) {
+	@Override
+	protected int leave(ICASTCompositeTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 
-	/** Visiting a class definition
-	 */
-	public int visit(ICPPASTCompositeTypeSpecifier node) {
-//		tracer.msg("    -> ICPPASTCompositeTypeSpecifier");
-		IASTName nodeName = node.getName();
-		IBinding bnd = nodeName.resolveBinding();
-		IASTFileLocation loc = nodeName.getFileLocation();
-
-//		tracename(nodeName);
-//		traceanchor(loc);
-
-		if ( (bnd != null) && (loc != null) && (loc.getFileName().equals(this.filename)) ) {
-//			tracer.msg("creating famix class:"+nodeName.toString());
-			eu.synectique.verveine.core.gen.famix.Class fmx = null;
-//			fmx = dico.ensureFamixClass(bnd, nodeName.toString(), /*owner*/(ContainerEntity)context.top(), /*persistIt*/true);
-			if (fmx != null) {
-				fmx.setIsStub(false);
-
-				this.context.push(fmx);
-//				dico.addSourceAnchor(fmx, node, /*oneLineAnchor*/false);
-			}
-		}
-
-		return PROCESS_CONTINUE;
-	}
-
-	public int leave(ICPPASTCompositeTypeSpecifier node) {
-		return PROCESS_CONTINUE;		
-	}
-
-	public int visit(IASTEnumerationSpecifier node) {
+	@Override
+	protected int visit(IASTEnumerationSpecifier node) {
 //		tracer.msg("    -> IASTEnumerationSpecifier");
 		return PROCESS_CONTINUE;
 	}
 
-	public int leave(IASTEnumerationSpecifier node) {
+	@Override
+	protected int leave(IASTEnumerationSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 
-	public int visit(ICPPASTNamedTypeSpecifier node) {
+	@Override
+	protected int visit(ICPPASTNamedTypeSpecifier node) {
 //		tracer.msg("    -> ICPPASTNamedTypeSpecifier");
 		return PROCESS_CONTINUE;
 	}
 
-	public int leave(ICPPASTNamedTypeSpecifier node) {
+	@Override
+	protected int leave(ICPPASTNamedTypeSpecifier node) {
 		return PROCESS_CONTINUE;
-	}
-
-	public int visit(IASTFieldDeclarator node) {
-//		tracer.msg("    -> IASTFieldDeclarator");
-		return PROCESS_CONTINUE;
-	}
-
-	public int leave(IASTFieldDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
-	public int visit(ICPPASTFunctionDefinition node) {
-//		tracer.msg("    -> CPPASTFunctionDefinition ");
-		return PROCESS_SKIP;
-	
-	}
-
-	public int leave(ICPPASTFunctionDefinition node) {
-		return PROCESS_SKIP;
 	}
 	
-	public void visit(IASTFunctionDeclarator node) {
-		IASTFunctionDeclarator func = (IASTFunctionDeclarator)node;
-		IASTName nodeName = func.getName();
-		IBinding bnd = nodeName.resolveBinding();
-		IASTFileLocation loc = nodeName.getFileLocation();
-		BehaviouralEntity fmx = null;
 
-//		tracer.msg("    -> IASTFunctionDeclarator");
-//		tracename(nodeName);
-//		traceanchor(loc);
+	// UTILITIES ==============================================================================================================================
 
-		if ( (bnd != null) && (loc != null) && (loc.getFileName().equals(this.filename)) ) {
-			boolean iscpp = (bnd instanceof ICPPMethod);
-			
-			if (iscpp) {
-//				tracer.msg("creating famix method:"+nodeName.toString());
-//				fmx = dico.ensureFamixMethod(bnd, nodeName.toString(), /*signature*/nodeName.toString()+"(", /*ret.type*/null, context.topType(), /*persitIt*/true);
-			}
-			else {
-//				tracer.msg("creating famix function:"+nodeName.toString());
-//				fmx = dico.ensureFamixFunction(bnd, nodeName.toString(), /*signature*/nodeName.toString()+"(", /*ret.type*/null, (ContainerEntity)context.top(), /*persitIt*/true);				
-			}
+	private Association referenceToName(IASTName nodeName) {
+		IBinding bnd;
+		NamedEntity fmx;
+		BehaviouralEntity accessor;
 
-			if (fmx != null) {
-				fmx.setIsStub(false);
-				this.context.push(fmx);
-				if (iscpp) {
-					if (bnd instanceof ICPPConstructor) {
-						((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
-					}
-				}
-			}
+		if (nodeName == null) {
+			return null;
 		}
-	}
-	
-	protected void leave(IASTFunctionDeclarator node) {
-		NamedEntity top = context.top();
-		if ( (top != null) &&
-			 (top instanceof eu.synectique.verveine.core.gen.famix.Type) &&
-			 (top.getName().equals(node.getName().toString())) ) {
-			BehaviouralEntity fmx = (BehaviouralEntity) context.pop();
-			fmx.setSignature(fmx.getSignature()+")");
-		}
-	}
 
-	// more specialized trace methods
+		bnd = nodeName.resolveBinding();
+		if (bnd == null) {
+			return null;
+		}
+
+		fmx = dico.getEntityByKey(bnd);
+		if (fmx == null) {
+			return null;
+		}
+
+		accessor = this.context.topMethod();
+		if (fmx instanceof StructuralEntity) {
+			// put false to isWrite by default, will be corrected in 
+			Access acc = dico.addFamixAccess(accessor, (StructuralEntity) fmx, /*isWrite*/false, context.getLastAccess());
+			if (acc != null) {
+				context.setLastAccess(acc);
+			}
+			return acc;
+		}
+		else if (fmx instanceof BehaviouralEntity) {
+			Invocation invok = dico.addFamixInvocation(accessor, (BehaviouralEntity) fmx, /*receiver*/null, /*signature*/null, context.getLastInvocation());
+			if (invok != null) {
+				context.setLastInvocation(invok);
+			}
+			return invok;
+		}
+
+		return null;
+	}
 
 	protected void tracename(IASTName name) {
 		if (name != null) {
@@ -627,7 +426,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 			tracer.msg("    -> null name");
 		}
 	}
-	
+
 	protected void traceanchor(IASTFileLocation loc) {
 		if (loc != null) {
 			String filename = loc.getFileName();

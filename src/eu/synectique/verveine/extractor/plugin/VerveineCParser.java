@@ -1,18 +1,16 @@
-package eu.synectique.verveine.extractor.parse;
+package eu.synectique.verveine.extractor.plugin;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -26,60 +24,45 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.OperationCanceledException;
 
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
-import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.def.CDictionaryDef;
 import eu.synectique.verveine.extractor.def.DefVisitor;
 import eu.synectique.verveine.extractor.ref.CDictionaryRef;
 import eu.synectique.verveine.extractor.ref.MainRefVisitor;
-import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class VerveineCParser extends VerveineParser {
 
-	private Tracer tracer;
+	static final public String DEFAULT_PROJECT_NAME = "tempProj";
+
+	private static final String SOURCE_ROOT_DIR = "/" + DEFAULT_PROJECT_NAME;
 
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 
-	static final public String projName = "tempProj";
-
-	private String projectPath;
+	private String projectPath = "/home/anquetil/Documents/RMod/Tools/pluginzone/CodeExamples/simple/src";
 
 	public void parse() {
-		projectPath = null;
+		System.out.println("step 1 / 3: indexing");
 
-		tracer = new Tracer();
-		tracer.msg("step 1 / 4: indexing");
-
-        ICProject project = createProject(projName, projectPath);  		// projPath set in setOptions()
+        ICProject project = createProject(DEFAULT_PROJECT_NAME, projectPath);  		// projPath set in setOptions()
         
-        /*
         try {
-        	// 1st step: create structural entities
-    		tracer.msg("step 2 / 4: creating structural entities");
+        	System.out.println("step 2 / 3: creating structural entities");
         	CDictionaryDef dicoDef = new CDictionaryDef(getFamixRepo());
 			project.accept(new DefVisitor(dicoDef));
-			// 2nd step: switch dictionnary (ref-key=position ; ref-key=binding)
-    		tracer.msg("step 3 / 4: preparing for references");
+
+			System.out.println("step 3 / 3: creating references");
 			CDictionaryRef dicoRef = new CDictionaryRef(getFamixRepo());
        		dicoDef.sizes();
        		dicoRef.sizes();
-       		dicoDef.listAll(Attribute.class);
-       		
-			new DefToRefDictionariesVisitor(dicoDef,dicoRef).visit(project);
-
+			new MainRefVisitor(dicoDef, dicoRef).visit(project);
 			dicoDef.sizes();
        		dicoRef.sizes();
-			dicoDef = null;  // free memory
-			// 3rd step: create references to entities
-    		tracer.msg("step 4 / 4: creating references");
-			//new MainRefVisitor(dicoRef).visit(project);
 		} catch (CoreException e) {
 			e.printStackTrace();
-		}*/
+		}
 	}
 
 	/**
@@ -91,8 +74,8 @@ public class VerveineCParser extends VerveineParser {
 	private ICProject createProject(String projName, String sourcePath) {
 		IProject project = createNewProject(projName);
 
-		attachSourceFolder(project);
-		createSourceFilesInProject(project, new File(sourcePath));
+		//attachSourceFolder(project);
+		copySourceFilesInProject(project, new File(sourcePath));
 		
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
 		try {
@@ -114,7 +97,7 @@ public class VerveineCParser extends VerveineParser {
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
 		IWorkspaceRoot root = workspace.getRoot();
 		// we make a directory at the workspace root to copy source files
-		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append("tempWS");
+		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append(projectName);
 		
 		if (projectWSPath != null) {
 			new File(projectWSPath.toOSString()).mkdirs();
@@ -147,7 +130,6 @@ public class VerveineCParser extends VerveineParser {
 		}
 		try {
 			// now we create a C project for real
-			System.err.println("Creating project " + project.getName());
 			cProject = CCorePlugin.getDefault().createCProject(projectDesc, project, NULL_PROGRESS_MONITOR, project.getName());
 			if (!cProject.isOpen()) {
 				cProject.open(NULL_PROGRESS_MONITOR);
@@ -160,49 +142,72 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	/**
-	 * Creates a src folder in the project
-	 * @param project were the source folder is created
+	 * Copies all source files from src to the source directory of project
+	 * @param project -- project where to copy the file(s)
+	 * @param src -- A directory of file to copy to the project
 	 */
-	private void attachSourceFolder(IProject project) {
-		// create a source folder in the workspace
-		IFolder sourceFolder = project.getFolder("src");
-		try {
-			System.err.println("Creating src folder: "+sourceFolder.getFullPath());
-			if (!sourceFolder.exists()) {
-				sourceFolder.create(/*force*/false, /*local*/true, NULL_PROGRESS_MONITOR);
+	private void copySourceFilesInProject(IProject project, File src) {
+		if (src.isDirectory()) {
+			copySourceFilesRecursive(project, project.getFolder(SOURCE_ROOT_DIR), src);
+		}
+		else if (isValidFileExtension(src.getName())) {
+			copyFile(project, project.getFolder(SOURCE_ROOT_DIR), src);
+		}
+		
+	}
+
+	private void copySourceFilesRecursive(IProject project, IFolder internalPath, File dir) {
+
+		for (File child : dir.listFiles()) {
+			if (child.isDirectory()) {
+				copySourceFilesRecursive(project, internalPath.getFolder(child.getName()), child);
 			}
-		} catch (CoreException e) {
-			e.printStackTrace();
+			else if (isValidFileExtension(child.getName())) {
+				copyFile(project, internalPath, child);
+			}
 		}
 	}
 
 	/**
-	 * Copies all source files from dir to the source directory of project
-	 * @param project
-	 * @param dir
+	 * Copies one source file in an Eclipse project to dest.
+	 * If dest already exist, it is silently overriden
+	 * @param project -- project where to copy the file
+	 * @param orig -- file to copy in the project
+	 * @param dest -- path within the project where to put the file
 	 */
-	private void createSourceFilesInProject(IProject project, File dir) {
-		// create file resources from the path specified
-		if (dir.isDirectory()) {
-			for (File child : dir.listFiles()) {
-				if (isValidFileExtension(child.getName())) {
-					try {
-						InputStream source = new ByteArrayInputStream( Files.readAllBytes(child.toPath()) );
-						IFile file = project.getFile(child.getName());
-						System.err.println("Copying file: "+child.getPath());
+	private void copyFile(IProject project, IFolder destPath, File orig) {
+		if (! destPath.exists()) {
+			mkdirs(destPath);
+		}
 
-						if (!file.exists()) {
-							file.create(source, /*force*/false, NULL_PROGRESS_MONITOR);
-							file.refreshLocal(IResource.DEPTH_ZERO, NULL_PROGRESS_MONITOR);
-						}
+		try {
+			InputStream source = new ByteArrayInputStream( Files.readAllBytes(orig.toPath()) );
+			IFile file = destPath.getFile(orig.getName());
 
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
+			file.create(source, /*force*/true, NULL_PROGRESS_MONITOR);
+			file.refreshLocal(IResource.DEPTH_ZERO, NULL_PROGRESS_MONITOR);
+
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void mkdirs(IFolder destPath) {
+		IContainer parent = destPath.getParent(); 
+		if (! parent.exists()) {
+			if (parent instanceof IFolder) {
+				mkdirs((IFolder) parent);
 			}
+			else if (parent instanceof IProject) {
+				mkdirs( ((IProject)parent).getFolder(".") );
+			}
+		}
+		try {
+			destPath.create(/*force*/true, /*local*/true, NULL_PROGRESS_MONITOR);
+		} catch (CoreException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -247,10 +252,11 @@ public class VerveineCParser extends VerveineParser {
 				}
 			}
 		}
+
 		while (i < args.length) {
 			projectPath = args[i++];
 		}
-
+ 
 	}
 
 	protected void usage() {

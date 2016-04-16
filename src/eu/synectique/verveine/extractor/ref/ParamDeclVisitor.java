@@ -2,8 +2,13 @@ package eu.synectique.verveine.extractor.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 
 import eu.synectique.verveine.core.gen.famix.Method;
@@ -66,17 +71,75 @@ public class ParamDeclVisitor extends AbstractRefVisitor {
 	}
 
 	@Override
-	public int visit(IASTDeclSpecifier node) {
-		if (node instanceof ICPPASTNamedTypeSpecifier) {
-			
-		}
-		return super.visit(node);
+	protected int visit(IASTFunctionDeclarator node) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 	@Override
-	public int visit(IASTDeclarator node) {
-		name = node.getName().toString();
-		return super.visit(node);
+	protected int visit(ICPPASTDeclarator node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int visit(ICASTCompositeTypeSpecifier node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int visit(IASTEnumerationSpecifier node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int visit(ICPPASTNamedTypeSpecifier node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int leave(IASTFunctionDeclarator node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int leave(ICPPASTDeclarator node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int leave(ICASTCompositeTypeSpecifier node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int leave(ICPPASTCompositeTypeSpecifier node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int leave(IASTEnumerationSpecifier node) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	protected int leave(ICPPASTNamedTypeSpecifier node) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 }

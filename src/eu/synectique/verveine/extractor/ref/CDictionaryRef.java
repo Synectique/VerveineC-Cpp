@@ -1,5 +1,7 @@
 package eu.synectique.verveine.extractor.ref;
 
+import java.util.Map;
+
 import org.eclipse.cdt.core.dom.ast.IBinding;
 
 import ch.akuhn.fame.Repository;
@@ -35,6 +37,13 @@ public class CDictionaryRef extends Dictionary<IBinding> {
 
 	public void remapEntityToKey(IBinding key, NamedEntity ent) {
 		super.mapEntityToKey(key, ent);
+	}
+
+	public void listKeyEntities() {
+		for (Map.Entry<IBinding,NamedEntity> ent : keyToEntity.entrySet()) {
+			System.err.println("CDictionaryRef key="+ent.getKey()+"/"+ent.getKey().hashCode()+"  val="+ent.getValue().getName());
+		}
+
 	}
 	
 }
