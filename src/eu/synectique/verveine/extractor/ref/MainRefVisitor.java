@@ -14,7 +14,6 @@ import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
-import org.eclipse.cdt.core.dom.ast.IASTImageLocation;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
@@ -23,6 +22,7 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
@@ -70,15 +70,17 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		super(dicoRef, /*visitNodes*/true);
 		this.dicoDef = dicoDef;
 
-		tracer = new NullTracer();
+		tracer = new NullTracer("REF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ======================================================================================================
 
 	@Override
 	public void visit(ITranslationUnit tu) {
+		tracer.up("ITranslationUnit: "+tu.getElementName());
 		context = new EntityStack2();    // "reseting" context
 		super.visit(tu);
+		tracer.down();
 	}
 
 	/**
@@ -185,7 +187,18 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	public int visit(IASTDeclaration node) {
 		// includes CPPASTVisibilityLabel
 //		tracer.msg("IASTDeclaration");
+		if (node instanceof ICPPASTFunctionDefinition) {
+			return visit((ICPPASTFunctionDefinition)node);
+		}
 		return super.visit(node);
+	}
+
+	@Override
+	public int leave(IASTDeclaration node) {
+		if (node instanceof ICPPASTFunctionDefinition) {
+			return leave((ICPPASTFunctionDefinition)node);
+		}
+		return super.leave(node);
 	}
 
 
@@ -196,7 +209,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
 		IASTName nodeName = node.getName();
-		IASTImageLocation loc;
+		IASTFileLocation loc;
 		IBinding bnd;
 		Class fmx;
 		
@@ -204,17 +217,27 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 			return PROCESS_CONTINUE;
 		}
 
-		loc = nodeName.getImageLocation();
+		loc = nodeName.getFileLocation();
 		bnd = nodeName.resolveBinding();
 		if ( (loc == null) || (bnd == null) ) {
 			return PROCESS_CONTINUE;
 		}
 
+		if (dico.getEntityByKey(bnd) != null) {
+			// already visited, everything done
+			return PROCESS_CONTINUE;
+		}
+
+		tracer.up("ICPPASTCompositeTypeSpecifier:"+nodeName.toString());
+		
 		fmx = dicoDef.removeEntity(filename, loc.getNodeOffset(), nodeName.toString(), eu.synectique.verveine.core.gen.famix.Class.class);
 		if (fmx == null) {
 			return PROCESS_CONTINUE;
 		}
 
+		// For classes, we create the anchor now
+		dico.addSourceAnchor(fmx, filename, loc);
+		
 		dico.remapEntityToKey(nodeName.resolveBinding(), fmx);
 
 		this.context.push(fmx);
@@ -226,6 +249,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	@Override
 	protected int leave(ICPPASTCompositeTypeSpecifier node) {
 		context.pop();
+		tracer.down();
 
 		return PROCESS_CONTINUE;		
 	}
@@ -234,7 +258,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	protected int visit(IASTFunctionDeclarator node) {
 		IASTFunctionDeclarator func = (IASTFunctionDeclarator)node;
 		IASTName nodeName = func.getName();
-		IASTImageLocation loc;
+		IASTFileLocation loc;
 		IBinding bnd;
 		BehaviouralEntity fmx = null;
 
@@ -242,18 +266,31 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 			return PROCESS_CONTINUE;
 		}
 
-		loc = nodeName.getImageLocation();
+		loc = node.getFileLocation();
 		bnd = nodeName.resolveBinding();
 		
 		if ( (loc == null) || (bnd==null) ) {
 			return PROCESS_CONTINUE;
 		}
 
+		if (dico.getEntityByKey(bnd) != null) {
+			// already visited, everything done
+			return PROCESS_CONTINUE;
+		}
+		tracer.msg("IASTFunctionDeclarator: "+nodeName);
+
+		if (dico.getEntityByKey(bnd) != null) {
+			// already visited, everything done
+			return PROCESS_CONTINUE;
+		}
+
+		/* Note that, below, 'loc.getFileName()' can be different from 'this.filename', if the later is a .cpp file and
+		 * the method is defined in an included .hpp file */
 		if (bnd instanceof ICPPMethod) {   // C++ method
-			fmx = dicoDef.removeEntity(filename, loc.getNodeOffset(), nodeName.toString(), Method.class);
+			fmx = dicoDef.removeEntity(loc.getFileName(), loc.getNodeOffset(), nodeName.toString(), Method.class);
 		}
 		else {                    //   C function ?
-			fmx = dicoDef.removeEntity(filename, loc.getNodeOffset(), nodeName.toString(), Function.class);
+			fmx = dicoDef.removeEntity(loc.getFileName(), loc.getNodeOffset(), nodeName.toString(), Function.class);
 		}
 
 		if (fmx == null) {
@@ -261,6 +298,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		}
 
 		dico.remapEntityToKey(bnd, fmx);
+		// for methods, sourceAnchor is set in the definition
 
 		fmx.setSignature(bnd.toString());
 
@@ -280,23 +318,69 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		return PROCESS_CONTINUE;
 	}
 
+	protected int visit(ICPPASTFunctionDefinition node) {
+		IASTName nodeName;
+		IASTFileLocation loc;
+		IBinding bnd;
+		BehaviouralEntity fmx = null;
+
+		nodeName = node.getDeclarator().getName();
+		if (nodeName == null) {
+			return super.visit(node);
+		}
+		tracer.msg("ICPPASTFunctionDefinition: "+nodeName);
+
+		bnd = nodeName.resolveBinding();
+		if (bnd!=null) {
+			loc = node.getFileLocation();
+			fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
+			if (fmx == null) {
+				// may be we did not yet visit the FunctionDeclarator?
+				// that may happen if the function is declared and defined in the header file
+				visit(node.getDeclarator());
+				fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
+			}
+
+			if ( (fmx != null) && (loc != null) ) {
+				dico.addSourceAnchor(fmx, loc.getFileName(), loc);
+			}
+		}
+
+		// now visiting the children of the node
+		visit(node.getDeclSpecifier());
+		visit(node.getBody());
+
+		return ASTVisitor.PROCESS_SKIP;  // we already visited the children
+	}
+
+	protected int leave(ICPPASTFunctionDefinition node) {
+		return super.leave(node);
+	}
+
 	@Override
 	protected int visit(ICPPASTDeclarator node) {
 		IASTName nodeName = null;
-		IASTImageLocation loc = null;
+		IASTFileLocation loc = null;
 		Attribute fmx = null;
 
 		nodeName = node.getName();
-		loc = nodeName.getImageLocation();
-		if (nodeName != null) {
-			loc = nodeName.getImageLocation();
-			if (loc != null) {
-				fmx = dicoDef.removeEntity(filename, loc.getNodeOffset(), nodeName.toString(), Attribute.class);
-				if (fmx != null) {
-					dico.remapEntityToKey(nodeName.resolveBinding(), fmx);
-				}
-			}
+		if (nodeName == null) {
+			return PROCESS_CONTINUE;
 		}
+
+		loc = nodeName.getImageLocation();
+		if (loc == null) {
+			return PROCESS_CONTINUE;
+		}
+
+		fmx = dicoDef.removeEntity(filename, loc.getNodeOffset(), nodeName.toString(), Attribute.class);
+		if (fmx == null) {
+			return PROCESS_CONTINUE;
+		}
+
+		dico.remapEntityToKey(nodeName.resolveBinding(), fmx);
+		dico.addSourceAnchor(fmx, filename, loc);
+
 		return PROCESS_CONTINUE;
 	}
 

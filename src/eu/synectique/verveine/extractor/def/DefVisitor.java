@@ -20,6 +20,7 @@ import org.eclipse.cdt.core.model.IVariable;
 import org.eclipse.cdt.core.model.IVariableDeclaration;
 import org.eclipse.core.runtime.CoreException;
 
+import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack2;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
@@ -55,7 +56,7 @@ public class DefVisitor implements ICElementVisitor {
 	public DefVisitor(CDictionaryDef dico) {
 	    this.dico = dico;
 		this.context = new EntityStack2();
-		tracer = new NullTracer();
+		tracer = new NullTracer("#DEF ");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ======================================================================================================
@@ -177,24 +178,25 @@ public class DefVisitor implements ICElementVisitor {
 		}
 	}
 
+	/**
+	 * Visiting a method declaration.
+	 * This applies also to method definition as IMethod inherits from IMethodDeclaration
+	 */
 	private void visit(IMethodDeclaration elt) {
 		Method fmx;
 		try {
 			fmx = dico.createMethod(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.top());
 			fmx.setIsStub(false);
+			if (elt.isConstructor()) {
+				fmx.setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
+			}
 			tracer.msg("created Method:"+fmx.getName());
 		} catch (CModelException e) {
 			e.printStackTrace();
 		}
 	}
 
-	private void visit(IMethod elt) {
-	}
-
 	private void visit(IFunctionDeclaration elt) {
-	}
-
-	private void visit(IFunction elt) {
 	}
 
 	private void visit(IField elt) {

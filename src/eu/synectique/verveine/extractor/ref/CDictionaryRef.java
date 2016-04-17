@@ -2,14 +2,18 @@ package eu.synectique.verveine.extractor.ref;
 
 import java.util.Map;
 
+import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Attribute;
+import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.SourceAnchor;
+import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 
 public class CDictionaryRef extends Dictionary<IBinding> {
 
@@ -45,5 +49,47 @@ public class CDictionaryRef extends Dictionary<IBinding> {
 		}
 
 	}
-	
+
+	/**
+	 * Adds location information to a Famix Entity.
+	 * Location informations are: <b>name</b> of the source file and <b>position</b> in this file.
+	 * @param fmx -- Famix Entity to add the anchor to
+	 * @param filename -- name of the file being visited
+	 * @param ast -- ASTNode, where the information are extracted
+	 * @return the Famix SourceAnchor added to fmx. May be null in case of incorrect/null parameter
+	 */
+	public SourceAnchor addSourceAnchor(SourcedEntity fmx, String filename, IASTFileLocation anchor) {
+		IndexedFileAnchor fa = null;
+
+		if ( (fmx == null) || (anchor == null) ) {
+			return null;
+		}
+
+		// position in source file
+		int beg = anchor.getNodeOffset();
+		int end = beg + anchor.getNodeLength();
+
+		// create the Famix SourceAnchor
+		fa = new IndexedFileAnchor();
+		fa.setStartPos(beg);
+		fa.setEndPos(end);
+		fa.setFileName(filename);
+
+		fmx.setSourceAnchor(fa);
+		famixRepo.add(fa);
+
+		return fa;
+	}
+
+	public IBinding findkeyfrommethodname(String name) {
+		IBinding key = null;
+		for (Map.Entry<IBinding,NamedEntity> ent :keyToEntity.entrySet()) {
+			if ( (ent.getValue() instanceof Method) && (name.endsWith(ent.getValue().getName()))) {
+				key = ent.getKey();
+				break;
+			}
+		}
+		return key;
+	}
+
 }

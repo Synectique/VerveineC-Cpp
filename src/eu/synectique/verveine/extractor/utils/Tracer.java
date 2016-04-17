@@ -2,9 +2,21 @@ package eu.synectique.verveine.extractor.utils;
 
 public class Tracer implements ITracer {
 	private String indent;
+	private String prefix;
 
 	public Tracer() {
-		this.indent = "#";
+		this("#");
+	}
+
+	public Tracer(String prefix) {
+		this.indent = "";
+		this.prefix = prefix;
+	}
+
+	@Override
+	public void up(String msg) {
+		msg(msg);
+		up();
 	}
 
 	@Override
@@ -13,29 +25,23 @@ public class Tracer implements ITracer {
 	}
 
 	@Override
-	public void up(String msg) {
-		msg("Entering "+msg);
-		up();
-	}
-
-	@Override
 	public void msg(String msg) {
-			System.err.println(indent+msg);
+			System.err.println(prefix+indent+msg);
 			System.err.flush();
-	}
-
-	@Override
-	public void down() {
-		// protect against too may tracedown()
-		if (indent.length() > 2) {
-			indent = indent.substring(0, indent.length()-2);
-		}
 	}
 
 	@Override
 	public void down(String msg) {
 		down();
-		msg("Leaving "+msg);
+		msg(msg);
+	}
+
+	@Override
+	public void down() {
+		// protect against too may tracedown()
+		if (indent.length() > 1) {
+			indent = indent.substring(2);
+		}
 	}
 
 }

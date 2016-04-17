@@ -44,25 +44,32 @@ public class VerveineCParser extends VerveineParser {
 	private String projectPath = "/home/anquetil/Documents/RMod/Tools/pluginzone/CodeExamples/simple/src";
 
 	public void parse() {
+		CDictionaryDef dicoDef = null;
+		CDictionaryRef dicoRef = null;
+
 		System.out.println("step 1 / 3: indexing");
 
         ICProject project = createProject(DEFAULT_PROJECT_NAME, projectPath);  		// projPath set in setOptions()
         
         try {
         	System.out.println("step 2 / 3: creating structural entities");
-        	CDictionaryDef dicoDef = new CDictionaryDef(getFamixRepo());
+        	dicoDef = new CDictionaryDef(getFamixRepo());
 			project.accept(new DefVisitor(dicoDef));
 
 			System.out.println("step 3 / 3: creating references");
-			CDictionaryRef dicoRef = new CDictionaryRef(getFamixRepo());
-       		dicoDef.sizes();
-       		dicoRef.sizes();
+			dicoRef = new CDictionaryRef(getFamixRepo());
+       		//dicoDef.sizes();
+       		//dicoRef.sizes();
 			new MainRefVisitor(dicoDef, dicoRef).visit(project);
-			dicoDef.sizes();
-       		dicoRef.sizes();
+			//dicoDef.sizes();
+			//dicoRef.sizes();
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
+        
+        if (! dicoDef.assertEmpty()) {
+        	System.err.println("Possible problem: Def dictionnary was not emptied");
+        }
 	}
 
 	/**

@@ -4,6 +4,8 @@ public class NullTracer implements ITracer {
 
 	public NullTracer() {}
 
+	public NullTracer(String prefix) { }
+
 	@Override
 	public void up() {}
 

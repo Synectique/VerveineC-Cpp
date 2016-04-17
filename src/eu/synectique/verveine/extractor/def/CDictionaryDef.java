@@ -107,37 +107,6 @@ public class CDictionaryDef extends Dictionary<String> {
 		return filename + startPos;
 	}
 
-	/**
-	 * Adds location information to a Famix Entity.
-	 * Location informations are: <b>name</b> of the source file and <b>position</b> in this file.
-	 * @param fmx -- Famix Entity to add the anchor to
-	 * @param filename -- name of the file being visited
-	 * @param ast -- ASTNode, where the information are extracted
-	 * @return the Famix SourceAnchor added to fmx. May be null in case of incorrect/null parameter
-	 */
-	public SourceAnchor addSourceAnchor(SourcedEntity fmx, String filename, ISourceRange anchor) {
-		AbstractFileAnchor fa = null;
-
-		if ( (fmx == null) || (anchor == null) ) {
-			return null;
-		}
-		
-		// position in source file
-		int beg = anchor.getStartPos() + 1; // CDT starts at 0, Moose at 1
-		int end = beg + anchor.getLength()-1;
-
-		// create the Famix SourceAnchor
-		fa = new IndexedFileAnchor();
-		((IndexedFileAnchor)fa).setStartPos(beg);
-		((IndexedFileAnchor)fa).setEndPos(end);
-		fa.setFileName(filename);
-
-		fmx.setSourceAnchor(fa);
-		famixRepo.add(fa);
-
-		return fa;
-	}
-
 	public Namespace ensureNamespace(String name, ScopingEntity parent) {
 		Namespace fmx = super.ensureFamixNamespace(name, name);  // namespace's name is used as its own key
 		fmx.setIsStub(false);
@@ -155,7 +124,6 @@ public class CDictionaryDef extends Dictionary<String> {
 	public eu.synectique.verveine.core.gen.famix.Class createClass(String filename, ISourceRange anchor, String name, ContainerEntity parent) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
 		fmx = super.ensureFamixClass(mkKey(filename, anchor), name, parent, /*persistIt*/true);
-		addSourceAnchor(fmx, filename, anchor);
 		
 		return fmx;
 	}
@@ -163,7 +131,6 @@ public class CDictionaryDef extends Dictionary<String> {
 	public Method createMethod(String filename, ISourceRange anchor, String name, Type parent) {
 		Method fmx;
 		fmx = super.ensureFamixMethod(mkKey(filename, anchor), name, /*signature*/name, /*returnType*/null, parent, /*persistIt*/true);
-		addSourceAnchor(fmx, filename, anchor);
 
 		return fmx;
 	}
@@ -171,9 +138,12 @@ public class CDictionaryDef extends Dictionary<String> {
 	public Attribute createAttribute(String filename, ISourceRange anchor, String name, Type parent) {
 		Attribute fmx;
 		fmx = super.ensureFamixAttribute(mkKey(filename, anchor), name, /*type*/null, parent, /*persistIt*/true);
-		addSourceAnchor(fmx, filename, anchor);
 
 		return fmx;
+	}
+
+	public boolean assertEmpty() {
+		return keyToEntity.isEmpty();
 	}
 
 
