@@ -9,6 +9,7 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
+import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
@@ -40,11 +41,13 @@ public abstract class AbstractRefVisitor extends ASTVisitor implements ICElement
 	 */
 	protected String filename;
 
-	public AbstractRefVisitor(CDictionaryRef dico) {
-		this(dico, /*visitNodes*/true);
+	private IIndex index;
+
+	public AbstractRefVisitor(CDictionaryRef dico, IIndex index) {
+		this(dico, index, /*visitNodes*/true);
 	}
 
-	public AbstractRefVisitor(CDictionaryRef dico, boolean visitNodes) {
+	public AbstractRefVisitor(CDictionaryRef dico, IIndex index, boolean visitNodes) {
 		super(visitNodes);
 	    /* fine-tuning if visitNodes=false
 	    shouldVisitDeclarations = true;
@@ -52,6 +55,12 @@ public abstract class AbstractRefVisitor extends ASTVisitor implements ICElement
 	    shouldVisitProblems = true;
 	    shouldVisitTranslationUnit = true;
 	    shouldVisit... */
+		this.index = index;
+	    this.dico = dico;
+	}
+
+	protected AbstractRefVisitor(CDictionaryRef dico) {
+		super(true);
 	    this.dico = dico;
 	}
 
@@ -86,7 +95,7 @@ public abstract class AbstractRefVisitor extends ASTVisitor implements ICElement
 	public void visit(ITranslationUnit tu) {
 		try {
 			this.filename = tu.getFile().getRawLocation().toString();
-			tu.getAST().accept(this);
+			tu.getAST(index, ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT | ITranslationUnit.AST_SKIP_INDEXED_HEADERS).accept(this);
 			this.filename = null;
 		} catch (CoreException e) {
 			System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ tu.getElementName() );

@@ -7,6 +7,10 @@ import java.io.InputStream;
 import java.nio.file.Files;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.index.IIndexChangeEvent;
+import org.eclipse.cdt.core.index.IIndexChangeListener;
+import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
@@ -27,6 +31,8 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
+import eu.synectique.verveine.core.gen.famix.Attribute;
+import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.def.CDictionaryDef;
 import eu.synectique.verveine.extractor.def.DefVisitor;
@@ -43,6 +49,8 @@ public class VerveineCParser extends VerveineParser {
 
 	private String projectPath = "/home/anquetil/Documents/RMod/Tools/pluginzone/CodeExamples/simple/src";
 
+	private IIndex index;
+
 	public void parse() {
 		CDictionaryDef dicoDef = null;
 		CDictionaryRef dicoRef = null;
@@ -50,17 +58,37 @@ public class VerveineCParser extends VerveineParser {
 		System.out.println("step 1 / 3: indexing");
 
         ICProject project = createProject(DEFAULT_PROJECT_NAME, projectPath);  		// projPath set in setOptions()
-        
+        IIndexManager imanager = CCorePlugin.getIndexManager();
+        //imanager.setIndexerId(project, "org.eclipse.cdt.core.fastIndexer");
+        imanager.reindex(project);
+
+		/*
+		 * Joining the indexer ensures it is done indexing the project (well, I believe this is what it does anyway)
+		 * We need this to start looking for references to entities
+		 * It should be possible to run this in parallel with second step
+		 * however doing this gives unpredictable results on the CDictionnaryDef.removeEntity() (some entities are found and removed, other not)
+		 * Don't ask me why, I have no clue !!!
+		 */
+        imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
+		try {
+			this.index = imanager.getIndex(project);
+			this.index.acquireReadLock();
+		} catch (CoreException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
         try {
         	System.out.println("step 2 / 3: creating structural entities");
         	dicoDef = new CDictionaryDef(getFamixRepo());
 			project.accept(new DefVisitor(dicoDef));
-
+			
 			System.out.println("step 3 / 3: creating references");
 			dicoRef = new CDictionaryRef(getFamixRepo());
        		//dicoDef.sizes();
        		//dicoRef.sizes();
-			new MainRefVisitor(dicoDef, dicoRef).visit(project);
+			new MainRefVisitor(dicoDef, dicoRef, index).visit(project);
 			//dicoDef.sizes();
 			//dicoRef.sizes();
 		} catch (CoreException e) {
@@ -69,6 +97,9 @@ public class VerveineCParser extends VerveineParser {
         
         if (! dicoDef.assertEmpty()) {
         	System.err.println("Possible problem: Def dictionnary was not emptied");
+           	dicoDef.listAll(eu.synectique.verveine.core.gen.famix.Class.class);
+           	dicoDef.listAll(Method.class);
+           	dicoDef.listAll(Attribute.class);
         }
 	}
 

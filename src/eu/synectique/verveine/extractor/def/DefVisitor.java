@@ -128,6 +128,10 @@ public class DefVisitor implements ICElementVisitor {
 		return false;
 	}
 
+	/**
+	 * Visiting a directory.
+	 * Interpreted as a C++ Package
+	 */
 	private void visit(ICContainer elt) {
 		eu.synectique.verveine.core.gen.famix.Package fmx = null;
 		fmx = dico.ensurePackage(elt.getElementName(), currentPackage);
@@ -138,20 +142,29 @@ public class DefVisitor implements ICElementVisitor {
 		currentPackage = fmx.getParentPackage();    // kind of poping out the new package from the package stack
 	}
 
+	/**
+	 * Visiting a file.
+	 * Record the name of that file, needed when visiting its children
+	 */
 	private void visit(ITranslationUnit elt) {
 		currentFile = elt.getFile().getRawLocation().toString();
 		visitChildren(elt);
 		currentFile = null;
 	}
 
+	/**
+	 * Visiting a Namespace declaration
+	 */
 	private void visit(INamespace elt) {
 		Namespace fmx = dico.ensureNamespace(elt.getElementName(), (ScopingEntity) this.context.top());
 		fmx.setIsStub(false);
-		tracer.msg("     -> Namespace:"+fmx.getName());
+		tracer.up("Namespace:"+fmx.getName());
 
 		this.context.push(fmx);
 		visitChildren(elt);
 		this.context.pop();
+		
+		tracer.down();
 	}
 
 	private void visit(IEnumeration elt) {
@@ -160,6 +173,9 @@ public class DefVisitor implements ICElementVisitor {
 	private void visit(IStructureDeclaration elt) {
 	}
 
+	/**
+	 * Visiting a class declaration
+	 */
 	private void visit(IStructure elt) {
 		if (elt.getElementType() == ICElement.C_CLASS) {
 			eu.synectique.verveine.core.gen.famix.Class fmx;
@@ -167,11 +183,13 @@ public class DefVisitor implements ICElementVisitor {
 				fmx = dico.createClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());
 				fmx.setIsStub(false);
 				fmx.setParentPackage(currentPackage);
-				tracer.msg("     ->Class:"+fmx.getName());
+				tracer.up("Class:"+fmx.getName());
 
 				this.context.push(fmx);
 				visitChildren(elt);
 				this.context.pop();
+				
+				tracer.down();
 			} catch (CModelException e) {
 				e.printStackTrace();
 			}
@@ -185,7 +203,7 @@ public class DefVisitor implements ICElementVisitor {
 	private void visit(IMethodDeclaration elt) {
 		Method fmx;
 		try {
-			fmx = dico.createMethod(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.top());
+			fmx = dico.createMethod(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.topType());
 			fmx.setIsStub(false);
 			if (elt.isConstructor()) {
 				fmx.setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
@@ -202,7 +220,7 @@ public class DefVisitor implements ICElementVisitor {
 	private void visit(IField elt) {
 		Attribute fmx;
 		try {
-			fmx = dico.createAttribute(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.top());
+			fmx = dico.createAttribute(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.topType());
 			fmx.setIsStub(false);
 			tracer.msg("created Field:"+fmx.getName());
 		} catch (CModelException e) {
