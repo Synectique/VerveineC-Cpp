@@ -83,7 +83,7 @@ public class VerveineCParser extends VerveineParser {
         	System.out.println("step 2 / 3: creating structural entities");
         	dicoDef = new CDictionaryDef(getFamixRepo());
 			project.accept(new DefVisitor(dicoDef));
-			
+
 			System.out.println("step 3 / 3: creating references");
 			dicoRef = new CDictionaryRef(getFamixRepo());
        		//dicoDef.sizes();

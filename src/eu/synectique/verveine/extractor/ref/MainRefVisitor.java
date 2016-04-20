@@ -27,6 +27,8 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
@@ -40,12 +42,14 @@ import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.Function;
+import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
+import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.def.CDictionaryDef;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
@@ -139,7 +143,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		}
 		else if (node instanceof IASTFunctionCallExpression) {
 			visit((IASTFunctionCallExpression)node);
-			return ASTVisitor.PROCESS_CONTINUE;  // should be skip because we already visited the FunctionNameExpression
+			return ASTVisitor.PROCESS_CONTINUE;  // should be SKIP because we already visited the FunctionNameExpression?
 		}
 		else if (node instanceof IASTIdExpression) {
 			referenceToName(((IASTIdExpression) node).getName());
@@ -153,31 +157,12 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	}
 
 	@Override
-	public int visit(IASTInitializer node) {
-//		tracer.up("IASTInitializer ");
-		return super.visit(node);
-	}
-
-	@Override
 	public int visit(IASTParameterDeclaration node) {
 /*		tracer.msg("IASTParameterDeclaration: ");
 		if (context.topMethod() != null) {
 			node.accept( new ParamDeclVisitor(dico, context.topMethod()) );
 		}*/
 		return super.visit(node);
-	}
-
-	@Override
-	public int visit(ICPPASTBaseSpecifier node) {
-//		tracer.up("ICPPASTBaseSpecifier:");
-//		tracename(node.getName());
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(ICPPASTBaseSpecifier node) {
-//		tracer.down();
-		return super.leave(node);
 	}
 
 	@Override
@@ -196,10 +181,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	public int visit(IASTDeclaration node) {
 		// includes CPPASTVisibilityLabel
 //		tracer.msg("IASTDeclaration");
-/*		if (node instanceof IASTSimpleDeclaration) {
-			return visit((IASTSimpleDeclaration)node);
-		}
-		else*/ if (node instanceof ICPPASTFunctionDefinition) {
+		if (node instanceof ICPPASTFunctionDefinition) {
 			return visit((ICPPASTFunctionDefinition)node);
 		}
 		return super.visit(node);
@@ -248,13 +230,19 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 			return PROCESS_CONTINUE;
 		}
 
-		// For classes, we create the anchor now
-		dico.addSourceAnchor(fmx, filename, loc);
-
 		dico.remapEntityToKey(nodeName.resolveBinding(), fmx);
 
+		// For classes, we create the anchor now
+		dico.addSourceAnchor(fmx, filename, loc);
+		fmx.setIsStub(false);
+		ICPPClassType classBnd = (ICPPClassType)bnd;
+		Inheritance lastInheritance = null;
+		for (ICPPBase superBnd : classBnd.getBases()) {
+			eu.synectique.verveine.core.gen.famix.Class sup = dico.ensureClass(superBnd.getBaseClass(), superBnd.getBaseClassSpecifierName().toString());
+			lastInheritance = dico.ensureFamixInheritance(sup, fmx, lastInheritance);
+		}
+
 		this.context.push(fmx);
-//		dico.addSourceAnchor(fmx, node, /*oneLineAnchor*/false);
 
 		return PROCESS_CONTINUE;
 	}
@@ -292,7 +280,7 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		tracer.msg("IASTFunctionDeclarator: "+nodeName);
 
 		/* Note that, below, 'loc.getFileName()' can be different from 'this.filename', if the later is a .cpp file and
-		 * the method is defined in an included .hpp file */
+		 * the method is defined in an included .hpp file*/
 		if (bnd instanceof ICPPMethod) {   // C++ method
 			fmx = dicoDef.removeEntity(loc.getFileName(), loc.getNodeOffset(), nodeName.toString(), Method.class);
 		}
