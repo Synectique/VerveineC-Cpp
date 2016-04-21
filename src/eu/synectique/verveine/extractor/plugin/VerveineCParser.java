@@ -94,13 +94,13 @@ public class VerveineCParser extends VerveineParser {
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
-        
+       /* 
         if (! dicoDef.assertEmpty()) {
         	System.err.println("Possible problem: Def dictionnary was not emptied");
            	dicoDef.listAll(eu.synectique.verveine.core.gen.famix.Class.class);
            	dicoDef.listAll(Method.class);
            	dicoDef.listAll(Attribute.class);
-        }
+        }*/
 	}
 
 	/**

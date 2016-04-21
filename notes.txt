@@ -1,0 +1,5 @@
+struct == class ???
+https://en.wikipedia.org/wiki/C%2B%2B_classes
+In C++, a structure is a class defined with the struct keyword. Its members and base classes are public by default. A class defined with the class keyword has private members and base classes by default. This is the only difference between structs and classes in C++.
+
+friend method

@@ -3,6 +3,9 @@ package eu.synectique.verveine.extractor.plugin;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 
+import eu.synectique.verveine.core.gen.famix.Entity;
+import eu.synectique.verveine.core.gen.famix.NamedEntity;
+
 public class PluginApplication implements IApplication {
 
 	@Override
@@ -16,6 +19,7 @@ public class PluginApplication implements IApplication {
 		verveine.setOptions(appArgs);
 		verveine.parse();
 		verveine.emitMSE();
+
 		return null;
 	}
 

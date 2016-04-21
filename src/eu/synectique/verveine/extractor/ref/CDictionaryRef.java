@@ -4,18 +4,23 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.model.ISourceRange;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
+import eu.synectique.verveine.core.gen.famix.Access;
+import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
-import eu.synectique.verveine.core.gen.famix.ContainerEntity;
+import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.Class;
+import eu.synectique.verveine.core.gen.famix.ImplicitVariable;
 import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.SourceAnchor;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
+import eu.synectique.verveine.core.gen.famix.StructuralEntity;
+import eu.synectique.verveine.core.gen.famix.Type;
 
 public class CDictionaryRef extends Dictionary<IBinding> {
 
@@ -102,7 +107,10 @@ public class CDictionaryRef extends Dictionary<IBinding> {
 
 	public eu.synectique.verveine.core.gen.famix.Class ensureClass(IBinding bnd, String name) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
-		fmx = super.ensureFamixClass(bnd, name, /*owner*/null, /*persistIt*/true);
+		fmx = (Class) keyToEntity.get(bnd);
+		if (fmx == null) {
+			fmx = super.ensureFamixClass(bnd, name, /*owner*/null, /*persistIt*/true);
+		}
 		
 		return fmx;
 	}

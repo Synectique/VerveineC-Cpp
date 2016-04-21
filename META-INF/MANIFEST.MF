@@ -14,4 +14,4 @@ Bundle-ClassPath: .,
  lib/akuhn-util-r28011.jar,
  lib/fame-201403040925.jar,
  lib/fast-201603271311.jar,
- lib/verveine.core-201604032230.jar
+ lib/verveine.core-201604212035.jar

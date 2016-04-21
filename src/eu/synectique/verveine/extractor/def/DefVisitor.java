@@ -84,6 +84,10 @@ public class DefVisitor implements ICElementVisitor {
 		case ICElement.C_STRUCT_DECLARATION:
 			visit( (IStructureDeclaration) elt);
 			break;
+		case ICElement.C_TEMPLATE_CLASS_DECLARATION:
+		case ICElement.C_TEMPLATE_STRUCT_DECLARATION:
+			visit( (IStructureDeclaration) elt);
+			break;
 		case ICElement.C_CLASS:
 		case ICElement.C_UNION:
 		case ICElement.C_STRUCT:
@@ -177,7 +181,8 @@ public class DefVisitor implements ICElementVisitor {
 	 * Visiting a class declaration
 	 */
 	private void visit(IStructure elt) {
-		if (elt.getElementType() == ICElement.C_CLASS) {
+		if ( (elt.getElementType() == ICElement.C_STRUCT) ||
+			 (elt.getElementType() == ICElement.C_CLASS) ) {
 			eu.synectique.verveine.core.gen.famix.Class fmx;
 			try {
 				fmx = dico.createClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());

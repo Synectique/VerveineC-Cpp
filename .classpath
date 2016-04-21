@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry exported="true" kind="lib" path="lib/verveine.core-201604032230.jar" sourcepath="/verveine.core"/>
+	<classpathentry exported="true" kind="lib" path="lib/verveine.core-201604212035.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/akuhn-util-r28011.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/fame-201403040925.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/fast-201603271311.jar"/>
