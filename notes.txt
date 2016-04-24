@@ -1,5 +1,50 @@
-struct == class ???
+* struct == class ???
 https://en.wikipedia.org/wiki/C%2B%2B_classes
 In C++, a structure is a class defined with the struct keyword. Its members and base classes are public by default. A class defined with the class keyword has private members and base classes by default. This is the only difference between structs and classes in C++.
 
-friend method
+* friend method
+
+* template class = ParameterizableClass. Template methods?
+
+* Constants in org.eclipse.cdt.core/model/org/eclipse/cdt/core/model/ICElement.java
+
+C_PROJECT = 11;
+C_CCONTAINER = 12;
+C_BINARY = 14;
+C_ARCHIVE = 18;
+C_VCONTAINER = 30;
+C_UNIT = 60;
+C_NAMESPACE = 61;
+C_USING = 62;
+C_ENUMERATION = 63;
+C_CLASS_DECLARATION = 64;
+C_CLASS = 65;
+C_STRUCT_DECLARATION = 66;
+C_STRUCT = 67;
+C_UNION_DECLARATION = 68;
+C_UNION = 69;
+C_METHOD = 70;
+C_METHOD_DECLARATION = 71;
+C_FIELD = 72;
+C_FUNCTION_DECLARATION = 73;
+C_FUNCTION = 74;
+C_INCLUDE = 75;
+C_VARIABLE = 76;
+C_VARIABLE_DECLARATION = 77;
+C_VARIABLE_LOCAL = 78;
+C_MACRO = 79;
+C_TYPEDEF = 80;
+C_ENUMERATOR = 81;
+C_TEMPLATE_CLASS_DECLARATION = 82;
+C_TEMPLATE_CLASS = 83;
+C_TEMPLATE_STRUCT_DECLARATION = 84;
+C_TEMPLATE_STRUCT = 85;
+C_TEMPLATE_UNION_DECLARATION = 86;
+C_TEMPLATE_UNION = 87;
+C_TEMPLATE_FUNCTION_DECLARATION = 88;
+C_TEMPLATE_FUNCTION = 89;
+C_TEMPLATE_METHOD_DECLARATION = 90;
+C_TEMPLATE_METHOD = 91;
+C_TEMPLATE_VARIABLE = 92;
+C_UNKNOWN_DECLARATION = 93;
+	

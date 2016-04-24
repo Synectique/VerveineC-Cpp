@@ -8,10 +8,12 @@ import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
+import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Package;
+import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.ITracer;
@@ -192,9 +194,23 @@ public class CDictionaryDef extends Dictionary<String> {
 		return fmx;
 	}
 
-	public Method createMethod(String filename, ISourceRange anchor, String name, Type parent) {
+	public ParameterizableClass createParameterizableClass(String filename, ISourceRange anchor, String name, ContainerEntity parent) {
+		ParameterizableClass fmx;
+		fmx = super.ensureFamixParameterizableClass(mkKey(filename, anchor), name, parent, /*persistIt*/true);
+		
+		return fmx;
+	}
+
+	public Function createFunction(String filename, ISourceRange anchor, String name, String sig, Type parent) {
+		Function fmx;
+		fmx = super.ensureFamixFunction(mkKey(filename, anchor), name, sig, /*returnType*/null, parent, /*persistIt*/true);
+
+		return fmx;
+	}
+
+	public Method createMethod(String filename, ISourceRange anchor, String name, String sig, Type parent) {
 		Method fmx;
-		fmx = super.ensureFamixMethod(mkKey(filename, anchor), name, /*signature*/name, /*returnType*/null, parent, /*persistIt*/true);
+		fmx = super.ensureFamixMethod(mkKey(filename, anchor), name, sig, /*returnType*/null, parent, /*persistIt*/true);
 
 		return fmx;
 	}

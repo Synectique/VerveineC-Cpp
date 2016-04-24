@@ -23,6 +23,7 @@ import org.eclipse.core.runtime.CoreException;
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack2;
 import eu.synectique.verveine.core.gen.famix.Attribute;
+import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Namespace;
@@ -30,6 +31,7 @@ import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.Tracer;
 
 /**
  * Not a Visitor  on an AST, visits the tree of ICElement and defines all entities
@@ -82,35 +84,32 @@ public class DefVisitor implements ICElementVisitor {
 			break;
 		case ICElement.C_CLASS_DECLARATION:
 		case ICElement.C_STRUCT_DECLARATION:
-			visit( (IStructureDeclaration) elt);
-			break;
-		case ICElement.C_TEMPLATE_CLASS_DECLARATION:
-		case ICElement.C_TEMPLATE_STRUCT_DECLARATION:
-			visit( (IStructureDeclaration) elt);
-			break;
+		case ICElement.C_UNION_DECLARATION:
 		case ICElement.C_CLASS:
 		case ICElement.C_UNION:
 		case ICElement.C_STRUCT:
+		case ICElement.C_TEMPLATE_CLASS_DECLARATION:
+		case ICElement.C_TEMPLATE_STRUCT_DECLARATION:
+		case ICElement.C_TEMPLATE_UNION_DECLARATION:
+		case ICElement.C_TEMPLATE_CLASS:
+		case ICElement.C_TEMPLATE_STRUCT:
+		case ICElement.C_TEMPLATE_UNION:
 			visit( (IStructure) elt);
 			break;
 		case ICElement.C_METHOD_DECLARATION:
-			visit( (IMethodDeclaration) elt);
-			break;
-		case ICElement.C_METHOD:
-			visit( (IMethod) elt);
-			break;
 		case ICElement.C_FUNCTION_DECLARATION:
-			visit( (IFunctionDeclaration) elt);
-			break;
+		case ICElement.C_METHOD:
 		case ICElement.C_FUNCTION:
-			visit( (IFunction) elt);
+		case ICElement.C_TEMPLATE_METHOD:
+		case ICElement.C_TEMPLATE_FUNCTION:
+		case ICElement.C_TEMPLATE_METHOD_DECLARATION:
+		case ICElement.C_TEMPLATE_FUNCTION_DECLARATION:
+			visit( (IFunctionDeclaration) elt);
 			break;
 		case ICElement.C_FIELD:
 			visit( (IField) elt);
 			break;
 		case ICElement.C_VARIABLE:
-			visit( (IVariable) elt);
-			break;
 		case ICElement.C_VARIABLE_DECLARATION:
 			visit( (IVariableDeclaration) elt);
 			break;
@@ -174,52 +173,77 @@ public class DefVisitor implements ICElementVisitor {
 	private void visit(IEnumeration elt) {
 	}
 
-	private void visit(IStructureDeclaration elt) {
-	}
-
 	/**
 	 * Visiting a class declaration
 	 */
 	private void visit(IStructure elt) {
-		if ( (elt.getElementType() == ICElement.C_STRUCT) ||
-			 (elt.getElementType() == ICElement.C_CLASS) ) {
-			eu.synectique.verveine.core.gen.famix.Class fmx;
-			try {
-				fmx = dico.createClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());
-				fmx.setIsStub(false);
-				fmx.setParentPackage(currentPackage);
-				tracer.up("Class:"+fmx.getName());
+		eu.synectique.verveine.core.gen.famix.Class fmx = null;
 
-				this.context.push(fmx);
-				visitChildren(elt);
-				this.context.pop();
-				
-				tracer.down();
-			} catch (CModelException e) {
-				e.printStackTrace();
+		try {
+			switch (elt.getElementType()) {
+			case ICElement.C_STRUCT:
+			case ICElement.C_CLASS:
+			case ICElement.C_STRUCT_DECLARATION:
+			case ICElement.C_CLASS_DECLARATION:
+				fmx = dico.createClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());
+				break;
+			case ICElement.C_TEMPLATE_STRUCT:
+			case ICElement.C_TEMPLATE_CLASS:
+			case ICElement.C_TEMPLATE_STRUCT_DECLARATION:
+			case ICElement.C_TEMPLATE_CLASS_DECLARATION:
+				fmx = dico.createParameterizableClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());
+				break;
 			}
 		}
+		catch (CModelException e) {
+				e.printStackTrace();
+		}
+
+		fmx.setIsStub(false);
+		fmx.setParentPackage(currentPackage);
+		tracer.up("Class:"+fmx.getName());
+
+		this.context.push(fmx);
+		visitChildren(elt);
+		this.context.pop();
+		
+		tracer.down();
+
 	}
 
 	/**
-	 * Visiting a method declaration.
-	 * This applies also to method definition as IMethod inherits from IMethodDeclaration
+	 * Visiting a function or method declaration.
+	 * This applies also to function/method definition as IMethod inherits from IMethodDeclaration
 	 */
-	private void visit(IMethodDeclaration elt) {
-		Method fmx;
+	private void visit(IFunctionDeclaration elt) {
+		BehaviouralEntity fmx = null;
 		try {
-			fmx = dico.createMethod(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.topType());
-			fmx.setIsStub(false);
-			if (elt.isConstructor()) {
-				fmx.setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
+			switch (elt.getElementType()) {
+			case ICElement.C_METHOD_DECLARATION:
+			case ICElement.C_METHOD:
+			case ICElement.C_TEMPLATE_METHOD_DECLARATION:
+			case ICElement.C_TEMPLATE_METHOD:
+				fmx = dico.createMethod(currentFile, elt.getSourceRange(), elt.getElementName(), elt.getSignature(), (Type)context.topType());
+				if ( ((IMethodDeclaration)elt).isConstructor() ) {
+					((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
+				}
+				if ( ((IMethodDeclaration)elt).isDestructor() ) {
+					//((Method)fmx).setKind(Dictionary.DESTRUCTOR_KIND_MARKER);
+				}
+				break;
+			case ICElement.C_FUNCTION_DECLARATION:
+			case ICElement.C_FUNCTION:
+			case ICElement.C_TEMPLATE_FUNCTION:
+			case ICElement.C_TEMPLATE_FUNCTION_DECLARATION:
+				fmx = dico.createFunction(currentFile, elt.getSourceRange(), elt.getElementName(), elt.getSignature(), (Type)context.topType());
+				break;
 			}
-			tracer.msg("created Method:"+fmx.getName());
+			
+			fmx.setIsStub(false);
+			tracer.msg("created BehaviouralEntity:"+fmx.getName());
 		} catch (CModelException e) {
 			e.printStackTrace();
 		}
-	}
-
-	private void visit(IFunctionDeclaration elt) {
 	}
 
 	private void visit(IField elt) {
@@ -231,9 +255,6 @@ public class DefVisitor implements ICElementVisitor {
 		} catch (CModelException e) {
 			e.printStackTrace();
 		}
-	}
-
-	private void visit(IVariable elt) {
 	}
 
 	private void visit(IVariableDeclaration elt) {

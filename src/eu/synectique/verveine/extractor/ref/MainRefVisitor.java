@@ -37,6 +37,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
@@ -45,6 +46,7 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTTemplateDeclaration;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack2;
@@ -63,6 +65,7 @@ import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.extractor.def.CDictionaryDef;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
@@ -82,12 +85,22 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	 */
 	protected boolean inAssignmentLHS = false;
 
+	/**
+	 * The file directory being visited at any given time
+	 */
 	protected eu.synectique.verveine.core.gen.famix.Package currentPackage = null;
 
+	/**
+	 * Dictionary where entities were created in Def pass
+	 */
 	private CDictionaryDef dicoDef;
 
-	private NamedEntity lastExpr;
-	
+	/**
+	 * Default constructor, dicoDef contains entities created during def pass
+	 * @param dicoDef contains entities created during def pass
+	 * @param dicoRef where entities are created during ref pass (the current pass)
+	 * @param index CDT index containing bindings
+	 */
 	public MainRefVisitor(CDictionaryDef dicoDef, CDictionaryRef dicoRef, IIndex index) {
 		super(dicoRef, index, /*visitNodes*/true);
 		this.dicoDef = dicoDef;
@@ -270,7 +283,15 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		Class fmx;
 
 		nodeName = node.getName();
-		loc = node.getFileLocation();
+
+		// dealing with template class/struct
+		if (node.getParent().getParent() instanceof ICPPASTTemplateDeclaration) {
+			loc = ((ICPPASTTemplateDeclaration)node.getParent().getParent()).getFileLocation();
+		}
+		else {
+			loc = node.getFileLocation();
+		}
+
 		if ( (nodeName == null) || (loc == null) ) {
 			return PROCESS_CONTINUE;
 		}
@@ -425,7 +446,6 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		return super.leave(node);
 	}
 
-
 	@Override
 	protected int visit(ICPPASTDeclarator node) {
 		IASTName nodeName = null;
@@ -453,12 +473,10 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		return PROCESS_CONTINUE;
 	}
 
-
 	@Override
 	protected int leave(ICPPASTDeclarator node) {
 		return PROCESS_CONTINUE;
 	}
-
 
 	public void visit(IASTFunctionCallExpression node) {
 /*		IASTName nodeName = null;
@@ -476,7 +494,6 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 			}
 		}*/
 	}
-
 
 	public void visit(IASTBinaryExpression node) {
 		Access prevAccess = context.getLastAccess();
@@ -500,19 +517,16 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		node.getOperand2().accept(this);
 	}
 
-
 	@Override
 	protected int visit(ICASTCompositeTypeSpecifier node) {
 //		tracer.msg("    -> ICASTCompositeTypeSpecifier");
 		return PROCESS_CONTINUE;
 	}
 
-
 	@Override
 	protected int leave(ICASTCompositeTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
-
 
 	@Override
 	protected int visit(IASTEnumerationSpecifier node) {
@@ -520,19 +534,16 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		return PROCESS_CONTINUE;
 	}
 
-
 	@Override
 	protected int leave(IASTEnumerationSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
-
 
 	@Override
 	protected int visit(ICPPASTNamedTypeSpecifier node) {
 //		tracer.msg("    -> ICPPASTNamedTypeSpecifier");
 		return PROCESS_CONTINUE;
 	}
-
 
 	@Override
 	protected int leave(ICPPASTNamedTypeSpecifier node) {
@@ -605,7 +616,6 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		return acc;
 	}
 
-
 	protected void tracename(IASTName name) {
 		if (name != null) {
 			tracer.msg("    -> '"+name.toString()+ "' " +(name.resolveBinding()!=null ?"is":"not") +" bound");
@@ -614,7 +624,6 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 			tracer.msg("    -> null name");
 		}
 	}
-
 
 	protected void traceanchor(IASTFileLocation loc) {
 		if (loc != null) {

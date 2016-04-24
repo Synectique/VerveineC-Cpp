@@ -45,6 +45,8 @@ public class VerveineCParser extends VerveineParser {
 
 	private static final String SOURCE_ROOT_DIR = "/" + DEFAULT_PROJECT_NAME;
 
+	private static final boolean HEADER_FILES = true;
+
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 
 	private String projectPath = "/home/anquetil/Documents/RMod/Tools/pluginzone/CodeExamples/simple/src";
@@ -112,8 +114,8 @@ public class VerveineCParser extends VerveineParser {
 	private ICProject createProject(String projName, String sourcePath) {
 		IProject project = createNewProject(projName);
 
-		//attachSourceFolder(project);
-		copySourceFilesInProject(project, new File(sourcePath));
+		copySourceFilesInProject(project, new File(sourcePath), /*headerFiles*/true);
+		copySourceFilesInProject(project, new File(sourcePath), /*headerFiles*/false);
 		
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
 		try {
@@ -184,24 +186,24 @@ public class VerveineCParser extends VerveineParser {
 	 * @param project -- project where to copy the file(s)
 	 * @param src -- A directory of file to copy to the project
 	 */
-	private void copySourceFilesInProject(IProject project, File src) {
+	private void copySourceFilesInProject(IProject project, File src, boolean headerFiles) {
 		if (src.isDirectory()) {
-			copySourceFilesRecursive(project, project.getFolder(SOURCE_ROOT_DIR), src);
+			copySourceFilesRecursive(project, project.getFolder(SOURCE_ROOT_DIR), src, headerFiles);
 		}
 		else if (isValidFileExtension(src.getName())) {
-			copyFile(project, project.getFolder(SOURCE_ROOT_DIR), src);
+			copyFile(project, project.getFolder(SOURCE_ROOT_DIR), src, headerFiles);
 		}
 		
 	}
 
-	private void copySourceFilesRecursive(IProject project, IFolder internalPath, File dir) {
+	private void copySourceFilesRecursive(IProject project, IFolder internalPath, File dir, boolean headerFiles) {
 
 		for (File child : dir.listFiles()) {
 			if (child.isDirectory()) {
-				copySourceFilesRecursive(project, internalPath.getFolder(child.getName()), child);
+				copySourceFilesRecursive(project, internalPath.getFolder(child.getName()), child, headerFiles);
 			}
 			else if (isValidFileExtension(child.getName())) {
-				copyFile(project, internalPath, child);
+				copyFile(project, internalPath, child, headerFiles);
 			}
 		}
 	}
@@ -213,22 +215,33 @@ public class VerveineCParser extends VerveineParser {
 	 * @param orig -- file to copy in the project
 	 * @param dest -- path within the project where to put the file
 	 */
-	private void copyFile(IProject project, IFolder destPath, File orig) {
-		if (! destPath.exists()) {
-			mkdirs(destPath);
+	private void copyFile(IProject project, IFolder destPath, File orig, boolean headerFiles) {
+		if (checkHeader(orig, headerFiles)) {
+			if (! destPath.exists()) {
+				mkdirs(destPath);
+			}
+
+			try {
+				InputStream source = new ByteArrayInputStream( Files.readAllBytes(orig.toPath()) );
+				IFile file = destPath.getFile(orig.getName());
+
+				file.create(source, /*force*/true, NULL_PROGRESS_MONITOR);
+				file.refreshLocal(IResource.DEPTH_ZERO, NULL_PROGRESS_MONITOR);
+
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
+	}
 
-		try {
-			InputStream source = new ByteArrayInputStream( Files.readAllBytes(orig.toPath()) );
-			IFile file = destPath.getFile(orig.getName());
-
-			file.create(source, /*force*/true, NULL_PROGRESS_MONITOR);
-			file.refreshLocal(IResource.DEPTH_ZERO, NULL_PROGRESS_MONITOR);
-
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		} catch (Exception e) {
-			e.printStackTrace();
+	private boolean checkHeader(File orig, boolean headerFile) {
+		if (headerFile) {
+			return (orig.getName().indexOf(".h") >= 0);
+		}
+		else {
+			return (orig.getName().indexOf(".h") == -1);
 		}
 	}
 
