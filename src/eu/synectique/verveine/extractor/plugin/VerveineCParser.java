@@ -31,8 +31,6 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
-import eu.synectique.verveine.core.gen.famix.Attribute;
-import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.def.CDictionaryDef;
 import eu.synectique.verveine.extractor.ref.DefVisitor;
@@ -172,6 +170,7 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	/**
+<<<<<<< HEAD:src/eu/synectique/verveine/extractor/plugin/VerveineCParser.java
 	 * Copies all source files from src to the source directory of project
 	 * @param project -- project where to copy the file(s)
 	 * @param src -- A directory of file to copy to the project
@@ -293,11 +292,6 @@ public class VerveineCParser extends VerveineParser {
 				}
 			}
 		}
-
-		while (i < args.length) {
-			projectPath = args[i++];
-		}
- 
 	}
 
 	protected void usage() {
