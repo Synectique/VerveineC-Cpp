@@ -2,19 +2,24 @@ package eu.synectique.verveine.extractor.def;
 
 import java.util.Map;
 
+import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.model.ISourceRange;
 
 import ch.akuhn.fame.Repository;
+import ch.akuhn.util.Tab;
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Function;
+import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
+import eu.synectique.verveine.core.gen.famix.SourceAnchor;
+import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
@@ -108,7 +113,7 @@ public class CDictionaryDef extends Dictionary<String> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T extends NamedEntity> T removeEntity(String filename, int startPos, String name, Class<T> clazz) {
+	public <T extends NamedEntity> T resolveEntity(String filename, int startPos, String name, Class<T> clazz) {
 		String key = mkKey(filename, startPos);
 		NamedEntity ent = this.getEntityByKey(key);
 
@@ -121,21 +126,13 @@ public class CDictionaryDef extends Dictionary<String> {
 			}*/
 			return null;
 		}
-		if (!ent.getName().equals(name)) {
-			return null;
-		}
-		if (! clazz.isInstance(ent)) {
-			return null;
-		}
-		
-		// this is the "normal" case (entity found and corresponds to expectations)
-		tracer.msg("CDictionaryDef.removeEntity found: "+name+"/"+clazz.getSimpleName()+" @ "+filename+"/"+startPos);
-		keyToEntity.remove(key, ent);
-		entityToKey.remove(ent, key);
+
+		tracer.msg("CDictionaryDef.resolveEntity found: "+name+"/"+clazz.getSimpleName()+" @ "+filename+"/"+startPos);
+
 		return (T)ent;
 	}
 
-	public ScopingEntity removeScopingEntity(String name, ScopingEntity parent) {
+	public ScopingEntity resolveScopingEntity(String name, ScopingEntity parent) {
 		String fullName = mooseName(parent, name);
 		NamedEntity fmx = this.getEntityByKey(fullName);
 		if (fmx == null) {
@@ -148,8 +145,6 @@ public class CDictionaryDef extends Dictionary<String> {
 			return null;
 		}
 
-		keyToEntity.remove(fullName, fmx);
-		entityToKey.remove(fmx, fullName);
 		return (ScopingEntity) fmx;
 	}
 
@@ -160,7 +155,7 @@ public class CDictionaryDef extends Dictionary<String> {
 	 * @return the key generated
 	 */
 	private String mkKey(String filename, ISourceRange anchor) {
-		return mkKey(filename, anchor.getStartPos());
+		return mkKey(filename, anchor.getIdStartPos());
 	}
 
 	/**
@@ -171,6 +166,37 @@ public class CDictionaryDef extends Dictionary<String> {
 	 */
 	private String mkKey(String filename, int startPos) {
 		return filename + startPos;
+	}
+
+	/**
+	 * Adds location information to a Famix Entity.
+	 * Location informations are: <b>name</b> of the source file and <b>position</b> in this file.
+	 * @param fmx -- Famix Entity to add the anchor to
+	 * @param filename -- name of the file being visited
+	 * @param ast -- ASTNode, where the information are extracted
+	 * @return the Famix SourceAnchor added to fmx. May be null in case of incorrect/null parameter
+	 */
+	public SourceAnchor addSourceAnchor(SourcedEntity fmx, String filename, IASTFileLocation anchor) {
+		IndexedFileAnchor fa = null;
+
+		if ( (fmx == null) || (anchor == null) ) {
+			return null;
+		}
+
+		// position in source file
+		int beg = anchor.getNodeOffset();
+		int end = beg + anchor.getNodeLength();
+
+		// create the Famix SourceAnchor
+		fa = new IndexedFileAnchor();
+		fa.setStartPos(beg);
+		fa.setEndPos(end);
+		fa.setFileName(filename);
+
+		fmx.setSourceAnchor(fa);
+		famixRepo.add(fa);
+
+		return fa;
 	}
 
 	public Namespace ensureNamespace(String name, ScopingEntity parent) {
@@ -187,43 +213,74 @@ public class CDictionaryDef extends Dictionary<String> {
 		return fmx;
 	}
 
-	public eu.synectique.verveine.core.gen.famix.Class createClass(String filename, ISourceRange anchor, String name, ContainerEntity parent) {
+	public eu.synectique.verveine.core.gen.famix.Class ensureClass(String filename, ISourceRange anchor, String name, ContainerEntity parent) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
 		fmx = super.ensureFamixClass(mkKey(filename, anchor), name, parent, /*persistIt*/true);
 		
 		return fmx;
 	}
 
-	public ParameterizableClass createParameterizableClass(String filename, ISourceRange anchor, String name, ContainerEntity parent) {
+	public eu.synectique.verveine.core.gen.famix.Class ensureClass(String filename, int startPos, String name, ContainerEntity parent) {
+		eu.synectique.verveine.core.gen.famix.Class fmx;
+		fmx = super.ensureFamixClass(mkKey(filename, startPos), name, parent, /*persistIt*/true);
+		
+		return fmx;
+	}
+
+	public ParameterizableClass ensureParameterizableClass(String filename, ISourceRange anchor, String name, ContainerEntity parent) {
 		ParameterizableClass fmx;
 		fmx = super.ensureFamixParameterizableClass(mkKey(filename, anchor), name, parent, /*persistIt*/true);
 		
 		return fmx;
 	}
 
-	public Function createFunction(String filename, ISourceRange anchor, String name, String sig, Type parent) {
+	public ParameterizableClass ensureParameterizableClass(String filename, int startPos, String name, ContainerEntity parent) {
+		ParameterizableClass fmx;
+		fmx = super.ensureFamixParameterizableClass(mkKey(filename, startPos), name, parent, /*persistIt*/true);
+		
+		return fmx;
+	}
+
+	public Function ensureFunction(String filename, ISourceRange anchor, String name, String sig, ContainerEntity parent) {
 		Function fmx;
 		fmx = super.ensureFamixFunction(mkKey(filename, anchor), name, sig, /*returnType*/null, parent, /*persistIt*/true);
 
 		return fmx;
 	}
 
-	public Method createMethod(String filename, ISourceRange anchor, String name, String sig, Type parent) {
+	public Function ensureFunction(String filename, int startPos, String name, String sig, ContainerEntity parent) {
+		Function fmx;
+		fmx = super.ensureFamixFunction(mkKey(filename, startPos), name, sig, /*returnType*/null, parent, /*persistIt*/true);
+
+		return fmx;
+	}
+
+	public Method ensureMethod(String filename, ISourceRange anchor, String name, String sig, Type parent) {
 		Method fmx;
 		fmx = super.ensureFamixMethod(mkKey(filename, anchor), name, sig, /*returnType*/null, parent, /*persistIt*/true);
 
 		return fmx;
 	}
 
-	public Attribute createAttribute(String filename, ISourceRange anchor, String name, Type parent) {
+	public Method ensureMethod(String filename, int startPos, String name, String sig, Type parent) {
+		Method fmx;
+		fmx = super.ensureFamixMethod(mkKey(filename, startPos), name, sig, /*returnType*/null, parent, /*persistIt*/true);
+
+		return fmx;
+	}
+
+	public Attribute ensureAttribute(String filename, ISourceRange anchor, String name, Type parent) {
 		Attribute fmx;
 		fmx = super.ensureFamixAttribute(mkKey(filename, anchor), name, /*type*/null, parent, /*persistIt*/true);
 
 		return fmx;
 	}
 
-	public boolean assertEmpty() {
-		return keyToEntity.isEmpty();
+	public Attribute ensureAttribute(String filename, int startPos, String name, Type parent) {
+		Attribute fmx;
+		fmx = super.ensureFamixAttribute(mkKey(filename, startPos), name, /*type*/null, parent, /*persistIt*/true);
+
+		return fmx;
 	}
 
 }

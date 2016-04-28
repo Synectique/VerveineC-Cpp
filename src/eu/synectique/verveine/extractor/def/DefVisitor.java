@@ -185,13 +185,13 @@ public class DefVisitor implements ICElementVisitor {
 			case ICElement.C_CLASS:
 			case ICElement.C_STRUCT_DECLARATION:
 			case ICElement.C_CLASS_DECLARATION:
-				fmx = dico.createClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());
+				fmx = dico.ensureClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());
 				break;
 			case ICElement.C_TEMPLATE_STRUCT:
 			case ICElement.C_TEMPLATE_CLASS:
 			case ICElement.C_TEMPLATE_STRUCT_DECLARATION:
 			case ICElement.C_TEMPLATE_CLASS_DECLARATION:
-				fmx = dico.createParameterizableClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());
+				fmx = dico.ensureParameterizableClass(currentFile, elt.getSourceRange(), elt.getElementName(), (ContainerEntity)context.top());
 				break;
 			}
 		}
@@ -223,7 +223,7 @@ public class DefVisitor implements ICElementVisitor {
 			case ICElement.C_METHOD:
 			case ICElement.C_TEMPLATE_METHOD_DECLARATION:
 			case ICElement.C_TEMPLATE_METHOD:
-				fmx = dico.createMethod(currentFile, elt.getSourceRange(), elt.getElementName(), elt.getSignature(), (Type)context.topType());
+				fmx = dico.ensureMethod(currentFile, elt.getSourceRange(), elt.getElementName(), elt.getSignature(), (Type)context.topType());
 				if ( ((IMethodDeclaration)elt).isConstructor() ) {
 					((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
 				}
@@ -235,7 +235,7 @@ public class DefVisitor implements ICElementVisitor {
 			case ICElement.C_FUNCTION:
 			case ICElement.C_TEMPLATE_FUNCTION:
 			case ICElement.C_TEMPLATE_FUNCTION_DECLARATION:
-				fmx = dico.createFunction(currentFile, elt.getSourceRange(), elt.getElementName(), elt.getSignature(), (Type)context.topType());
+				fmx = dico.ensureFunction(currentFile, elt.getSourceRange(), elt.getElementName(), elt.getSignature(), (Type)context.topType());
 				break;
 			}
 			
@@ -249,7 +249,7 @@ public class DefVisitor implements ICElementVisitor {
 	private void visit(IField elt) {
 		Attribute fmx;
 		try {
-			fmx = dico.createAttribute(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.topType());
+			fmx = dico.ensureAttribute(currentFile, elt.getSourceRange(), elt.getElementName(), (Type)context.topType());
 			fmx.setIsStub(false);
 			tracer.msg("created Field:"+fmx.getName());
 		} catch (CModelException e) {

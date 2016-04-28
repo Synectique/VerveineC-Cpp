@@ -1,28 +1,32 @@
 package eu.synectique.verveine.extractor.ref;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.index.IIndexBinding;
+import org.eclipse.cdt.core.model.ISourceRange;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
-import eu.synectique.verveine.core.gen.famix.Access;
-import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
-import eu.synectique.verveine.core.gen.famix.ImplicitVariable;
+import eu.synectique.verveine.core.gen.famix.ContainerEntity;
+import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.Package;
+import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
+import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourceAnchor;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
-import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 
-public class CDictionaryRef extends Dictionary<IBinding> {
+public class CDictionaryRef extends Dictionary<IIndexBinding> {
 
 	public CDictionaryRef(Repository famixRepo) {
 		super(famixRepo);
@@ -52,26 +56,15 @@ public class CDictionaryRef extends Dictionary<IBinding> {
 	/**
 	 * Debug method
 	 */
-	public IBinding findkeyfrommethodname(String name) {
-		IBinding key = null;
-		for (Map.Entry<IBinding,NamedEntity> ent :keyToEntity.entrySet()) {
+	public IIndexBinding findkeyfrommethodname(String name) {
+		IIndexBinding key = null;
+		for (Map.Entry<IIndexBinding,NamedEntity> ent :keyToEntity.entrySet()) {
 			if ( (ent.getValue() instanceof Method) && (name.endsWith(ent.getValue().getName()))) {
 				key = ent.getKey();
 				break;
 			}
 		}
 		return key;
-	}
-
-	public void remapEntityToKey(IBinding key, NamedEntity ent) {
-		super.mapEntityToKey(key, ent);
-	}
-
-	public void listKeyEntities() {
-		for (Map.Entry<IBinding,NamedEntity> ent : keyToEntity.entrySet()) {
-			System.err.println("CDictionaryRef key="+ent.getKey()+"/"+ent.getKey().hashCode()+"  val="+ent.getValue().getName());
-		}
-
 	}
 
 	/**
@@ -105,14 +98,95 @@ public class CDictionaryRef extends Dictionary<IBinding> {
 		return fa;
 	}
 
-	public eu.synectique.verveine.core.gen.famix.Class ensureClass(IBinding bnd, String name) {
+	public Namespace ensureNamespace(IIndexBinding key, String name, ScopingEntity parent) {
+		Namespace fmx = super.ensureFamixNamespace(key, name);
+		fmx.setIsStub(false);
+		fmx.setParentScope(parent);
+		return fmx;
+	}
+
+	public Package ensurePackage(String name, Package parent) {
+		Package fmx = super.ensureFamixEntity(Package.class, /*key*/null, name, /*persistIt*/true);
+		fmx.setIsStub(false);
+		fmx.setParentPackage(parent);
+		return fmx;
+	}
+
+	public eu.synectique.verveine.core.gen.famix.Class ensureClass(IIndexBinding key, String name, ContainerEntity owner) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
-		fmx = (Class) keyToEntity.get(bnd);
+		fmx = (Class) keyToEntity.get(key);
 		if (fmx == null) {
-			fmx = super.ensureFamixClass(bnd, name, /*owner*/null, /*persistIt*/true);
+			fmx = super.ensureFamixClass(key, name, owner, /*persistIt*/true);
 		}
 		
 		return fmx;
 	}
+
+	public ParameterizableClass ensureParameterizableClass(IIndexBinding key, String name, ContainerEntity owner) {
+		ParameterizableClass fmx;
+		fmx = (ParameterizableClass) keyToEntity.get(key);
+		if (fmx == null) {
+			fmx = super.ensureFamixParameterizableClass(key, name, owner, /*persistIt*/true);
+		}
+		
+		return fmx;
+	}
+
+	public Function ensureFunction(IIndexBinding key, String name, String sig, ContainerEntity parent) {
+		Function fmx;
+		fmx = super.ensureFamixFunction(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+
+		return fmx;
+	}
+
+	public Method ensureMethod(IIndexBinding key, String name, String sig, Type parent) {
+		Method fmx;
+		fmx = super.ensureFamixMethod(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+
+		return fmx;
+	}
+
+	public ScopingEntity resolveNamespaceManually(String name, NamedEntity context) {
+		Collection candidates;
+		ScopingEntity found = null;
+		
+		if (context == null) {
+			candidates = famixRepo.all(Namespace.class);
+		}
+		else {
+			candidates = ((ScopingEntity)context).getChildScopes();
+		}
+
+		for (ScopingEntity scope : (Collection<ScopingEntity>)candidates) {
+			if (scope.getName().equals(name)) {
+				found = scope;
+				break;
+			}
+		}
+
+		return found;
+	}
+
+	private BehaviouralEntity resolveBehaviouralManually(String name, String signature, NamedEntity context) {
+		Collection candidates = null;
+		BehaviouralEntity found = null;
+		
+		if (context == null) {
+			candidates = famixRepo.all(BehaviouralEntity.class);
+		}
+		else {
+			
+		}
+
+		for (ScopingEntity scope : (Collection<ScopingEntity>)candidates) {
+			if (scope.getName().equals(name)) {
+
+				break;
+			}
+		}
+
+		return found;
+	}
+
 
 }

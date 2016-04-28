@@ -20,6 +20,7 @@ import org.eclipse.cdt.core.model.ISourceRoot;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
+import eu.synectique.verveine.extractor.def.CDictionaryDef;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
@@ -41,7 +42,7 @@ public abstract class AbstractRefVisitor extends ASTVisitor implements ICElement
 	 */
 	protected String filename;
 
-	private IIndex index;
+	protected IIndex index;
 
 	public AbstractRefVisitor(CDictionaryRef dico, IIndex index) {
 		this(dico, index, /*visitNodes*/true);

@@ -62,7 +62,7 @@ public class VerveineCParser extends VerveineParser {
         ICProject project = createProject(DEFAULT_PROJECT_NAME, projectPath);  		// projPath set in setOptions()
         IIndexManager imanager = CCorePlugin.getIndexManager();
         //imanager.setIndexerId(project, "org.eclipse.cdt.core.fastIndexer");
-        imanager.reindex(project);
+        //imanager.reindex(project);
 
 		/*
 		 * Joining the indexer ensures it is done indexing the project (well, I believe this is what it does anyway)
@@ -72,19 +72,24 @@ public class VerveineCParser extends VerveineParser {
 		 * Don't ask me why, I have no clue !!!
 		 */
         imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
-		try {
-			this.index = imanager.getIndex(project);
-			this.index.acquireReadLock();
+
+        try {
+        	this.index = imanager.getIndex(project);
+        	while ( (! index.isFullyInitialized()) && (! imanager.isProjectIndexed(project)) && (! imanager.isIndexerIdle()) ) {
+        		System.err.println("index not ready");
+        	}
+    		Thread.sleep(2000); // waiting unconditionally because everything else failed !!!
+    		this.index.acquireReadLock();
 		} catch (CoreException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 
-        try {
+        //try {
         	System.out.println("step 2 / 3: creating structural entities");
         	dicoDef = new CDictionaryDef(getFamixRepo());
-			project.accept(new DefVisitor(dicoDef));
+			//project.accept(new DefVisitor(dicoDef));
 
 			System.out.println("step 3 / 3: creating references");
 			dicoRef = new CDictionaryRef(getFamixRepo());
@@ -93,16 +98,10 @@ public class VerveineCParser extends VerveineParser {
 			new MainRefVisitor(dicoDef, dicoRef, index).visit(project);
 			//dicoDef.sizes();
 			//dicoRef.sizes();
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
-       /* 
-        if (! dicoDef.assertEmpty()) {
-        	System.err.println("Possible problem: Def dictionnary was not emptied");
-           	dicoDef.listAll(eu.synectique.verveine.core.gen.famix.Class.class);
-           	dicoDef.listAll(Method.class);
-           	dicoDef.listAll(Attribute.class);
-        }*/
+		//} catch (CoreException e) {
+		//	e.printStackTrace();
+		//}
+ 
 	}
 
 	/**
