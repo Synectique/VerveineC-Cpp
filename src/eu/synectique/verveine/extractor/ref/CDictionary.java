@@ -153,8 +153,9 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		fmx = (Function) secureGetEntity(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixFunction(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+			fmx.setCyclomaticComplexity(1);
+			fmx.setNumberOfStatements(0);
 		}
-
 		return fmx;
 	}
 
@@ -163,6 +164,8 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		fmx = (Method) secureGetEntity(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixMethod(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+			fmx.setCyclomaticComplexity(1);
+			fmx.setNumberOfStatements(0);
 		}
 
 		return fmx;

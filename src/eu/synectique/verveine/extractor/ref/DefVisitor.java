@@ -194,7 +194,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	    	 (node instanceof IASTWhileStatement)			||
 	    	 (node instanceof ICPPASTRangeBasedForStatement)||
 	    	 (node instanceof ICPPASTTryBlockStatement)		)  {
-	    	context.setTopMethodCyclo( context.getTopMethodCyclo() + 1);
+	    	context.addTopMethodCyclo(1);
 	    }
 	    
 	    if ( (node instanceof IASTCaseStatement)	||
@@ -202,10 +202,10 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		     (node instanceof IASTDefaultStatement)	||
 		     (node instanceof IASTLabelStatement)	||
 		     (node instanceof IASTNullStatement)	) {
-	    	// nothing, I was too lazy to negate all the above boolean expressions :-)
+	    	// nothing to do, it's all in the else clause
 	    }
 	    else {
-	    	context.setTopMethodNOS( context.getTopMethodNOS() + 1);
+	    	context.addTopMethodNOS(1);
 	    }
 
 		return super.visit(node);
@@ -336,7 +336,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 		fmx.setIsStub(false);
 
-		this.context.push(fmx);
+		context.push(fmx);
 
 		return PROCESS_CONTINUE;
 	}
@@ -362,7 +362,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		 * Famix entity (which will be on the top of the context stack)
 		 */
 		this.visit(node.getDeclarator());
-		fmx = context.topMethod();
+		fmx = context.topMethod();    // TODO could be a function here ....
 		this.leave(node.getDeclarator());  // at least to popup the function/method from the context stack
 
 		if (fmx != null) {
@@ -370,9 +370,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			dico.addSourceAnchor(fmx, defLoc.getFileName(), defLoc);
 		}
 
-		// now visiting the children of the node
-		this.context.push(fmx);
+		// using pushMethod() introduces a difference in the handling of the metrics CYCLO/NOS
+		// this behaviour was inherited from VerveineJ and need to be refactored
+		this.context.pushMethod((Method) fmx);
 
+		// now visiting the children of the node
 		node.getDeclSpecifier().accept(this);
 
 		context.setLastAccess(null);
@@ -381,6 +383,16 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		context.setTopMethodCyclo(0);
 		context.setTopMethodNOS(0);
 		node.getBody().accept(this);
+
+		if (fmx != null) {
+			// don't remember exactly why it has to be that way
+			// this was inherited from VerveineJ and requires some refactoring ...
+			int cyclo = context.getTopMethodCyclo();
+			int nos = context.getTopMethodNOS();
+			fmx.setNumberOfStatements(nos);
+			fmx.setCyclomaticComplexity(cyclo);
+		}
+
 		this.context.pop();
 
 		return PROCESS_SKIP;  // we already visited the children

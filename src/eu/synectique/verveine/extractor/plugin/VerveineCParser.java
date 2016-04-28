@@ -31,6 +31,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
+import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.def.CDictionaryDef;
 import eu.synectique.verveine.extractor.ref.DefVisitor;
@@ -93,7 +94,6 @@ public class VerveineCParser extends VerveineParser {
 
         System.out.println("step 3 / 3: creating references");
         new RefVisitor(dico, index).visit(project);
-
 	}
 
 	/**
