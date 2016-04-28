@@ -29,12 +29,12 @@ import eu.synectique.verveine.extractor.utils.Tracer;
  * AST Visitor that defines all the (Famix) entities of interest
  * Famix entities are stored in a Map along with the IBindings to which they correspond
  */
-public abstract class AbstractRefVisitor extends ASTVisitor implements ICElementVisitor {
+public abstract class AbstractVisitor extends ASTVisitor implements ICElementVisitor {
 
 	/** 
 	 * A dictionary allowing to recover created FAMIX Entities
 	 */
-	protected CDictionaryRef dico;
+	protected CDictionary dico;
 
 	protected ITracer tracer = new NullTracer();  // no tracing by default
 
@@ -44,11 +44,11 @@ public abstract class AbstractRefVisitor extends ASTVisitor implements ICElement
 
 	protected IIndex index;
 
-	public AbstractRefVisitor(CDictionaryRef dico, IIndex index) {
+	public AbstractVisitor(CDictionary dico, IIndex index) {
 		this(dico, index, /*visitNodes*/true);
 	}
 
-	public AbstractRefVisitor(CDictionaryRef dico, IIndex index, boolean visitNodes) {
+	public AbstractVisitor(CDictionary dico, IIndex index, boolean visitNodes) {
 		super(visitNodes);
 	    /* fine-tuning if visitNodes=false
 	    shouldVisitDeclarations = true;
@@ -60,7 +60,7 @@ public abstract class AbstractRefVisitor extends ASTVisitor implements ICElement
 	    this.dico = dico;
 	}
 
-	protected AbstractRefVisitor(CDictionaryRef dico) {
+	protected AbstractVisitor(CDictionary dico) {
 		super(true);
 	    this.dico = dico;
 	}

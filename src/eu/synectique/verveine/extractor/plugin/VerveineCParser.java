@@ -35,9 +35,9 @@ import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.def.CDictionaryDef;
-import eu.synectique.verveine.extractor.def.DefVisitor;
-import eu.synectique.verveine.extractor.ref.CDictionaryRef;
-import eu.synectique.verveine.extractor.ref.MainRefVisitor;
+import eu.synectique.verveine.extractor.ref.DefVisitor;
+import eu.synectique.verveine.extractor.ref.RefVisitor;
+import eu.synectique.verveine.extractor.ref.CDictionary;
 
 public class VerveineCParser extends VerveineParser {
 
@@ -54,8 +54,8 @@ public class VerveineCParser extends VerveineParser {
 	private IIndex index;
 
 	public void parse() {
-		CDictionaryDef dicoDef = null;
-		CDictionaryRef dicoRef = null;
+		//CDictionaryDef dicoDef = null;
+		CDictionary dico = null;
 
 		System.out.println("step 1 / 3: indexing");
 
@@ -86,22 +86,13 @@ public class VerveineCParser extends VerveineParser {
 			e.printStackTrace();
 		}
 
-        //try {
-        	System.out.println("step 2 / 3: creating structural entities");
-        	dicoDef = new CDictionaryDef(getFamixRepo());
-			//project.accept(new DefVisitor(dicoDef));
+        System.out.println("step 2 / 3: creating structural entities");
+        dico = new CDictionary(getFamixRepo());
+        new DefVisitor(dico, index).visit(project);
 
-			System.out.println("step 3 / 3: creating references");
-			dicoRef = new CDictionaryRef(getFamixRepo());
-       		//dicoDef.sizes();
-       		//dicoRef.sizes();
-			new MainRefVisitor(dicoDef, dicoRef, index).visit(project);
-			//dicoDef.sizes();
-			//dicoRef.sizes();
-		//} catch (CoreException e) {
-		//	e.printStackTrace();
-		//}
- 
+        System.out.println("step 3 / 3: creating references");
+        new RefVisitor(dico, index).visit(project);
+
 	}
 
 	/**

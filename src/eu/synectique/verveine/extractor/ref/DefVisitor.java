@@ -1,86 +1,55 @@
 package eu.synectique.verveine.extractor.ref;
 
-import java.io.File;
-import java.io.RandomAccessFile;
-import java.util.HashSet;
-import java.util.Set;
-
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
-import org.eclipse.cdt.core.dom.ast.DOMException;
-import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
-import org.eclipse.cdt.core.dom.ast.IASTComment;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTExpression;
-import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTForStatement;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
-import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTIfStatement;
 import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
-import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNullStatement;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
-import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.dom.ast.IProblemBinding;
-import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
-import org.eclipse.cdt.core.index.IIndexName;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTTemplateDeclaration;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack2;
-import eu.synectique.verveine.core.gen.famix.Access;
-import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
-import eu.synectique.verveine.core.gen.famix.Function;
-import eu.synectique.verveine.core.gen.famix.Inheritance;
-import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
-import eu.synectique.verveine.core.gen.famix.Package;
-import eu.synectique.verveine.core.gen.famix.ScopingEntity;
-import eu.synectique.verveine.core.gen.famix.StructuralEntity;
-import eu.synectique.verveine.core.gen.famix.Type;
-import eu.synectique.verveine.extractor.def.CDictionaryDef;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 
-public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisitor {
+public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	/**
 	 * A stack that keeps the current definition context (package/class/method)
@@ -88,40 +57,24 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	protected EntityStack2 context;
 
 	/**
-	 * The source code of the visited AST.
-	 * Used to find back the contents of non-javadoc comments
-	 */
-	protected RandomAccessFile source;
-
-	/**
-	 * Whether a variable access is lhs (write) or not
-	 */
-	protected boolean inAssignmentLHS = false;
-
-	/**
 	 * The file directory being visited at any given time
 	 */
 	protected eu.synectique.verveine.core.gen.famix.Package currentPackage = null;
 
-	/**
-	 * Dictionary where entities were created in Def pass
-	 */
-	private CDictionaryDef dicoDef;
+	// CONSTRUCTOR ==========================================================================================================================
 
 	/**
-	 * Default constructor, dicoDef contains entities created during def pass
-	 * @param dicoDef contains entities created during def pass
-	 * @param dicoRef where entities are created during ref pass (the current pass)
+	 * Default constructor for definition pass
+	 * @param dico where entities are created
 	 * @param index CDT index containing bindings
 	 */
-	public MainRefVisitor(CDictionaryDef dicoDef, CDictionaryRef dicoRef, IIndex index) {
-		super(dicoRef, index, /*visitNodes*/true);
-		this.dicoDef = dicoDef;
+	public DefVisitor(CDictionary dico, IIndex index) {
+		super(dico, index, /*visitNodes*/true);
 
-		tracer = new Tracer("REF>");
+		tracer = new NullTracer("DEF>");
 	}
 
-	// VISITING METODS ON ICELEMENT HIERARCHY ======================================================================================================
+	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
 
 	/**
 	 * Visit an file directory. They are treated as Package
@@ -129,13 +82,12 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	@Override
 	public void visit(ICContainer elt) {
 		eu.synectique.verveine.core.gen.famix.Package fmx;
-//		fmx = (Package) dicoDef.resolveScopingEntity(elt.getElementName(), currentPackage);
-//		fmx = dico.ensurePackage(elt.getElementName(), currentPackage);
-//		fmx.setIsStub(false);
+		fmx = dico.ensurePackage(elt.getElementName(), currentPackage);
+		fmx.setIsStub(false);
 
-//		currentPackage = fmx;                        // kind of pushing new package on a virtual package stack
+		currentPackage = fmx;                        // kind of pushing new package on a virtual package stack
 		super.visit(elt);                            // visit container children
-//		currentPackage = fmx.getParentPackage();    // kind of popping out the new package from the package stack
+		currentPackage = fmx.getParentPackage();    // kind of popping out the new package from the package stack
 	}
 
 	/**
@@ -168,7 +120,10 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 			e.printStackTrace();
 		}
 		fmx = dico.ensureNamespace(bnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
-//		fmx = (Namespace) dicoDef.resolveScopingEntity(nodeName.getLastName().toString(), (Namespace)context.top());
+
+		if (bnd == null) {
+			return PROCESS_SKIP;
+		}
 
 		if (fmx != null) {
 			this.context.push(fmx);
@@ -211,8 +166,13 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 		return ASTVisitor.PROCESS_SKIP;
 	}
 
+	/**
+	 * Visiting a statement. Used to compute some metrics on the methods:
+	 * Cyclomatic Complexity and NumberOfStatements
+	 */
 	@Override
 	public int visit(IASTStatement node) {
+		// possible subtypes:
 		// IASTBreakStatement, IASTCaseStatement, IASTCompoundStatement, IASTContinueStatement, IASTDeclarationStatement, IASTDefaultStatement,
 		// IASTDoStatement, IASTExpressionStatement, IASTForStatement, IASTGotoStatement, IASTIfStatement, IASTLabelStatement, IASTNullStatement,
 		// IASTProblemStatement, IASTReturnStatement, IASTSwitchStatement, IASTWhileStatement, ICPPASTCatchHandler, ICPPASTCompoundStatement,
@@ -241,44 +201,6 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	    }
 
 		return super.visit(node);
-	}
-
-	@Override
-	public int visit(IASTExpression node) {
-		if (node instanceof IASTFieldReference) {
-			// can also be a method invocation
-			((IASTFieldReference)node).getFieldOwner().accept(this);
-			((IASTFieldReference) node).getFieldName().accept(this);
-			return ASTVisitor.PROCESS_SKIP;
-		}
-		else if (node instanceof IASTFunctionCallExpression) {
-			visit((IASTFunctionCallExpression)node);
-			return ASTVisitor.PROCESS_CONTINUE;  // should be SKIP because we already visited the FunctionNameExpression?
-		}
-		else if (node instanceof IASTIdExpression) {
-			referenceToName(((IASTIdExpression) node).getName());
-			return ASTVisitor.PROCESS_SKIP;
-		}
-		else if (node instanceof IASTBinaryExpression) {
-			visit((IASTBinaryExpression)node);   // to check whether this is an assignement
-			return ASTVisitor.PROCESS_SKIP;
-		}
-		else if (node instanceof IASTLiteralExpression) {
-			if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
-				if (context.topType() != null) {
-					accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topMethod(), /*persistIt*/true));
-				}
-			}
-			return ASTVisitor.PROCESS_SKIP;
-		}
-
-		return super.visit(node);
-	}
-
-	@Override
-	public int visit(IASTName node) {
-		referenceToName(((IASTName) node).getLastName());
-		return ASTVisitor.PROCESS_SKIP;
 	}
 
 
@@ -386,19 +308,22 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 			System.err.println("error getting index");
 			e.printStackTrace();
 		}
-//PDOMCPPMethod a;
+
 		if (bnd == null) {
 			return PROCESS_SKIP;
 		}
 
 		if (bnd instanceof ICPPMethod) {   // C++ method
-			fmx = dico.ensureMethod(bnd, nodeName.toString(), nodeName.toString()+"()", context.topType());
+			fmx = dico.ensureMethod(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/context.topType());
+			if ( ((ICPPMethod)bnd).isDestructor() ) {
+				((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
+			}
 			if (bnd instanceof ICPPConstructor) {
 				((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
 			}
 		}
 		else {                    //   C function ?
-			fmx = dico.ensureFunction(bnd, nodeName.toString(), nodeName.toString()+"()", (ContainerEntity)context.top());
+			fmx = dico.ensureFunction(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/(ContainerEntity)context.top());
 		}
 
 		fmx.setIsStub(false);
@@ -463,68 +388,42 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	@Override
 	protected int visit(ICPPASTDeclarator node) {
 		IASTName nodeName = null;
-		IASTFileLocation loc = null;
+		IIndexBinding bnd = null;
 		Attribute fmx = null;
 
 		if ( (node.getParent() instanceof IASTSimpleDeclaration) &&
 				(node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) ) {
 			// OK, it seems to be an Attribute declaration
 			nodeName = node.getName();
+
+			try {
+				bnd = index.findBinding(nodeName);
+			} catch (CoreException e) {
+				System.err.println("error getting index");
+				e.printStackTrace();
+			}
+
+			if (bnd == null) {
+				return PROCESS_SKIP;
+			}
+
+			fmx = dico.ensureAttribute(bnd, nodeName.toString(), context.topType());
+
+			fmx.setIsStub(false);
+
 			/*
 			 * For ICPPASTDeclarator, the location must be that of the parent, i.e. the declaration
 			 * For example, in "int a,b;" the declaration starts at "int" whereas there are 2 declarators: a and b
 			 */
-			loc = node.getParent().getFileLocation();
-			if ( (nodeName == null) || (loc == null) ) {
-				return PROCESS_CONTINUE;
-			}
-
-			fmx = dicoDef.ensureAttribute(loc.getFileName(), loc.getNodeOffset(), nodeName.toString(), context.topType());
-
-			fmx.setIsStub(false);
-			dico.addSourceAnchor(fmx, filename, loc);
+			dico.addSourceAnchor(fmx, filename, node.getParent().getFileLocation());
 		}
 
 		return PROCESS_CONTINUE;
 	}
 
-	public void visit(IASTFunctionCallExpression node) {
-/*		IASTName nodeName = null;
-		BehaviouralEntity fmx = null;
-		IBinding bnd;
-
-		nodeName = node.getFunctionNameExpression();
-		if (nodeName != null) {
-			bnd = nodeName.resolveBinding();
-			fmx = (Attribute) dico.getEntityByKey(bnd);
-			if (fmx != null) {
-				IASTImageLocation loc = nodeName.getImageLocation();
-				tracer.msg("IASTFunctionCallExpression to:"+fmx.getName()+" @ "+loc.getFileName()+"/"+loc.getStartingLineNumber());
-				lastExpr = fmx;
-			}
-		}*/
-	}
-
-	public void visit(IASTBinaryExpression node) {
-		Access prevAccess = context.getLastAccess();
-		node.getOperand1().accept(this);
-		switch (node.getOperator()) {
-		case IASTBinaryExpression.op_assign:
-		case IASTBinaryExpression.op_binaryAndAssign:
-		case IASTBinaryExpression.op_binaryOrAssign:
-		case IASTBinaryExpression.op_binaryXorAssign:
-		case IASTBinaryExpression.op_divideAssign:
-		case IASTBinaryExpression.op_minusAssign:
-		case IASTBinaryExpression.op_moduloAssign:
-		case IASTBinaryExpression.op_multiplyAssign:
-		case IASTBinaryExpression.op_plusAssign:
-		case IASTBinaryExpression.op_shiftLeftAssign:
-		case IASTBinaryExpression.op_shiftRightAssign:
-			if (context.getLastAccess() != prevAccess) {
-				context.getLastAccess().setIsWrite(true);
-			}
-		}
-		node.getOperand2().accept(this);
+	@Override
+	protected int leave(ICPPASTDeclarator node) {
+		return PROCESS_CONTINUE;
 	}
 
 	@Override
@@ -559,96 +458,24 @@ public class MainRefVisitor extends AbstractRefVisitor implements ICElementVisit
 	protected int leave(ICPPASTNamedTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
-	
+
 
 	// UTILITIES ==============================================================================================================================
 
-	/**
-	 * Records a reference to a name which can be a variable or behavioral name.
-	 * @param nodeName
-	 * @return the Access or Invocation created
-	 */
-	private Association referenceToName(IASTName nodeName) {
-		IBinding bnd;
-		NamedEntity fmx = null;
-
-		if (nodeName == null) {
-			return null;
-		}
-
-		bnd = nodeName.resolveBinding();
-		if (bnd == null) {
-			return null;
-		}
-
-		//fmx = dico.getEntityByKey(bnd);
-		if (fmx == null) {
-			return null;
-		}
-
-		if (fmx instanceof StructuralEntity) {
-			return accessToVar((StructuralEntity) fmx);
-		}
-		else if (fmx instanceof BehaviouralEntity) {
-			return invocationOfBehavioural((BehaviouralEntity) fmx);
-		}
-
-		return null;
-	}
-
-	/**
-	 * Records an Invocation of a famixBehaviouralEntity and sets lastInvocation attribute
-	 * @param fmx
-	 * @return the invocation created
-	 */
-	private Association invocationOfBehavioural(BehaviouralEntity fmx) {
-		BehaviouralEntity accessor = this.context.topMethod();
-		Invocation invok = dico.addFamixInvocation(accessor, (BehaviouralEntity) fmx, /*receiver*/null, /*signature*/null, context.getLastInvocation());
-		if (invok != null) {
-			context.setLastInvocation(invok);
-		}
-		return invok;
-	}
-
-	/**
-	 * Records an Access to a StructuralEntity and sets lastAccess attribute
-	 * @param fmx
-	 * @return the Access created
-	 */
-	private Association accessToVar(StructuralEntity fmx) {
-		BehaviouralEntity accessor;
-		// put false to isWrite by default, will be corrected in 
-		accessor = this.context.topMethod();
-		Access acc = dico.addFamixAccess(accessor, (StructuralEntity) fmx, /*isWrite*/false, context.getLastAccess());
-		if (acc != null) {
-			context.setLastAccess(acc);
-		}
-		return acc;
-	}
-
-	protected void tracename(IASTName name) {
-		if (name != null) {
-			tracer.msg("    -> '"+name.toString()+ "' " +(name.resolveBinding()!=null ?"is":"not") +" bound");
+	protected String formatMemberName(IASTName nodeName) {
+		String ret;
+		String fullname = nodeName.toString();
+		int i;
+		
+		i = fullname.lastIndexOf(':');
+		if (i > 0 ) {
+			ret = fullname.substring(i+1);
 		}
 		else {
-			tracer.msg("    -> null name");
+			ret = fullname;
 		}
-	}
 
-	protected void traceanchor(IASTFileLocation loc) {
-		if (loc != null) {
-			String filename = loc.getFileName();
-			filename = filename.substring(filename.lastIndexOf(File.separatorChar)+1);
-			tracer.msg("    -> fileanchor=<"+filename+","+loc.getNodeOffset()+">");
-		}
-		else {
-			tracer.msg("    -> fileanchor=<null>");
-		}
-	}
-
-	@Override
-	protected int leave(ICPPASTDeclarator node) {
-		return 0;
+		return ret;
 	}
 
 }

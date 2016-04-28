@@ -26,9 +26,11 @@ import eu.synectique.verveine.core.gen.famix.SourceAnchor;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 
-public class CDictionaryRef extends Dictionary<IIndexBinding> {
+public class CDictionary extends Dictionary<IIndexBinding> {
+	
+	public final static String DESTRUCTOR_KIND_MARKER = "destructor";
 
-	public CDictionaryRef(Repository famixRepo) {
+ 	public CDictionary(Repository famixRepo) {
 		super(famixRepo);
 	}
 
@@ -142,6 +144,13 @@ public class CDictionaryRef extends Dictionary<IIndexBinding> {
 	public Method ensureMethod(IIndexBinding key, String name, String sig, Type parent) {
 		Method fmx;
 		fmx = super.ensureFamixMethod(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+
+		return fmx;
+	}
+
+	public Attribute ensureAttribute(IIndexBinding key, String name, Type parent) {
+		Attribute fmx;
+		fmx = super.ensureFamixAttribute(key, name, /*type*/null, parent, /*persistIt*/true);
 
 		return fmx;
 	}
