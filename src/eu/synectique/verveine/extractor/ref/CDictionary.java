@@ -143,58 +143,22 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public Method ensureMethod(IIndexBinding key, String name, String sig, Type parent) {
 		Method fmx;
-		fmx = super.ensureFamixMethod(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+		fmx = (Method) keyToEntity.get(key);
+		if (fmx == null) {
+			fmx = super.ensureFamixMethod(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+		}
 
 		return fmx;
 	}
 
 	public Attribute ensureAttribute(IIndexBinding key, String name, Type parent) {
 		Attribute fmx;
-		fmx = super.ensureFamixAttribute(key, name, /*type*/null, parent, /*persistIt*/true);
+		fmx = (Attribute) keyToEntity.get(key);
+		if (fmx == null) {
+			fmx = super.ensureFamixAttribute(key, name, /*type*/null, parent, /*persistIt*/true);
+		}
 
 		return fmx;
-	}
-
-	public ScopingEntity resolveNamespaceManually(String name, NamedEntity context) {
-		Collection candidates;
-		ScopingEntity found = null;
-		
-		if (context == null) {
-			candidates = famixRepo.all(Namespace.class);
-		}
-		else {
-			candidates = ((ScopingEntity)context).getChildScopes();
-		}
-
-		for (ScopingEntity scope : (Collection<ScopingEntity>)candidates) {
-			if (scope.getName().equals(name)) {
-				found = scope;
-				break;
-			}
-		}
-
-		return found;
-	}
-
-	private BehaviouralEntity resolveBehaviouralManually(String name, String signature, NamedEntity context) {
-		Collection candidates = null;
-		BehaviouralEntity found = null;
-		
-		if (context == null) {
-			candidates = famixRepo.all(BehaviouralEntity.class);
-		}
-		else {
-			
-		}
-
-		for (ScopingEntity scope : (Collection<ScopingEntity>)candidates) {
-			if (scope.getName().equals(name)) {
-
-				break;
-			}
-		}
-
-		return found;
 	}
 
 
