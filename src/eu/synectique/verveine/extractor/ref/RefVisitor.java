@@ -188,19 +188,19 @@ public class RefVisitor extends AbstractVisitor implements ICElementVisitor {
 			// can also be a method invocation
 			((IASTFieldReference)node).getFieldOwner().accept(this);
 			((IASTFieldReference) node).getFieldName().accept(this);
-			return ASTVisitor.PROCESS_SKIP;
+			return PROCESS_SKIP;
 		}
 		else if (node instanceof IASTFunctionCallExpression) {
 			visit((IASTFunctionCallExpression)node);
-			return ASTVisitor.PROCESS_CONTINUE;  // should be SKIP because we already visited the FunctionNameExpression?
+			return PROCESS_CONTINUE;  // should be SKIP because we already visited the FunctionNameExpression?
 		}
 		else if (node instanceof IASTIdExpression) {
 			referenceToName(((IASTIdExpression) node).getName());
-			return ASTVisitor.PROCESS_SKIP;
+			return PROCESS_SKIP;
 		}
 		else if (node instanceof IASTBinaryExpression) {
 			visit((IASTBinaryExpression)node);   // to check whether this is an assignement
-			return ASTVisitor.PROCESS_SKIP;
+			return PROCESS_SKIP;
 		}
 		else if (node instanceof IASTLiteralExpression) {
 			if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
@@ -208,7 +208,7 @@ public class RefVisitor extends AbstractVisitor implements ICElementVisitor {
 					accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topMethod(), /*persistIt*/true));
 				}
 			}
-			return ASTVisitor.PROCESS_SKIP;
+			return PROCESS_SKIP;
 		}
 
 		return super.visit(node);
@@ -316,7 +316,7 @@ public class RefVisitor extends AbstractVisitor implements ICElementVisitor {
 		 */
 		this.visit(node.getDeclarator());
 
-		return ASTVisitor.PROCESS_SKIP;  // we already visited the children
+		return PROCESS_CONTINUE;  // we already visited the children
 	}
 
 	protected int leave(ICPPASTFunctionDefinition node) {

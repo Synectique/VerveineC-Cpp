@@ -43,8 +43,6 @@ public class VerveineCParser extends VerveineParser {
 
 	private static final String SOURCE_ROOT_DIR = "/" + DEFAULT_PROJECT_NAME;
 
-	private static final boolean HEADER_FILES = true;
-
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 
 	private String projectPath = "/home/anquetil/Documents/RMod/Tools/pluginzone/CodeExamples/simple/src";
@@ -86,7 +84,12 @@ public class VerveineCParser extends VerveineParser {
 
         System.out.println("step 2 / 3: creating structural entities");
         dico = new CDictionary(getFamixRepo());
-        new DefVisitor(dico, index).visit(project);
+        DefVisitor step2 = new DefVisitor(dico, index);
+        step2.setVisitHeaders(true);
+        step2.visit(project);
+        step2.setVisitHeaders(false);
+        step2.visit(project);
+        
 
         System.out.println("step 3 / 3: creating references");
         new RefVisitor(dico, index).visit(project);
@@ -102,8 +105,7 @@ public class VerveineCParser extends VerveineParser {
 	private ICProject createProject(String projName, String sourcePath) {
 		IProject project = createNewProject(projName);
 
-		copySourceFilesInProject(project, new File(sourcePath), /*headerFiles*/true);
-		copySourceFilesInProject(project, new File(sourcePath), /*headerFiles*/false);
+		copySourceFilesInProject(project, new File(sourcePath));
 		
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
 		try {
@@ -170,29 +172,28 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	/**
-<<<<<<< HEAD:src/eu/synectique/verveine/extractor/plugin/VerveineCParser.java
 	 * Copies all source files from src to the source directory of project
 	 * @param project -- project where to copy the file(s)
 	 * @param src -- A directory of file to copy to the project
 	 */
-	private void copySourceFilesInProject(IProject project, File src, boolean headerFiles) {
+	private void copySourceFilesInProject(IProject project, File src) {
 		if (src.isDirectory()) {
-			copySourceFilesRecursive(project, project.getFolder(SOURCE_ROOT_DIR), src, headerFiles);
+			copySourceFilesRecursive(project, project.getFolder(SOURCE_ROOT_DIR), src);
 		}
 		else if (isValidFileExtension(src.getName())) {
-			copyFile(project, project.getFolder(SOURCE_ROOT_DIR), src, headerFiles);
+			copyFile(project, project.getFolder(SOURCE_ROOT_DIR), src);
 		}
 		
 	}
 
-	private void copySourceFilesRecursive(IProject project, IFolder internalPath, File dir, boolean headerFiles) {
+	private void copySourceFilesRecursive(IProject project, IFolder internalPath, File dir) {
 
 		for (File child : dir.listFiles()) {
 			if (child.isDirectory()) {
-				copySourceFilesRecursive(project, internalPath.getFolder(child.getName()), child, headerFiles);
+				copySourceFilesRecursive(project, internalPath.getFolder(child.getName()), child);
 			}
-			else if (isValidFileExtension(child.getName())) {
-				copyFile(project, internalPath, child, headerFiles);
+			else {
+				copyFile(project, internalPath, child);
 			}
 		}
 	}
@@ -204,33 +205,22 @@ public class VerveineCParser extends VerveineParser {
 	 * @param orig -- file to copy in the project
 	 * @param dest -- path within the project where to put the file
 	 */
-	private void copyFile(IProject project, IFolder destPath, File orig, boolean headerFiles) {
-		if (checkHeader(orig, headerFiles)) {
-			if (! destPath.exists()) {
-				mkdirs(destPath);
-			}
-
-			try {
-				InputStream source = new ByteArrayInputStream( Files.readAllBytes(orig.toPath()) );
-				IFile file = destPath.getFile(orig.getName());
-
-				file.create(source, /*force*/true, NULL_PROGRESS_MONITOR);
-				file.refreshLocal(IResource.DEPTH_ZERO, NULL_PROGRESS_MONITOR);
-
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+	private void copyFile(IProject project, IFolder destPath, File orig) {
+		if (! destPath.exists()) {
+			mkdirs(destPath);
 		}
-	}
 
-	private boolean checkHeader(File orig, boolean headerFile) {
-		if (headerFile) {
-			return (orig.getName().indexOf(".h") >= 0);
-		}
-		else {
-			return (orig.getName().indexOf(".h") == -1);
+		try {
+			InputStream source = new ByteArrayInputStream( Files.readAllBytes(orig.toPath()) );
+			IFile file = destPath.getFile(orig.getName());
+
+			file.create(source, /*force*/true, NULL_PROGRESS_MONITOR);
+			file.refreshLocal(IResource.DEPTH_ZERO, NULL_PROGRESS_MONITOR);
+
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -292,6 +282,11 @@ public class VerveineCParser extends VerveineParser {
 				}
 			}
 		}
+
+		for ( ; i < args.length; i++) {
+			projectPath = args[i];
+		}
+
 	}
 
 	protected void usage() {

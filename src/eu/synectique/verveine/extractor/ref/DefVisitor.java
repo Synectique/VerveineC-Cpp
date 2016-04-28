@@ -101,10 +101,12 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	@Override
 	public void visit(ITranslationUnit tu) {
-		tracer.up("ITranslationUnit: "+tu.getElementName());
-		context = new EntityStack2();    // "reseting" context
-		super.visit(tu);
-		tracer.down();
+		if (checkHeader(tu)) {
+			tracer.up("ITranslationUnit: "+tu.getElementName());
+			context = new EntityStack2();    // "reseting" context
+			super.visit(tu);
+			tracer.down();
+		}
 	}
 
 
@@ -381,7 +383,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		node.getBody().accept(this);
 		this.context.pop();
 
-		return ASTVisitor.PROCESS_SKIP;  // we already visited the children
+		return PROCESS_SKIP;  // we already visited the children
 	}
 
 	protected int leave(ICPPASTFunctionDefinition node) {
@@ -485,12 +487,18 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	}
 
 
-	public boolean isVisitHeaders() {
-		return visitHeaders;
-	}
 
 	public void setVisitHeaders(boolean visitHeaders) {
 		this.visitHeaders = visitHeaders;
+	}
+
+	private boolean checkHeader(ITranslationUnit tu) {
+		if (visitHeaders) {
+			return (tu.getElementName().indexOf(".h") >= 0);
+		}
+		else {
+			return (tu.getElementName().indexOf(".h") == -1);
+		}
 	}
 
 }
