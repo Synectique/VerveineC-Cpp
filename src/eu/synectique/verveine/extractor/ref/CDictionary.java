@@ -3,6 +3,8 @@ package eu.synectique.verveine.extractor.ref;
 import java.util.Collection;
 import java.util.Map;
 
+import javax.lang.model.UnknownEntityException;
+
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.index.IIndexBinding;
@@ -25,6 +27,7 @@ import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourceAnchor;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 
 public class CDictionary extends Dictionary<IIndexBinding> {
 	
@@ -69,6 +72,15 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return key;
 	}
 
+	protected NamedEntity secureGetEntity(IIndexBinding key) {
+		if (key == null) {
+			return null;
+		}
+		else {
+			return keyToEntity.get(key);
+		}
+	}
+	
 	/**
 	 * Adds location information to a Famix Entity.
 	 * Location informations are: <b>name</b> of the source file and <b>position</b> in this file.
@@ -101,9 +113,11 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	}
 
 	public Namespace ensureNamespace(IIndexBinding key, String name, ScopingEntity parent) {
-		Namespace fmx = super.ensureFamixNamespace(key, name);
-		fmx.setIsStub(false);
-		fmx.setParentScope(parent);
+		Namespace fmx;
+		fmx = (Namespace) secureGetEntity(key);
+		if (fmx == null) {
+			super.ensureFamixNamespace(key, name);
+		}
 		return fmx;
 	}
 
@@ -116,7 +130,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public eu.synectique.verveine.core.gen.famix.Class ensureClass(IIndexBinding key, String name, ContainerEntity owner) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
-		fmx = (Class) keyToEntity.get(key);
+		fmx = (Class) secureGetEntity(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixClass(key, name, owner, /*persistIt*/true);
 		}
@@ -126,7 +140,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public ParameterizableClass ensureParameterizableClass(IIndexBinding key, String name, ContainerEntity owner) {
 		ParameterizableClass fmx;
-		fmx = (ParameterizableClass) keyToEntity.get(key);
+		fmx = (ParameterizableClass) secureGetEntity(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixParameterizableClass(key, name, owner, /*persistIt*/true);
 		}
@@ -136,14 +150,17 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public Function ensureFunction(IIndexBinding key, String name, String sig, ContainerEntity parent) {
 		Function fmx;
-		fmx = super.ensureFamixFunction(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+		fmx = (Function) secureGetEntity(key);
+		if (fmx == null) {
+			fmx = super.ensureFamixFunction(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+		}
 
 		return fmx;
 	}
 
 	public Method ensureMethod(IIndexBinding key, String name, String sig, Type parent) {
 		Method fmx;
-		fmx = (Method) keyToEntity.get(key);
+		fmx = (Method) secureGetEntity(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixMethod(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
 		}
@@ -153,11 +170,23 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public Attribute ensureAttribute(IIndexBinding key, String name, Type parent) {
 		Attribute fmx;
-		fmx = (Attribute) keyToEntity.get(key);
+		fmx = (Attribute) secureGetEntity(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixAttribute(key, name, /*type*/null, parent, /*persistIt*/true);
 		}
 
+		return fmx;
+	}
+
+	/**
+	 * Create an UnknownVariable. parent currently not used
+	 */
+	public UnknownVariable createFamixUnknownVariable(String name, NamedEntity parent) {
+		UnknownVariable fmx;
+		
+		fmx = ensureFamixEntity(UnknownVariable.class, /*key*/null, name, /*persistIt*/true);
+		fmx.setIsStub(true);
+		
 		return fmx;
 	}
 

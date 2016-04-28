@@ -1,40 +1,18 @@
 package eu.synectique.verveine.extractor.ref;
 
-import java.io.File;
 import java.io.RandomAccessFile;
-import java.util.HashSet;
-import java.util.Set;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
-import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
-import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
-import org.eclipse.cdt.core.dom.ast.IASTComment;
-import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
-import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
-import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
-import org.eclipse.cdt.core.dom.ast.IASTForStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
-import org.eclipse.cdt.core.dom.ast.IASTIfStatement;
-import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
-import org.eclipse.cdt.core.dom.ast.IASTNullStatement;
-import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTStatement;
-import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
-import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.dom.ast.IProblemBinding;
-import org.eclipse.cdt.core.dom.ast.IScope;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
@@ -42,50 +20,24 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
-import org.eclipse.cdt.core.index.IIndexName;
-import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTTemplateDeclaration;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack2;
 import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
-import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
-import eu.synectique.verveine.core.gen.famix.ContainerEntity;
-import eu.synectique.verveine.core.gen.famix.Function;
-import eu.synectique.verveine.core.gen.famix.Inheritance;
-import eu.synectique.verveine.core.gen.famix.Invocation;
-import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
-import eu.synectique.verveine.core.gen.famix.Package;
-import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
-import eu.synectique.verveine.core.gen.famix.Type;
-import eu.synectique.verveine.extractor.def.CDictionaryDef;
-import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 
-public class RefVisitor extends AbstractVisitor implements ICElementVisitor {
-
-	/**
-	 * A stack that keeps the current definition context (package/class/method)
-	 */
-	protected EntityStack2 context;
+public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	/**
 	 * The source code of the visited AST.
@@ -183,38 +135,6 @@ public class RefVisitor extends AbstractVisitor implements ICElementVisitor {
 	}
 
 	@Override
-	public int visit(IASTExpression node) {
-		if (node instanceof IASTFieldReference) {
-			// can also be a method invocation
-			((IASTFieldReference)node).getFieldOwner().accept(this);
-			((IASTFieldReference) node).getFieldName().accept(this);
-			return PROCESS_SKIP;
-		}
-		else if (node instanceof IASTFunctionCallExpression) {
-			visit((IASTFunctionCallExpression)node);
-			return PROCESS_CONTINUE;  // should be SKIP because we already visited the FunctionNameExpression?
-		}
-		else if (node instanceof IASTIdExpression) {
-			referenceToName(((IASTIdExpression) node).getName());
-			return PROCESS_SKIP;
-		}
-		else if (node instanceof IASTBinaryExpression) {
-			visit((IASTBinaryExpression)node);   // to check whether this is an assignement
-			return PROCESS_SKIP;
-		}
-		else if (node instanceof IASTLiteralExpression) {
-			if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
-				if (context.topType() != null) {
-					accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topMethod(), /*persistIt*/true));
-				}
-			}
-			return PROCESS_SKIP;
-		}
-
-		return super.visit(node);
-	}
-
-	@Override
 	public int visit(IASTName node) {
 		referenceToName(((IASTName) node).getLastName());
 		return ASTVisitor.PROCESS_SKIP;
@@ -222,6 +142,35 @@ public class RefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 
 	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
+
+	@Override
+	protected int visit(IASTFunctionCallExpression node) {
+		return new FunctionCallVisitor(dico, index, context).visit((IASTFunctionCallExpression)node);
+	}
+
+	@Override
+	protected int visit(IASTLiteralExpression node) {
+		if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
+			if (context.topType() != null) {
+				accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topMethod(), /*persistIt*/true));
+			}
+		}
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTFieldReference node) {
+		// can also be a method invocation
+		((IASTFieldReference)node).getFieldOwner().accept(this);
+		((IASTFieldReference) node).getFieldName().accept(this);
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTIdExpression node) {
+		referenceToName(((IASTIdExpression) node).getName());
+		return PROCESS_SKIP;
+	}
 
 	/** Visiting a class definition
 	 */
@@ -333,31 +282,6 @@ public class RefVisitor extends AbstractVisitor implements ICElementVisitor {
 		return PROCESS_CONTINUE;
 	}
 
-	/**
-	 * Creating FamixInvocation from a function call
-	 */
-	public int visit(IASTFunctionCallExpression node) {
-		IASTName nodeName = null;
-		BehaviouralEntity fmx = null;
-		IIndexBinding bnd = null;
-
-		if(node.getFunctionNameExpression().getChildren().length > 1)
-			nodeName = (IASTName) node.getFunctionNameExpression().getChildren()[1];
-		else
-			nodeName = (IASTName) node.getFunctionNameExpression().getChildren()[0];
-		try {
-			bnd = index.findBinding(nodeName);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
-		
-		if (bnd != null) {
-			fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
-		}
-
-		return PROCESS_CONTINUE;
-	}
-
 	public int visit(IASTBinaryExpression node) {
 		Access prevAccess = context.getLastAccess();
 		node.getOperand1().accept(this);
@@ -413,72 +337,6 @@ public class RefVisitor extends AbstractVisitor implements ICElementVisitor {
 	@Override
 	protected int leave(ICPPASTNamedTypeSpecifier node) {
 		return PROCESS_CONTINUE;
-	}
-	
-
-	// UTILITIES ==============================================================================================================================
-
-	/**
-	 * Records a reference to a name which can be a variable or behavioral name.
-	 * @param nodeName
-	 * @return the Access or Invocation created
-	 */
-	private Association referenceToName(IASTName nodeName) {
-		IBinding bnd;
-		NamedEntity fmx = null;
-
-		if (nodeName == null) {
-			return null;
-		}
-
-		bnd = nodeName.resolveBinding();
-		if (bnd == null) {
-			return null;
-		}
-
-		//fmx = dico.getEntityByKey(bnd);
-		if (fmx == null) {
-			return null;
-		}
-
-		if (fmx instanceof StructuralEntity) {
-			return accessToVar((StructuralEntity) fmx);
-		}
-		else if (fmx instanceof BehaviouralEntity) {
-			return invocationOfBehavioural((BehaviouralEntity) fmx);
-		}
-
-		return null;
-	}
-
-	/**
-	 * Records an Invocation of a famixBehaviouralEntity and sets lastInvocation attribute
-	 * @param fmx
-	 * @return the invocation created
-	 */
-	private Association invocationOfBehavioural(BehaviouralEntity fmx) {
-		BehaviouralEntity accessor = this.context.topMethod();
-		Invocation invok = dico.addFamixInvocation(accessor, (BehaviouralEntity) fmx, /*receiver*/null, /*signature*/null, context.getLastInvocation());
-		if (invok != null) {
-			context.setLastInvocation(invok);
-		}
-		return invok;
-	}
-
-	/**
-	 * Records an Access to a StructuralEntity and sets lastAccess attribute
-	 * @param fmx
-	 * @return the Access created
-	 */
-	private Association accessToVar(StructuralEntity fmx) {
-		BehaviouralEntity accessor;
-		// put false to isWrite by default, will be corrected in 
-		accessor = this.context.topMethod();
-		Access acc = dico.addFamixAccess(accessor, (StructuralEntity) fmx, /*isWrite*/false, context.getLastAccess());
-		if (acc != null) {
-			context.setLastAccess(acc);
-		}
-		return acc;
 	}
 
 }
