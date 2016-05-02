@@ -261,9 +261,12 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		 * visit declarator to ensure the method definition and to get the
 		 * Famix entity (which will be on the top of the context stack)
 		 */
-		this.visit(node.getDeclarator());
+		if (this.visit(node.getDeclarator()) == PROCESS_CONTINUE) {
+			node.getBody().accept(this);
+			this.leave(node.getDeclarator()); // to pop the method from the context if it is there
+		}
 
-		return PROCESS_CONTINUE;  // we already visited the children
+		return PROCESS_SKIP;  // we already visited the children
 	}
 
 	protected int leave(ICPPASTFunctionDefinition node) {
