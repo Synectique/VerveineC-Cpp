@@ -5,8 +5,11 @@ import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
+import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.core.runtime.CoreException;
@@ -67,6 +70,17 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		return super.visit(node);
 	}
 
+	@Override
+	public int visit(IASTInitializer node) {
+		if (node instanceof ICPPASTConstructorChainInitializer) {
+			return visit( (ICPPASTConstructorChainInitializer)node );
+		}
+		else if (node instanceof ICPPASTConstructorInitializer) {
+			return visit( (ICPPASTConstructorInitializer)node );
+		}
+		return super.visit(node);
+	}
+
 	// ADDITIONAL VISITING METODS ON AST =======================================================================================================
 
 	protected abstract int visit(IASTFunctionCallExpression node);
@@ -78,6 +92,10 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	protected abstract int visit(IASTFieldReference node);
 
 	protected abstract int visit(IASTIdExpression node);
+
+	protected abstract int visit(ICPPASTConstructorChainInitializer node);
+
+	protected abstract int visit(ICPPASTConstructorInitializer node);
 
 	// UTILITIES ==============================================================================================================================
 

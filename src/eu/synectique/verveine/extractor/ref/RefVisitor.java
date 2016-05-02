@@ -11,19 +11,27 @@ import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
+import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTConstructorChainInitializer;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTConstructorInitializer;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
@@ -143,35 +151,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
 
-	@Override
-	protected int visit(IASTFunctionCallExpression node) {
-		return new FunctionCallVisitor(dico, index, context).visit((IASTFunctionCallExpression)node);
-	}
-
-	@Override
-	protected int visit(IASTLiteralExpression node) {
-		if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
-			if (context.topType() != null) {
-				accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topMethod(), /*persistIt*/true));
-			}
-		}
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTFieldReference node) {
-		// can also be a method invocation
-		((IASTFieldReference)node).getFieldOwner().accept(this);
-		((IASTFieldReference) node).getFieldName().accept(this);
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTIdExpression node) {
-		referenceToName(((IASTIdExpression) node).getName());
-		return PROCESS_SKIP;
-	}
-
 	/** Visiting a class definition
 	 */
 	@Override
@@ -199,6 +178,16 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		if (fmx == null) {
 			return PROCESS_SKIP;
 		}
+		
+		// now looking for superclasses
+		for (ICPPBase baseClass : ((ICPPClassType)bnd).getBases()) {
+			IType mybaseClass = baseClass.getBaseClassType();
+			if(mybaseClass instanceof ICPPClassType) { //only this is resolved so we know that this class is non-stub
+				ICPPClassType classType = (ICPPClassType) mybaseClass;
+
+			}
+		}
+
 
 		this.context.push(fmx);
 
@@ -222,6 +211,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		IIndexBinding bnd = null;
 		BehaviouralEntity fmx = null;
 
+CPPASTConstructorInitializer b;
 		nodeName = node.getName();
 		tracer.msg("IASTFunctionDeclarator: "+nodeName);
 
@@ -280,6 +270,43 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	@Override
 	protected int leave(ICPPASTDeclarator node) {
 		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(ICPPASTConstructorChainInitializer node) {
+		return new FunctionCallVisitor(dico, index, context).visit(node);
+	}
+
+	protected int visit(ICPPASTConstructorInitializer node) {
+		return new FunctionCallVisitor(dico, index, context).visit(node);
+	}
+
+	@Override
+	protected int visit(IASTFunctionCallExpression node) {
+		return new FunctionCallVisitor(dico, index, context).visit((IASTFunctionCallExpression)node);
+	}
+
+	@Override
+	protected int visit(IASTLiteralExpression node) {
+		if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
+			if (context.topType() != null) {
+				accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topMethod(), /*persistIt*/true));
+			}
+		}
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTFieldReference node) {
+		// can also be a method invocation
+		((IASTFieldReference)node).getFieldOwner().accept(this);
+		((IASTFieldReference) node).getFieldName().accept(this);
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTIdExpression node) {
+		referenceToName(((IASTIdExpression) node).getName());
+		return PROCESS_SKIP;
 	}
 
 	public int visit(IASTBinaryExpression node) {

@@ -2,6 +2,7 @@ package eu.synectique.verveine.extractor.ref;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
+import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
@@ -10,13 +11,17 @@ import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTSimpleDeclaration;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
@@ -49,7 +54,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	// VISITING METODS ON AST ===============================================================================================================
 
 	/**
-	 * This should be the entry point for this visitor
+	 * This is one of entry points for this visitor
 	 */
 	public int visit(IASTFunctionCallExpression node) {
 		NamedEntity fmx = null;
@@ -81,6 +86,23 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 				}
 			}
 		}
+		return PROCESS_CONTINUE;
+	}
+
+	/**
+	 * Other entry point for this visitor
+	 */
+	protected int visit(ICPPASTConstructorChainInitializer node) {
+		return PROCESS_CONTINUE;
+	}
+
+
+	/**
+	 * Other entry point for this visitor
+	 */
+	protected int visit(ICPPASTConstructorInitializer node) {
+		 //IASTDeclSpecifier typ = ((IASTSimpleDeclaration)(node.getParent().getParent())).getDeclSpecifier() ;
+
 		return PROCESS_CONTINUE;
 	}
 
