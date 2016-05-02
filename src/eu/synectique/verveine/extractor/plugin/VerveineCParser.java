@@ -8,8 +8,6 @@ import java.nio.file.Files;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.core.index.IIndexChangeEvent;
-import org.eclipse.cdt.core.index.IIndexChangeListener;
 import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
@@ -31,12 +29,10 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
-import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
-import eu.synectique.verveine.extractor.def.CDictionaryDef;
-import eu.synectique.verveine.extractor.ref.DefVisitor;
-import eu.synectique.verveine.extractor.ref.RefVisitor;
-import eu.synectique.verveine.extractor.ref.CDictionary;
+import eu.synectique.verveine.extractor.visitors.DefVisitor;
+import eu.synectique.verveine.extractor.visitors.ref.CDictionary;
+import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class VerveineCParser extends VerveineParser {
 

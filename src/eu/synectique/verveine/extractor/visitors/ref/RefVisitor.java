@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.ref;
+package eu.synectique.verveine.extractor.visitors.ref;
 
 import java.io.RandomAccessFile;
 
@@ -6,12 +6,10 @@ import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
-import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IType;
@@ -30,8 +28,6 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTConstructorChainInitializer;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTConstructorInitializer;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
@@ -39,7 +35,7 @@ import eu.synectique.verveine.core.EntityStack2;
 import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
-import eu.synectique.verveine.core.gen.famix.Class;
+import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
@@ -157,7 +153,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
 		IASTName nodeName;
 		IIndexBinding bnd = null;
-		Class fmx;
+		eu.synectique.verveine.core.gen.famix.Class fmx;
 
 		nodeName = node.getName();
 		tracer.up("ICPPASTCompositeTypeSpecifier:"+nodeName.toString());
@@ -173,21 +169,29 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 			return PROCESS_SKIP;
 		}
 
-		fmx = (Class) dico.getEntityByKey(bnd);
+		fmx = (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey(bnd);
 
 		if (fmx == null) {
 			return PROCESS_SKIP;
 		}
 		
 		// now looking for superclasses
+		Inheritance lastInheritance = null;
 		for (ICPPBase baseClass : ((ICPPClassType)bnd).getBases()) {
-			IType mybaseClass = baseClass.getBaseClassType();
-			if(mybaseClass instanceof ICPPClassType) { //only this is resolved so we know that this class is non-stub
-				ICPPClassType classType = (ICPPClassType) mybaseClass;
+			eu.synectique.verveine.core.gen.famix.Class supFmx = null;
+			IType supBnd = baseClass.getBaseClassType();
 
+			if(supBnd instanceof IIndexBinding) {
+				supFmx =  (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey((IIndexBinding) supBnd);
+			}
+			if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
+				// create a stub class
+				supFmx = dico.ensureClass(/*key*/null, /*name*/node.getBaseSpecifiers()[0].getNameSpecifier().toString(), /*owner*/null);
+			}
+			if (supFmx != null) {
+					lastInheritance = dico.ensureFamixInheritance(supFmx, fmx, lastInheritance);
 			}
 		}
-
 
 		this.context.push(fmx);
 
@@ -211,7 +215,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		IIndexBinding bnd = null;
 		BehaviouralEntity fmx = null;
 
-CPPASTConstructorInitializer b;
 		nodeName = node.getName();
 		tracer.msg("IASTFunctionDeclarator: "+nodeName);
 
@@ -247,8 +250,6 @@ CPPASTConstructorInitializer b;
 	 * Visiting a method or function definition
 	 */
 	protected int visit(ICPPASTFunctionDefinition node) {
-		BehaviouralEntity fmx = null;
-
 		/*
 		 * visit declarator to ensure the method definition and to get the
 		 * Famix entity (which will be on the top of the context stack)

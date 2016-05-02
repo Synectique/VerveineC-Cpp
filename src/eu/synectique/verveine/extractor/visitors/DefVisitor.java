@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.ref;
+package eu.synectique.verveine.extractor.visitors;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
@@ -48,6 +48,7 @@ import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.visitors.ref.CDictionary;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
@@ -387,8 +388,13 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		if (fmx != null) {
 			// don't remember exactly why it has to be that way
 			// this was inherited from VerveineJ and requires some refactoring ...
-			int cyclo = context.getTopMethodCyclo();
 			int nos = context.getTopMethodNOS();
+			int cyclo = context.getTopMethodCyclo();
+			if (nos > 1) {
+				// if there are statements, cyclomatic complexity is off by 1
+				// because it started at 0 instead of 1
+				cyclo++;
+			}
 			fmx.setNumberOfStatements(nos);
 			fmx.setCyclomaticComplexity(cyclo);
 		}
@@ -497,8 +503,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 		return ret;
 	}
-
-
 
 	public void setVisitHeaders(boolean visitHeaders) {
 		this.visitHeaders = visitHeaders;

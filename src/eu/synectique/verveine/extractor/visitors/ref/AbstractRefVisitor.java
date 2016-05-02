@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.ref;
+package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
@@ -21,6 +21,7 @@ import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
+import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
 public abstract class AbstractRefVisitor extends AbstractVisitor {
 

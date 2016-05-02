@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.ref;
+package eu.synectique.verveine.extractor.visitors.ref;
 
 import java.util.Collection;
 import java.util.Map;
