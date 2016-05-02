@@ -1,15 +1,6 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
-import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
-import org.eclipse.cdt.core.dom.ast.IASTExpression;
-import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
-import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
-import org.eclipse.cdt.core.dom.ast.IASTInitializer;
-import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.core.runtime.CoreException;
@@ -32,6 +23,10 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 */
 	protected EntityStack2 context;
 
+	public AbstractRefVisitor(CDictionary dico) {
+		super(dico);
+	}
+
 	public AbstractRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
 	}
@@ -40,63 +35,10 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		super(dico, index, visitNodes);
 	}
 
-	public AbstractRefVisitor(CDictionary dico) {
-		super(dico);
+	public AbstractRefVisitor(CDictionary dico, IIndex index, EntityStack2 context, boolean visitNodes) {
+		super(dico, index, visitNodes);
+		this.context = context;
 	}
-
-
-	// CDT VISITING METODS ON AST ==========================================================================================================
-
-	/*
-	 * Dispatches according to the actual type of the Expression
-	 */
-	@Override
-	public int visit(IASTExpression node) {
-		if (node instanceof IASTFieldReference) {
-			return visit((IASTFieldReference)node);
-		}
-		else if (node instanceof IASTIdExpression) {
-			return visit((IASTIdExpression)node);
-		}
-		else if (node instanceof IASTFunctionCallExpression) {
-			return visit((IASTFunctionCallExpression)node);
-		}
-		else if (node instanceof IASTBinaryExpression) {
-			return visit((IASTBinaryExpression)node);   // to check whether this is an assignement
-		}
-		else if (node instanceof IASTLiteralExpression) {
-			return visit((IASTLiteralExpression)node);
-		}
-
-		return super.visit(node);
-	}
-
-	@Override
-	public int visit(IASTInitializer node) {
-		if (node instanceof ICPPASTConstructorChainInitializer) {
-			return visit( (ICPPASTConstructorChainInitializer)node );
-		}
-		else if (node instanceof ICPPASTConstructorInitializer) {
-			return visit( (ICPPASTConstructorInitializer)node );
-		}
-		return super.visit(node);
-	}
-
-	// ADDITIONAL VISITING METODS ON AST =======================================================================================================
-
-	protected abstract int visit(IASTFunctionCallExpression node);
-
-	protected abstract int visit(IASTBinaryExpression node);
-
-	protected abstract int visit(IASTLiteralExpression node);
-
-	protected abstract int visit(IASTFieldReference node);
-
-	protected abstract int visit(IASTIdExpression node);
-
-	protected abstract int visit(ICPPASTConstructorChainInitializer node);
-
-	protected abstract int visit(ICPPASTConstructorInitializer node);
 
 	// UTILITIES ==============================================================================================================================
 

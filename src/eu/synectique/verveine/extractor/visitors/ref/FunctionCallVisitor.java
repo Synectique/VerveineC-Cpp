@@ -8,6 +8,8 @@ import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitName;
+import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
@@ -21,6 +23,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTDeclarator;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTSimpleDeclaration;
 import org.eclipse.core.runtime.CoreException;
 
@@ -30,6 +33,7 @@ import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class FunctionCallVisitor extends AbstractRefVisitor {
@@ -43,11 +47,9 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	// CONSTRUCTOR ==========================================================================================================================
 
 	public FunctionCallVisitor(CDictionary dico, IIndex index, EntityStack2 context) {
-		super(dico, index, /*visitNodes*/true);
+		super(dico, index, context, /*visitNodes*/true);
 
-		this.context = context;
-
-		tracer = new Tracer("FCV>");
+		tracer = new NullTracer("FCV>");
 	}
 
 
@@ -80,10 +82,9 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 			
 			if (fmx != null) {
 				if (! (fmx instanceof BehaviouralEntity) ) {
-					fmx = dico.ensureMethod(/*key*/null, fmx.getName(), fmx.getName()+"(...)", priorType);
-					fmx.setIsStub(true);
-					invocationOfBehavioural((BehaviouralEntity) fmx);
+					fmx = dico.ensureFamixMethod(/*key*/null, fmx.getName(), fmx.getName()+"(...)", priorType);
 				}
+				invocationOfBehavioural((BehaviouralEntity) fmx);
 			}
 		}
 		return PROCESS_CONTINUE;
@@ -93,7 +94,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	 * Other entry point for this visitor
 	 */
 	protected int visit(ICPPASTConstructorChainInitializer node) {
-		return PROCESS_CONTINUE;
+		return PROCESS_SKIP;
 	}
 
 
@@ -101,7 +102,34 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	 * Other entry point for this visitor
 	 */
 	protected int visit(ICPPASTConstructorInitializer node) {
-		 //IASTDeclSpecifier typ = ((IASTSimpleDeclaration)(node.getParent().getParent())).getDeclSpecifier() ;
+		IASTImplicitNameOwner parent = (IASTImplicitNameOwner)node.getParent() ;
+		NamedEntity fmx = null;
+
+		for (IASTImplicitName candidate : parent.getImplicitNames()) {
+			IIndexBinding bnd = null; 
+
+			try {
+				bnd = index.findBinding( candidate );
+			} catch (CoreException e) {
+				e.printStackTrace();
+			}
+
+			if (bnd != null) {
+				fmx = dico.getEntityByKey(bnd);
+			}
+			
+			if (fmx != null) {
+				if (fmx instanceof BehaviouralEntity) {
+					break;  // we found one method matching the implicit constructor. We are happy for now.
+				}
+			}
+		}
+
+		if (fmx == null) {
+			String mthName = ((ICPPASTDeclarator)parent).getName().toString();
+			fmx = dico.ensureFamixMethod(/*key*/null, mthName, ((ICPPASTDeclarator)parent).getName()+"(...)", priorType);
+		}
+		invocationOfBehavioural((BehaviouralEntity) fmx);
 
 		return PROCESS_CONTINUE;
 	}

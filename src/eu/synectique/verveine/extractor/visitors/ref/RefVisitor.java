@@ -12,6 +12,7 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
@@ -22,6 +23,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.index.IIndex;
@@ -139,6 +141,11 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	}
 
 	@Override
+	public int visit(IASTParameterDeclaration node) {
+		return new ParamDeclVisitor(dico, index, context).visit(node);
+	}
+
+	@Override
 	public int visit(IASTName node) {
 		referenceToName(((IASTName) node).getLastName());
 		return ASTVisitor.PROCESS_SKIP;
@@ -186,7 +193,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 			}
 			if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
 				// create a stub class
-				supFmx = dico.ensureClass(/*key*/null, /*name*/node.getBaseSpecifiers()[0].getNameSpecifier().toString(), /*owner*/null);
+				supFmx = dico.ensureFamixClass(/*key*/null, /*name*/node.getBaseSpecifiers()[0].getNameSpecifier().toString(), /*owner*/null);
 			}
 			if (supFmx != null) {
 					lastInheritance = dico.ensureFamixInheritance(supFmx, fmx, lastInheritance);
@@ -263,16 +270,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return this.leave(node.getDeclarator());
 	}
 
-	@Override
-	protected int visit(ICPPASTDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(ICPPASTDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
 	protected int visit(ICPPASTConstructorChainInitializer node) {
 		return new FunctionCallVisitor(dico, index, context).visit(node);
 	}
@@ -331,39 +328,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 		node.getOperand2().accept(this);
 		
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int visit(ICASTCompositeTypeSpecifier node) {
-//		tracer.msg("    -> ICASTCompositeTypeSpecifier");
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(ICASTCompositeTypeSpecifier node) {
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int visit(IASTEnumerationSpecifier node) {
-//		tracer.msg("    -> IASTEnumerationSpecifier");
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(IASTEnumerationSpecifier node) {
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int visit(ICPPASTNamedTypeSpecifier node) {
-//		tracer.msg("    -> ICPPASTNamedTypeSpecifier");
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(ICPPASTNamedTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 

@@ -1,19 +1,13 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
-import java.util.Collection;
 import java.util.Map;
 
-import javax.lang.model.UnknownEntityException;
-
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
-import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.index.IIndexBinding;
-import org.eclipse.cdt.core.model.ISourceRange;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Attribute;
-import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Function;
@@ -22,6 +16,7 @@ import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Package;
+import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourceAnchor;
@@ -112,7 +107,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fa;
 	}
 
-	public Namespace ensureNamespace(IIndexBinding key, String name, ScopingEntity parent) {
+	public Namespace ensureFamixNamespace(IIndexBinding key, String name, ScopingEntity parent) {
 		Namespace fmx;
 		fmx = (Namespace) secureGetEntity(key);
 		if (fmx == null) {
@@ -121,14 +116,14 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public Package ensurePackage(String name, Package parent) {
+	public Package ensureFamixPackage(String name, Package parent) {
 		Package fmx = super.ensureFamixEntity(Package.class, /*key*/null, name, /*persistIt*/true);
 		fmx.setIsStub(false);
 		fmx.setParentPackage(parent);
 		return fmx;
 	}
 
-	public eu.synectique.verveine.core.gen.famix.Class ensureClass(IIndexBinding key, String name, ContainerEntity owner) {
+	public eu.synectique.verveine.core.gen.famix.Class ensureFamixClass(IIndexBinding key, String name, ContainerEntity owner) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
 		fmx = (Class) secureGetEntity(key);
 		if (fmx == null) {
@@ -138,7 +133,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public ParameterizableClass ensureParameterizableClass(IIndexBinding key, String name, ContainerEntity owner) {
+	public ParameterizableClass ensureFamixParameterizableClass(IIndexBinding key, String name, ContainerEntity owner) {
 		ParameterizableClass fmx;
 		fmx = (ParameterizableClass) secureGetEntity(key);
 		if (fmx == null) {
@@ -148,7 +143,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public Function ensureFunction(IIndexBinding key, String name, String sig, ContainerEntity parent) {
+	public Function ensureFamixFunction(IIndexBinding key, String name, String sig, ContainerEntity parent) {
 		Function fmx;
 		fmx = (Function) secureGetEntity(key);
 		if (fmx == null) {
@@ -159,7 +154,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public Method ensureMethod(IIndexBinding key, String name, String sig, Type parent) {
+	public Method ensureFamixMethod(IIndexBinding key, String name, String sig, Type parent) {
 		Method fmx;
 		fmx = (Method) secureGetEntity(key);
 		if (fmx == null) {
@@ -171,11 +166,34 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public Attribute ensureAttribute(IIndexBinding key, String name, Type parent) {
+	public Attribute ensureFamixAttribute(IIndexBinding key, String name, Type parent) {
 		Attribute fmx;
 		fmx = (Attribute) secureGetEntity(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixAttribute(key, name, /*type*/null, parent, /*persistIt*/true);
+		}
+
+		return fmx;
+	}
+
+	/**
+	 * Returns a Famix Parameter associated with the IIndexBinding.
+	 * The Entity is created if it does not exist.<br>
+	 * Params: see {@link Dictionary#ensureFamixParameter(Object, String, Type, eu.synectique.verveine.core.gen.famix.BehaviouralEntity, boolean)}.
+	 * @param persistIt -- whether to persist or not the entity eventually created
+	 * @return the Famix Entity found or created. May return null if "bnd" is null or in case of a Famix error
+	 */
+	public Parameter ensureFamixParameter(IIndexBinding bnd, String name, Method owner) {
+		Parameter fmx = null;
+
+		// --------------- to avoid useless computations if we can
+		fmx = (Parameter)getEntityByKey(bnd);
+		if (fmx != null) {
+			return fmx;
+		}
+
+		if (fmx == null) {
+			fmx = super.createFamixParameter(bnd, name, /*type*/null, owner, /*persistIt*/true);
 		}
 
 		return fmx;

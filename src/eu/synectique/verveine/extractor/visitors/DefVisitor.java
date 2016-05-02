@@ -5,9 +5,9 @@ import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
-import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTForStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
@@ -19,11 +19,9 @@ import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
-import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
@@ -46,7 +44,7 @@ import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
-import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.ref.CDictionary;
 
@@ -78,7 +76,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	public DefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index, /*visitNodes*/true);
 
-		tracer = new NullTracer("DEF>");
+		tracer = new Tracer("DEF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
@@ -89,7 +87,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	@Override
 	public void visit(ICContainer elt) {
 		eu.synectique.verveine.core.gen.famix.Package fmx;
-		fmx = dico.ensurePackage(elt.getElementName(), currentPackage);
+		fmx = dico.ensureFamixPackage(elt.getElementName(), currentPackage);
 		fmx.setIsStub(false);
 
 		currentPackage = fmx;                        // kind of pushing new package on a virtual package stack
@@ -128,7 +126,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		catch (CoreException e) {
 			e.printStackTrace();
 		}
-		fmx = dico.ensureNamespace(bnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
+		fmx = dico.ensureFamixNamespace(bnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
 
 		if (bnd == null) {
 			return PROCESS_SKIP;
@@ -150,8 +148,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	@Override
 	public int visit(IASTDeclaration node) {
-		// includes CPPASTVisibilityLabel
-//		tracer.msg("IASTDeclaration");
 		if (node instanceof ICPPASTFunctionDefinition) {
 			return visit((ICPPASTFunctionDefinition)node);
 		}
@@ -166,12 +162,29 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		return super.leave(node);
 	}
 
+	/**
+	 * Visiting a function Parameter. Only creates the FamixParameter
+	 */
 	@Override
 	public int visit(IASTParameterDeclaration node) {
-/*		tracer.msg("IASTParameterDeclaration: ");
-		if (context.topMethod() != null) {
-			node.accept( new ParamDeclVisitor(dico, context.topMethod()) );
-		}*/
+		IASTDeclarator nodeParam = node.getDeclarator();
+		IASTName nodeName = nodeParam.getName();
+		IIndexBinding bnd = null;
+		Parameter fmx;
+
+		try {
+			bnd = index.findBinding(nodeName);
+		} catch (CoreException e) {
+			System.err.println("error getting index");
+			e.printStackTrace();
+		}
+
+		fmx = dico.ensureFamixParameter(bnd, nodeName.toString(), context.topMethod());
+
+		fmx.setIsStub(false);
+
+		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
+
 		return ASTVisitor.PROCESS_SKIP;
 	}
 
@@ -246,10 +259,10 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		}
 
 		if (isTemplate) {
-			fmx = dico.ensureParameterizableClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
+			fmx = dico.ensureFamixParameterizableClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
 		}
 		else {
-			fmx = dico.ensureClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
+			fmx = dico.ensureFamixClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
 		}
 
 		if (fmx == null) {
@@ -323,7 +336,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		}
 
 		if (bnd instanceof ICPPMethod) {   // C++ method
-			fmx = dico.ensureMethod(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/context.topType());
+			fmx = dico.ensureFamixMethod(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/context.topType());
 			if ( ((ICPPMethod)bnd).isDestructor() ) {
 				((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
 			}
@@ -332,7 +345,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			}
 		}
 		else {                    //   C function ?
-			fmx = dico.ensureFunction(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/(ContainerEntity)context.top());
+			fmx = dico.ensureFamixFunction(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/(ContainerEntity)context.top());
 		}
 
 		fmx.setIsStub(false);
@@ -409,7 +422,8 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	}
 
 	/**
-	 * Visiting an attribute or function declaration
+	 * Visiting an attribute or function declaration.
+	 * In the AST it could also be a function parameter, but this is treated in {@link #visit(IASTParameterDeclaration)}}
 	 */
 	@Override
 	protected int visit(ICPPASTDeclarator node) {
@@ -433,7 +447,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 				return PROCESS_SKIP;
 			}
 
-			fmx = dico.ensureAttribute(bnd, nodeName.toString(), context.topType());
+			fmx = dico.ensureFamixAttribute(bnd, nodeName.toString(), context.topType());
 
 			fmx.setIsStub(false);
 
@@ -444,44 +458,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			dico.addSourceAnchor(fmx, filename, node.getParent().getFileLocation());
 		}
 
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(ICPPASTDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int visit(ICASTCompositeTypeSpecifier node) {
-//		tracer.msg("    -> ICASTCompositeTypeSpecifier");
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(ICASTCompositeTypeSpecifier node) {
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int visit(IASTEnumerationSpecifier node) {
-//		tracer.msg("    -> IASTEnumerationSpecifier");
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(IASTEnumerationSpecifier node) {
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int visit(ICPPASTNamedTypeSpecifier node) {
-//		tracer.msg("    -> ICPPASTNamedTypeSpecifier");
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(ICPPASTNamedTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 

@@ -1,12 +1,22 @@
 package eu.synectique.verveine.extractor.visitors;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
+import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTExpression;
+import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
+import org.eclipse.cdt.core.dom.ast.IASTInitializer;
+import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
+import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
@@ -24,8 +34,9 @@ import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.ref.CDictionary;
 
 /**
- * AST Visitor that defines all the (Famix) entities of interest
- * Famix entities are stored in a Map along with the IBindings to which they correspond
+ * The superclass of all visitors. These visitors visit an AST to create FAMIX entities.
+ * This visitor merges visit methods on AST (ASTVisitor) and visit methods on ICElements (ICElementVisitor)
+ * Another of its important task is to dispatch more finely the visits than what CDT normally do  
  */
 public abstract class AbstractVisitor extends ASTVisitor implements ICElementVisitor {
 
@@ -41,6 +52,13 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	protected String filename;
 
 	protected IIndex index;
+
+	// CONSTRUCTOR ==========================================================================================================================
+
+	protected AbstractVisitor(CDictionary dico) {
+		this(dico, /*index*/null, /*visitNodes*/true);
+	    this.dico = dico;
+	}
 
 	public AbstractVisitor(CDictionary dico, IIndex index) {
 		this(dico, index, /*visitNodes*/true);
@@ -58,12 +76,10 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	    this.dico = dico;
 	}
 
-	protected AbstractVisitor(CDictionary dico) {
-		super(true);
-	    this.dico = dico;
-	}
-
 	// VISITING METODS ON ICELEMENT HIERARCHY ======================================================================================================
+
+
+	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
 
 	@Override
 	public boolean visit(ICElement elt) {
@@ -100,6 +116,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ tu.getElementName() );
 		}
 	}
+
 
 
 	// CDT VISITING METODS ON AST ==========================================================================================================
@@ -177,31 +194,129 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		return super.leave(node);
 	}
 
+
+	@Override
+	public int visit(IASTInitializer node) {
+		if (node instanceof ICPPASTConstructorChainInitializer) {
+			return visit( (ICPPASTConstructorChainInitializer)node );
+		}
+		else if (node instanceof ICPPASTConstructorInitializer) {
+			return visit( (ICPPASTConstructorInitializer)node );
+		}
+		return super.visit(node);
+	}
+
+
+	@Override
+	public int visit(IASTExpression node) {
+		if (node instanceof IASTFieldReference) {
+			return visit((IASTFieldReference)node);
+		}
+		else if (node instanceof IASTIdExpression) {
+			return visit((IASTIdExpression)node);
+		}
+		else if (node instanceof IASTFunctionCallExpression) {
+			return visit((IASTFunctionCallExpression)node);
+		}
+		else if (node instanceof IASTBinaryExpression) {
+			return visit((IASTBinaryExpression)node);   // to check whether this is an assignement
+		}
+		else if (node instanceof IASTLiteralExpression) {
+			return visit((IASTLiteralExpression)node);
+		}
+
+		return super.visit(node);
+	}
+
+	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
+
+	
+
 	// ADDITIONAL VISITING METODS ON AST =======================================================================================================
 
-	protected abstract int visit(IASTFunctionDeclarator node);
+	protected int visit(IASTFunctionDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int visit(ICPPASTDeclarator node);
+	protected int leave(IASTFunctionDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int visit(ICASTCompositeTypeSpecifier node);
+	protected int visit(ICPPASTDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int visit(ICPPASTCompositeTypeSpecifier node);
+	protected int leave(ICPPASTDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int visit(IASTEnumerationSpecifier node);
+	protected int visit(ICASTCompositeTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int visit(ICPPASTNamedTypeSpecifier node);
+	protected int leave(ICASTCompositeTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int leave(IASTFunctionDeclarator node);
+	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int leave(ICPPASTDeclarator node);
+	protected int leave(ICPPASTCompositeTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int leave(ICASTCompositeTypeSpecifier node);
+	protected int visit(IASTEnumerationSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int leave(ICPPASTCompositeTypeSpecifier node);
+	protected int leave(IASTEnumerationSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int leave(IASTEnumerationSpecifier node);
+	protected int visit(ICPPASTNamedTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
 
-	protected abstract int leave(ICPPASTNamedTypeSpecifier node);
+	protected int leave(ICPPASTNamedTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
+
+	public int visit(IASTParameterDeclaration node) {
+		return PROCESS_CONTINUE;
+	}
+
+	public int leave(IASTParameterDeclaration node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTFunctionCallExpression node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTBinaryExpression node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTLiteralExpression node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTFieldReference node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTIdExpression node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(ICPPASTConstructorChainInitializer node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(ICPPASTConstructorInitializer node) {
+		return PROCESS_CONTINUE;
+	}
 
 	// UTILITIES ======================================================================================================
 
