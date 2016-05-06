@@ -32,9 +32,11 @@ import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack2;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 
@@ -63,6 +65,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	public int visit(IASTFunctionCallExpression node) {
 		NamedEntity fmx = null;
 		IIndexBinding bnd = null;
+		IASTName nodeName = null;
 		
 		priorType = context.topType();
 		IASTNode[] children = node.getFunctionNameExpression().getChildren();
@@ -72,8 +75,9 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		
 		IASTNode lastChild = children[children.length - 1];
 		if (lastChild instanceof IASTName) {
+			nodeName = (IASTName)lastChild;
 			try {
-				bnd = index.findBinding( (IASTName)lastChild );
+				bnd = index.findBinding( nodeName );
 			} catch (CoreException e) {
 				e.printStackTrace();
 			}
@@ -82,10 +86,20 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 				fmx = dico.getEntityByKey(bnd);
 			}
 			
-			if (fmx != null) {
-				if (! (fmx instanceof BehaviouralEntity) ) {
-					fmx = dico.ensureFamixMethod(/*key*/null, fmx.getName(), fmx.getName()+"(...)", priorType);
+			if (fmx == null) {
+				// could not find it. try to create a stub from the name (if we have one)
+				if (nodeName != null) {
+					String stubSig =  mkStubSig(nodeName.toString(), node.getArguments().length);
+					fmx = dico.ensureFamixFunction(/*key*/StubBinding.getInstance(Method.class, stubSig), nodeName.toString(), stubSig, /*container*/null);	
 				}
+			}
+			else if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
+				// found a class instead of a behavioral. Happens in the case of a "throw ClassName(...)"
+				String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
+				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, stubSig), fmx.getName(), stubSig, priorType);
+			}
+
+			if (fmx != null) {
 				invocationOfBehavioural((BehaviouralEntity) fmx);
 			}
 		}
@@ -250,5 +264,20 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		return PROCESS_SKIP;
 	}
 
+	// UTILITIES ====================================================================================================================================
+
+	private String mkStubSig(String name, int nbParam) {
+		String sig = name + "(";
+		for (int i=0; i < nbParam-1; i++) {
+			sig += "_," ;
+		}
+		if (nbParam > 0) {
+			sig += "_)" ;
+		}
+		else {
+			sig += ")" ;
+		}
+		return sig;
+	}
 
 }
