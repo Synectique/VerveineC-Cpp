@@ -22,10 +22,15 @@ import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
-import eu.synectique.verveine.extractor.utils.FakePackageBinding;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public class CDictionary extends Dictionary<IIndexBinding> {
-	
+
+	/**
+	 * Separator in fully qualified package name
+	 */
+	public static final String PACKAGE_NAME_SEPARATOR = "::";
+
 	public final static String DESTRUCTOR_KIND_MARKER = "destructor";
 
  	public CDictionary(Repository famixRepo) {
@@ -81,7 +86,8 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	}
 
 	public Package ensureFamixPackage(String name, Package parent) {
-		IIndexBinding key = FakePackageBinding.getInstance(name, parent);
+		String fullname = mooseName(parent, name);
+		IIndexBinding key = StubBinding.getInstance(Package.class, fullname);
 		Package fmx = super.ensureFamixEntity(Package.class, key, name, /*persitIt*/true);
 		fmx.setIsStub(false);
 		if (parent != null) {
@@ -187,4 +193,53 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
+	// UTILITIES =========================================================================================================================================
+	
+
+	/**
+	 * Computes moose name for a ScopingEntity
+	 * This is a convenient method to call {@link #mooseName(Namespace)} or {@link #mooseName(Package)}
+	 * and to make Java type checker happy
+	 */
+	protected static String mooseName(ScopingEntity ent, String name) {
+		if (ent instanceof Package) {
+			return mooseName((Package)ent, name);
+		}
+		if (ent instanceof Namespace) {
+			return mooseName((Namespace)ent, name);
+		}
+		return name;
+	}
+
+	/**
+	 * Computes moose name for a Namespace. NOT USED CURRENTLY (but this may change)
+	 * MooseName is the concatenation of the moosename of the parent Namescape with the simple name of the Namescape
+	 */
+	protected static String mooseName(Namespace parent, String name) {
+		if (parent != null) {
+			return concatMooseName( mooseName(parent.getParentScope(), parent.getName()) , name);
+		}
+		else {
+			return name;
+		}
+	}
+	
+	/**
+	 * Computes moose name for a Package
+	 * MooseName is the concatenation of the moosename of the parent Package with the simple name of the Package
+	 */
+	protected static String mooseName(Package parent, String name) {
+		if (parent != null) {
+			return concatMooseName( mooseName(parent.getParentPackage(), parent.getName()) , name);
+		}
+		else {
+			return name;
+		}
+	}
+
+	protected static String concatMooseName(String prefix, String name) {
+		return prefix + PACKAGE_NAME_SEPARATOR + name;
+	}
+
+	
 }

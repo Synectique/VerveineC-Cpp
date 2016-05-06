@@ -113,38 +113,16 @@ public class VerveineCParser extends VerveineParser {
 
 		ICProject cproject = CoreModel.getDefault().getCModel().getCProject(project.getName());
 
-		// get the indexer
+
+		// Joining the indexer ensures it is done indexing the project
+		// We need this to start looking for references to entities
+		// After that, we can get the indexer to ask it for bindings
         IIndexManager imanager = CCorePlugin.getIndexManager();
         imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
        	try {
 			this.index = imanager.getIndex(cproject);
 		} catch (CoreException e1) {
 			e1.printStackTrace();
-		}
-
-       	/* TODO nothing seems to work to block the execution while the indexer is indexing the files. We fall back to wait a fixed time 
-        //imanager.setIndexerId(cproject, IPDOMManager.ID_FAST_INDEXER);
-        //imanager.reindex(cproject);
-
-		// Joining the indexer should ensures it is done indexing the project (well, I believe this is what it does anyway)
-		// We need this to start looking for references to entities
-		// Anyway, it does not seem to work (does not stop the execution)
-
-        //imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
-
-        try {
-         	while ( (! index.isFullyInitialized()) && (! imanager.isProjectIndexed(cproject)) && (! imanager.isIndexerIdle()) ) {
-        		System.err.println("index not ready");
-        	}
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}*/
-
-		// waiting unconditionally because everything else failed !!!
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
 		}
 
 		// everybody recommends to lock indexer in read.

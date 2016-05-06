@@ -1,0 +1,115 @@
+package eu.synectique.verveine.extractor.utils;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.eclipse.cdt.core.dom.ILinkage;
+import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IScope;
+import org.eclipse.cdt.core.index.IIndexBinding;
+import org.eclipse.cdt.core.index.IIndexFile;
+import org.eclipse.core.runtime.CoreException;
+
+import eu.synectique.verveine.core.gen.famix.NamedEntity;
+import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.Package;
+import eu.synectique.verveine.core.gen.famix.ScopingEntity;
+
+/**
+ * This is a CDT {@link IIndexBinding} implementor to serve as key for unresolved entities
+ * Rational: The Famix dictionary needs an IIndexBinding as entity key.
+ * But the stubs (and FamixPackages) don't have associated CDT binding
+ * So we create this class that will implement a fake IIndexBinding for each stub
+ * The actual key will be some string including its Famix type (e.g. "Package") and a name (e.g. the fully qualified name of a Package)
+ * (see also {@link #getInstance(String, Package)})
+ * @author Anquetil and Bhatti
+ */
+public class StubBinding implements IIndexBinding {
+
+	/**
+	 * The actual key of the entity
+	 */
+	protected String keyname;
+
+	/**
+	 * A map of key/instances to make sure the same StubBinding instance is always associated to a given key
+	 */
+	protected static Map<String,StubBinding> instances = new HashMap<String, StubBinding>();
+
+	/**
+	 * Returns a StubBinding instance that will serve as a key for a Famix Entity.<br>
+	 * First, computes the keyname of the entity (Class name + entity name), then looks in an internal dictionary to see if there is already
+	 * a StubBinding for that keyname, if not creates such StubBinding, returns the StubBinding
+	 * @param clazz Famix class of the entity for which we need a key
+	 * @param id some string identifying as uniquely as possible the entity, within its famix class (e.g. fully qualified package name, name and number of parameter of a method, etc.)
+	 * @return the StubBinding associated with the entity
+	 */
+	public static <T extends NamedEntity>  StubBinding getInstance(Class<T> clazz, String id) {
+		String key = clazz.getName() + "/" + id;
+		StubBinding inst;
+		
+		inst = instances.get(key);
+		if (inst == null) {
+			inst = new StubBinding(key);
+			instances.put(key, inst);
+		}
+		return inst;
+	}
+
+	private StubBinding(String fkeyname) {
+		this.keyname = keyname;
+	}
+
+	/*
+	 * IIndexBinding API to implements.
+	 * We do not actually use any of these 
+	 */
+	
+	@Override
+	public ILinkage getLinkage() {
+		return null;
+	}
+
+	@Override
+	public String getName() {
+		// we might as well return keyname since we have it
+		return keyname;
+	}
+
+	@Override
+	public char[] getNameCharArray() {
+		// we might as well return keyname since we have it
+		return keyname.toCharArray();
+	}
+
+	@Override
+	public IScope getScope() throws DOMException {
+		return null;
+	}
+
+	@Override
+	public <T> T getAdapter(Class<T> arg0) {
+		return null;
+	}
+
+	@Override
+	public IIndexFile getLocalToFile() throws CoreException {
+		return null;
+	}
+
+	@Override
+	public IIndexBinding getOwner() {
+		return null;
+	}
+
+	@Override
+	public String[] getQualifiedName() {
+		return null;
+	}
+
+	@Override
+	public boolean isFileLocal() throws CoreException {
+		return false;
+	}
+
+}

@@ -69,7 +69,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	public RefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index, /*visitNodes*/true);
 
-		tracer = new NullTracer("REF>");
+		tracer = new Tracer("REF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
@@ -145,12 +145,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	@Override
 	public int visit(IASTParameterDeclaration node) {
 		return new ParamDeclVisitor(dico, index, context).visit(node);
-	}
-
-	@Override
-	public int visit(IASTName node) {
-		referenceToName(((IASTName) node).getLastName());
-		return ASTVisitor.PROCESS_SKIP;
 	}
 
 
@@ -242,7 +236,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		this.context.push(fmx);
 
-		return PROCESS_CONTINUE;
+		return PROCESS_SKIP;  // already visited all we needed
 	}
 
 	@Override
@@ -263,7 +257,8 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		 * visit declarator to ensure the method definition and to get the
 		 * Famix entity (which will be on the top of the context stack)
 		 */
-		if (this.visit(node.getDeclarator()) == PROCESS_CONTINUE) {
+		this.visit(node.getDeclarator());
+		if (this.context.top() instanceof BehaviouralEntity) {  // visit(node.getDeclarator()) seems to have been successful
 			node.getBody().accept(this);
 			this.leave(node.getDeclarator()); // to pop the method from the context if it is there
 		}
@@ -302,7 +297,8 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	protected int visit(IASTFieldReference node) {
 		// can also be a method invocation
 		((IASTFieldReference)node).getFieldOwner().accept(this);
-		((IASTFieldReference) node).getFieldName().accept(this);
+		referenceToName(((IASTFieldReference) node).getFieldName());
+
 		return PROCESS_SKIP;
 	}
 
@@ -333,7 +329,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 		node.getOperand2().accept(this);
 		
-		return PROCESS_CONTINUE;
+		return PROCESS_SKIP;
 	}
 
 }
