@@ -9,7 +9,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
+import org.eclipse.cdt.core.dom.IPDOMManager;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.index.IIndexInclude;
 import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
@@ -42,8 +44,8 @@ import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.visitors.CDictionary;
 import eu.synectique.verveine.extractor.visitors.DefVisitor;
-import eu.synectique.verveine.extractor.visitors.ref.CDictionary;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class VerveineCParser extends VerveineParser {
@@ -59,9 +61,15 @@ public class VerveineCParser extends VerveineParser {
 	private static final int IGNORE_FILE = 1;
 	private static final int UNKNOWN_FILE = 2;
 
+	/**
+	 * Indicates that an include path is system (as opposed to {@link ICSettingEntry#LOCAL}.
+	 * Reversed engineered the value from CDT code.
+	 */
+	private static final int SYSTEM_INCLUDE_PATH = 0;
+
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 
-	private String projectPath = "/home/anquetil/Documents/RMod/Tools/pluginzone/CodeExamples/simple/src";
+	private String projectPath;
 
 	private IIndex index;
 
@@ -74,33 +82,6 @@ public class VerveineCParser extends VerveineParser {
 
         IProject project = configureProject(createEclipseProject(DEFAULT_PROJECT_NAME));
 		ICProject cproject = initializeCProject(project, projectPath);  // projPath set in setOptions()
-
-		// get the indexer
-        IIndexManager imanager = CCorePlugin.getIndexManager();
-        //imanager.setIndexerId(project, "org.eclipse.cdt.core.fastIndexer");
-        //imanager.reindex(project);
-
-		/*
-		 * Joining the indexer ensures it is done indexing the project (well, I believe this is what it does anyway)
-		 * We need this to start looking for references to entities
-		 * It should be possible to run this in parallel with second step
-		 * however doing this gives unpredictable results on the CDictionnaryDef.removeEntity() (some entities are found and removed, other not)
-		 * Don't ask me why, I have no clue !!!
-		 */
-        imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
-
-        try {
-        	this.index = imanager.getIndex(cproject);
-        	while ( (! index.isFullyInitialized()) && (! imanager.isProjectIndexed(cproject)) && (! imanager.isIndexerIdle()) ) {
-        		System.err.println("index not ready");
-        	}
-    		Thread.sleep(2000); // waiting unconditionally because everything else failed !!!
-    		this.index.acquireReadLock();
-		} catch (CoreException e) {
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
 
         System.out.println("step 2 / 3: creating structural entities");
         dico = new CDictionary(getFamixRepo());
@@ -116,13 +97,13 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	/**
-	 * Fill-in the project with source files
+	 * Fill-in the project with source files and index these files
 	 * @param project
 	 * @param sourcePath
 	 */
 	private ICProject initializeCProject(IProject project, String sourcePath) {
 		copySourceFilesInProject(project, new File(sourcePath));
-		
+
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
 		try {
 			descManager.updateProjectDescriptions(new IProject[] { project }, NULL_PROGRESS_MONITOR);
@@ -131,6 +112,48 @@ public class VerveineCParser extends VerveineParser {
 		}
 
 		ICProject cproject = CoreModel.getDefault().getCModel().getCProject(project.getName());
+
+		// get the indexer
+        IIndexManager imanager = CCorePlugin.getIndexManager();
+       	try {
+			this.index = imanager.getIndex(cproject);
+		} catch (CoreException e1) {
+			e1.printStackTrace();
+		}
+
+       	/* TODO nothing seems to work to block the execution while the indexer is indexing the files. We fall back to wait a fixed time 
+        //imanager.setIndexerId(cproject, IPDOMManager.ID_FAST_INDEXER);
+        //imanager.reindex(cproject);
+
+		// Joining the indexer should ensures it is done indexing the project (well, I believe this is what it does anyway)
+		// We need this to start looking for references to entities
+		// Anyway, it does not seem to work (does not stop the execution)
+
+        //imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
+
+        try {
+         	while ( (! index.isFullyInitialized()) && (! imanager.isProjectIndexed(cproject)) && (! imanager.isIndexerIdle()) ) {
+        		System.err.println("index not ready");
+        	}
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}*/
+
+		// waiting unconditionally because everything else failed !!!
+		try {
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
+		// everybody recommends to lock indexer in read.
+		// not sure we really need it since we will not alter the source files ...
+		try {
+			this.index.acquireReadLock();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
 		return cproject;
 	}
 
@@ -169,10 +192,10 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	private IProject configureProject(IProject project) {
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
-		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append(project.getName());
 		IProject cProject = null;
 		
 		// change a bit workspace description
+		// TODO couldn't we do this on the project description ?
 		IWorkspaceDescription workspaceDesc = workspace.getDescription();
 		workspaceDesc.setAutoBuilding(false); // we do not want the workspace to rebuild the project every time a new resource is added
 		try {
@@ -182,9 +205,11 @@ public class VerveineCParser extends VerveineParser {
 		}
 
 		IProjectDescription projectDesc = workspace.newProjectDescription(project.getName());
+		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append(project.getName());
 		if (projectWSPath != null) {
 			projectDesc.setLocation(projectWSPath); // point path to workspace
 		}
+
 		try {
 			// now we create a C project for real
 			cProject = CCorePlugin.getDefault().createCProject(projectDesc, project, NULL_PROGRESS_MONITOR, project.getName());
@@ -195,31 +220,20 @@ public class VerveineCParser extends VerveineParser {
 			System.err.println("Error ("+exc.getClass().getSimpleName()+") in Project creation: " + exc.getMessage());
 			exc.printStackTrace();
 		}
-		
-/*
-		String includePath = null;
-		ICProjectDescription projectDescription = CoreModel.getDefault().getProjectDescription(project, true);
-		ICConfigurationDescription configDecriptions[] = projectDescription.getConfigurations();
+
+		ICProjectDescription cprojectDesc = CoreModel.getDefault().getProjectDescription(project, true);
+		ICConfigurationDescription configDecriptions[] = cprojectDesc.getConfigurations();
 		for (ICConfigurationDescription configDescription : configDecriptions) {
 			ICFolderDescription projectRoot = configDescription.getRootFolderDescription();
 
-			for (ICLanguageSetting setting : projectRoot.getLanguageSettings()) {
-				if (!"org.eclipse.cdt.core.gcc".equals(setting.getLanguageId())) {
-					continue;
-				}
+			for (ICLanguageSetting setting : projectRoot.getLanguageSettings()) {   // why a loop here ?
 				List<ICLanguageSettingEntry> includes = new ArrayList<ICLanguageSettingEntry>();
 				includes.addAll(setting.getSettingEntriesList(ICSettingEntry.INCLUDE_PATH));
-				for (int i = 0; i < tableViewer.getTable().getItemCount(); i++) {
-					includePath = tableViewer.getTable().getItem(i).getText();
-					includes.add(new CIncludePathEntry(includePath, ICSettingEntry.LOCAL));
-				}
+				includes.add(new CIncludePathEntry("/usr/include", SYSTEM_INCLUDE_PATH));
 				setting.setSettingEntries(ICSettingEntry.INCLUDE_PATH, includes);
 			}
 		}
-		CoreModel.getDefault().setProjectDescription(project, projectDescription);
-		}
- */
-		
+
 		return cProject;
 	}
 

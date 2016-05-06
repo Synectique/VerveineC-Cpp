@@ -12,6 +12,7 @@ import eu.synectique.verveine.core.EntityStack2;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.visitors.CDictionary;
 
 /** Specialized visitor for parameter declaration of a FunctionDeclarator
  * This simplifies visiting IASTDeclSpecifier (type of parameters) and IASTDeclarator (parameter itself)

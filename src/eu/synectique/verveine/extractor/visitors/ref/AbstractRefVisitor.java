@@ -13,15 +13,19 @@ import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
+import eu.synectique.verveine.extractor.visitors.CDictionary;
 
+/**
+ * Abstract superclass for Reference visitors.<BR>
+ * It defines some utility methods to create references to names.
+ * It also adds a constructor accepting an existing context stack (see {@link AbstractVisitor#context}), this allows
+ * to create specialized sub-visitors (e.g. {@link FunctionCallVisitor} or {@link ParamDeclVisitor}) while visiting an AST
+ * with a "main" visitor.
+ * @author anquetil
+ */
 public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 	// CONSTRUCTORS ==========================================================================================================================
-
-	/**
-	 * A stack that keeps the current definition context (package/class/method)
-	 */
-	protected EntityStack2 context;
 
 	public AbstractRefVisitor(CDictionary dico) {
 		super(dico);

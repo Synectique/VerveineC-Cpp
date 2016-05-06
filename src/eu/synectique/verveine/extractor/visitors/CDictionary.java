@@ -1,6 +1,4 @@
-package eu.synectique.verveine.extractor.visitors.ref;
-
-import java.util.Map;
+package eu.synectique.verveine.extractor.visitors;
 
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.index.IIndexBinding;
@@ -22,6 +20,7 @@ import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourceAnchor;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.utils.FakePackageBinding;
 
@@ -31,41 +30,6 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
  	public CDictionary(Repository famixRepo) {
 		super(famixRepo);
-	}
-
-	/**(
-	 * Debug method
-	 */
-	public void sizes() {
-		int ns = 0;
-		int pk = 0;
-		int cl = 0;
-		int mt = 0;
-		int at = 0;
-		int ot = 0;
-		for (NamedEntity ent : keyToEntity.values()) {
-			if (ent instanceof Namespace)											ns++;
-			else if (ent instanceof eu.synectique.verveine.core.gen.famix.Package)	pk++;
-			else if (ent instanceof eu.synectique.verveine.core.gen.famix.Class)	cl++;
-			else if (ent instanceof Method)											mt++;
-			else if (ent instanceof Attribute)										at++;
-			else																	ot++;
-		}			
-		System.err.println("CDictionaryRef ns="+ns+", pk="+pk+", cl="+cl+", mt="+mt+", at="+at+", ot="+ot);
-	}
-
-	/**
-	 * Debug method
-	 */
-	public IIndexBinding findkeyfrommethodname(String name) {
-		IIndexBinding key = null;
-		for (Map.Entry<IIndexBinding,NamedEntity> ent :keyToEntity.entrySet()) {
-			if ( (ent.getValue() instanceof Method) && (name.endsWith(ent.getValue().getName()))) {
-				key = ent.getKey();
-				break;
-			}
-		}
-		return key;
 	}
 
 	protected NamedEntity getEntityIfNotNull(IIndexBinding key) {
@@ -123,6 +87,15 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		if (parent != null) {
 			fmx.setParentPackage(parent);
 		}
+		return fmx;
+	}
+
+	public TypeAlias ensureFamixTypeAlias(IIndexBinding key, String name, ContainerEntity owner) {
+		TypeAlias fmx;
+
+		fmx = super.ensureFamixEntity(TypeAlias.class, key, name, /*persistIt*/true);
+		fmx.setContainer(owner);
+
 		return fmx;
 	}
 
@@ -213,6 +186,5 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		
 		return fmx;
 	}
-
 
 }

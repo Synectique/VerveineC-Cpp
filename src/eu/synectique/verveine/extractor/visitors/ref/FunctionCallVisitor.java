@@ -21,6 +21,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTDeclarator;
@@ -35,6 +36,7 @@ import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.visitors.CDictionary;
 
 public class FunctionCallVisitor extends AbstractRefVisitor {
 
@@ -126,10 +128,16 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		}
 
 		if (fmx == null) {
-			String mthName = ((ICPPASTDeclarator)parent).getName().toString();
-			fmx = dico.ensureFamixMethod(/*key*/null, mthName, ((ICPPASTDeclarator)parent).getName()+"(...)", priorType);
+			String mthName;
+			if (parent.getImplicitNames().length > 0) {
+				mthName = parent.getImplicitNames()[0].toString();
+				fmx = dico.ensureFamixMethod(/*key*/null, mthName, ((ICPPASTDeclarator)parent).getName()+"(...)", priorType);
+			}
 		}
-		invocationOfBehavioural((BehaviouralEntity) fmx);
+		
+		if (fmx != null) {
+			invocationOfBehavioural((BehaviouralEntity) fmx);
+		}
 
 		return PROCESS_CONTINUE;
 	}

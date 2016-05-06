@@ -3,6 +3,7 @@ package eu.synectique.verveine.extractor.visitors;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
@@ -13,12 +14,16 @@ import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
@@ -28,15 +33,15 @@ import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
+import eu.synectique.verveine.core.EntityStack2;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
-import eu.synectique.verveine.extractor.visitors.ref.CDictionary;
 
 /**
- * The superclass of all visitors. These visitors visit an AST to create FAMIX entities.
- * This visitor merges visit methods on AST (ASTVisitor) and visit methods on ICElements (ICElementVisitor)
- * Another of its important task is to dispatch more finely the visits than what CDT normally do  
+ * The superclass of all visitors. These visitors visit an AST to create FAMIX entities.<BR>
+ * An important function of this abstract class is to dispatch more finely the visits than what CDT normally do. 
+ * This visitor also merges two APIs: visit methods on AST (ASTVisitor) and visit methods on ICElements (ICElementVisitor).
  */
 public abstract class AbstractVisitor extends ASTVisitor implements ICElementVisitor {
 
@@ -44,6 +49,11 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	 * A dictionary allowing to recover created FAMIX Entities
 	 */
 	protected CDictionary dico;
+
+	/**
+	 * A stack that keeps the current definition context (package/class/method)
+	 */
+	protected EntityStack2 context;
 
 	protected ITracer tracer = new NullTracer();  // no tracing by default
 
@@ -122,6 +132,32 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	// CDT VISITING METODS ON AST ==========================================================================================================
 
 	@Override
+	public int visit(IASTDeclaration node) {
+		if (node instanceof IASTSimpleDeclaration) {
+			return visit((IASTSimpleDeclaration)node);
+		}
+		else if (node instanceof ICPPASTFunctionDefinition) {
+			return visit((ICPPASTFunctionDefinition)node);
+		}
+		//else ICPPASTUsingDirective, ...
+
+		return super.visit(node);
+	}
+
+	@Override
+	public int leave(IASTDeclaration node) {
+		if (node instanceof IASTSimpleDeclaration) {
+			return leave((IASTSimpleDeclaration)node);
+		}
+		else if (node instanceof ICPPASTFunctionDefinition) {
+			return leave((ICPPASTFunctionDefinition)node);
+		}
+		//else ICPPASTUsingDirective, ...
+
+		return super.leave(node);
+	}
+
+	@Override
 	public int visit(IASTDeclarator node) {
 		if (node instanceof IASTFunctionDeclarator) {
 			return this.visit((IASTFunctionDeclarator)node);
@@ -194,7 +230,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		return super.leave(node);
 	}
 
-
 	@Override
 	public int visit(IASTInitializer node) {
 		if (node instanceof ICPPASTConstructorChainInitializer) {
@@ -206,7 +241,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		return super.visit(node);
 	}
 
-
 	@Override
 	public int visit(IASTExpression node) {
 		if (node instanceof IASTFieldReference) {
@@ -214,6 +248,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		}
 		else if (node instanceof IASTIdExpression) {
 			return visit((IASTIdExpression)node);
+		}
+		else if (node instanceof ICPPASTNewExpression) {
+			return visit((ICPPASTNewExpression)node);
 		}
 		else if (node instanceof IASTFunctionCallExpression) {
 			return visit((IASTFunctionCallExpression)node);
@@ -227,12 +264,25 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 		return super.visit(node);
 	}
-
-	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
-
 	
 
 	// ADDITIONAL VISITING METODS ON AST =======================================================================================================
+
+	protected int visit(IASTSimpleDeclaration node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(IASTSimpleDeclaration node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(ICPPASTFunctionDefinition node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(ICPPASTFunctionDefinition node) {
+		return PROCESS_CONTINUE;
+	}
 
 	protected int visit(IASTFunctionDeclarator node) {
 		return PROCESS_CONTINUE;
@@ -291,6 +341,10 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int visit(IASTFunctionCallExpression node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(ICPPASTNewExpression node) {
 		return PROCESS_CONTINUE;
 	}
 

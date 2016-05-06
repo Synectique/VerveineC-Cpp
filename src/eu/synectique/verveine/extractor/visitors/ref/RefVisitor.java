@@ -43,6 +43,7 @@ import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.visitors.CDictionary;
 
 public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
