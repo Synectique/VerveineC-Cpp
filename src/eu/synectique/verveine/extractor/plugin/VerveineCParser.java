@@ -115,6 +115,7 @@ public class VerveineCParser extends VerveineParser {
 
 		// get the indexer
         IIndexManager imanager = CCorePlugin.getIndexManager();
+        imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
        	try {
 			this.index = imanager.getIndex(cproject);
 		} catch (CoreException e1) {
