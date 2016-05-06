@@ -374,6 +374,8 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 				fmx.setParentPackage(currentPackage);
 			}
+			
+			return PROCESS_SKIP;
 		}
 		return PROCESS_CONTINUE;
 	}
@@ -498,11 +500,17 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	}
 
 	private boolean checkHeader(ITranslationUnit tu) {
+		String ext;
+		int i = tu.getElementName().lastIndexOf('.');
+		if (i < 0) {
+			return false;    // not a source file
+		}
+		ext = tu.getElementName().substring(i);
 		if (visitHeaders) {
-			return (tu.getElementName().indexOf(".h") >= 0);
+			return ext.startsWith(".h");
 		}
 		else {
-			return (tu.getElementName().indexOf(".h") == -1);
+			return (! ext.startsWith(".h") );
 		}
 	}
 

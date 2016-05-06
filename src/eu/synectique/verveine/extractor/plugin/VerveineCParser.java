@@ -141,7 +141,7 @@ public class VerveineCParser extends VerveineParser {
 
 		// waiting unconditionally because everything else failed !!!
 		try {
-			Thread.sleep(2000);
+			Thread.sleep(5000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}

@@ -69,7 +69,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	public RefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index, /*visitNodes*/true);
 
-		tracer = new NullTracer("REF>");
+		tracer = new Tracer("REF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
