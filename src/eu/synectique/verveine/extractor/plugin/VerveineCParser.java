@@ -5,13 +5,22 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
+import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
+import org.eclipse.cdt.core.settings.model.ICFolderDescription;
+import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
+import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
+import org.eclipse.cdt.core.settings.model.ICSettingEntry;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -30,6 +39,9 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
+import eu.synectique.verveine.extractor.utils.ITracer;
+import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.DefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.CDictionary;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
@@ -40,19 +52,30 @@ public class VerveineCParser extends VerveineParser {
 
 	private static final String SOURCE_ROOT_DIR = "/" + DEFAULT_PROJECT_NAME;
 
+	/**
+	 * different types of files that need to be checked when copying the project 
+	 */
+	private static final int SOURCE_FILE = 0;
+	private static final int IGNORE_FILE = 1;
+	private static final int UNKNOWN_FILE = 2;
+
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 
 	private String projectPath = "/home/anquetil/Documents/RMod/Tools/pluginzone/CodeExamples/simple/src";
 
 	private IIndex index;
 
+	private ITracer tracer;
+
 	public void parse() {
-		//CDictionaryDef dicoDef = null;
 		CDictionary dico = null;
 
 		System.out.println("step 1 / 3: indexing");
 
-        ICProject project = createProject(DEFAULT_PROJECT_NAME, projectPath);  		// projPath set in setOptions()
+        IProject project = configureProject(createEclipseProject(DEFAULT_PROJECT_NAME));
+		ICProject cproject = initializeCProject(project, projectPath);  // projPath set in setOptions()
+
+		// get the indexer
         IIndexManager imanager = CCorePlugin.getIndexManager();
         //imanager.setIndexerId(project, "org.eclipse.cdt.core.fastIndexer");
         //imanager.reindex(project);
@@ -67,8 +90,8 @@ public class VerveineCParser extends VerveineParser {
         imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
 
         try {
-        	this.index = imanager.getIndex(project);
-        	while ( (! index.isFullyInitialized()) && (! imanager.isProjectIndexed(project)) && (! imanager.isIndexerIdle()) ) {
+        	this.index = imanager.getIndex(cproject);
+        	while ( (! index.isFullyInitialized()) && (! imanager.isProjectIndexed(cproject)) && (! imanager.isIndexerIdle()) ) {
         		System.err.println("index not ready");
         	}
     		Thread.sleep(2000); // waiting unconditionally because everything else failed !!!
@@ -83,24 +106,21 @@ public class VerveineCParser extends VerveineParser {
         dico = new CDictionary(getFamixRepo());
         DefVisitor step2 = new DefVisitor(dico, index);
         step2.setVisitHeaders(true);
-        step2.visit(project);
+        step2.visit(cproject);
         step2.setVisitHeaders(false);
-        step2.visit(project);
+        step2.visit(cproject);
         
 
         System.out.println("step 3 / 3: creating references");
-        new RefVisitor(dico, index).visit(project);
+        new RefVisitor(dico, index).visit(cproject);
 	}
 
 	/**
-	 * Creates a CProject from the source files in sourcePath
-	 * @param projName
+	 * Fill-in the project with source files
+	 * @param project
 	 * @param sourcePath
-	 * @return the ICProject created
 	 */
-	private ICProject createProject(String projName, String sourcePath) {
-		IProject project = createNewProject(projName);
-
+	private ICProject initializeCProject(IProject project, String sourcePath) {
 		copySourceFilesInProject(project, new File(sourcePath));
 		
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
@@ -115,21 +135,21 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	/**
-	 * Creates an empty CProject
-	 * @param projectName
-	 * @return the project created
+	 * Creates an empty Project
+	 * @param projName
+	 * @return the IProject created
 	 */
-	private IProject createNewProject(String projectName) {
-		IWorkspace workspace = ResourcesPlugin.getWorkspace();
+	private IProject createEclipseProject(String projName) {
+		IWorkspace workspace = ResourcesPlugin.getWorkspace();   // raises an org.eclipse.core.internal.resources.ResourceException if workspace directory does not exist
 		IWorkspaceRoot root = workspace.getRoot();
 		// we make a directory at the workspace root to copy source files
-		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append(projectName);
+		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append(projName);
 		
 		if (projectWSPath != null) {
 			new File(projectWSPath.toOSString()).mkdirs();
 		}
 
-		final IProject project = root.getProject(projectName);
+		final IProject project = root.getProject(projName);
 		try {
 			// delete if the project exists
 			if (project.exists()) {
@@ -138,7 +158,18 @@ public class VerveineCParser extends VerveineParser {
 		} catch (Exception exc) {
 			exc.printStackTrace();
 		}
+		
+		return project;
+	}
 
+	/**
+	 * Creates an empty CProject
+	 * @param projectName
+	 * @return the project created
+	 */
+	private IProject configureProject(IProject project) {
+		IWorkspace workspace = ResourcesPlugin.getWorkspace();
+		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append(project.getName());
 		IProject cProject = null;
 		
 		// change a bit workspace description
@@ -164,6 +195,31 @@ public class VerveineCParser extends VerveineParser {
 			System.err.println("Error ("+exc.getClass().getSimpleName()+") in Project creation: " + exc.getMessage());
 			exc.printStackTrace();
 		}
+		
+/*
+		String includePath = null;
+		ICProjectDescription projectDescription = CoreModel.getDefault().getProjectDescription(project, true);
+		ICConfigurationDescription configDecriptions[] = projectDescription.getConfigurations();
+		for (ICConfigurationDescription configDescription : configDecriptions) {
+			ICFolderDescription projectRoot = configDescription.getRootFolderDescription();
+
+			for (ICLanguageSetting setting : projectRoot.getLanguageSettings()) {
+				if (!"org.eclipse.cdt.core.gcc".equals(setting.getLanguageId())) {
+					continue;
+				}
+				List<ICLanguageSettingEntry> includes = new ArrayList<ICLanguageSettingEntry>();
+				includes.addAll(setting.getSettingEntriesList(ICSettingEntry.INCLUDE_PATH));
+				for (int i = 0; i < tableViewer.getTable().getItemCount(); i++) {
+					includePath = tableViewer.getTable().getItem(i).getText();
+					includes.add(new CIncludePathEntry(includePath, ICSettingEntry.LOCAL));
+				}
+				setting.setSettingEntries(ICSettingEntry.INCLUDE_PATH, includes);
+			}
+		}
+		CoreModel.getDefault().setProjectDescription(project, projectDescription);
+		}
+ */
+		
 		return cProject;
 	}
 
@@ -173,16 +229,21 @@ public class VerveineCParser extends VerveineParser {
 	 * @param src -- A directory of file to copy to the project
 	 */
 	private void copySourceFilesInProject(IProject project, File src) {
+		tracer = new NullTracer("Cpy");
 		if (src.isDirectory()) {
 			copySourceFilesRecursive(project, project.getFolder(SOURCE_ROOT_DIR), src);
 		}
-		else if (isValidFileExtension(src.getName())) {
+		else {
 			copyFile(project, project.getFolder(SOURCE_ROOT_DIR), src);
 		}
-		
 	}
 
 	private void copySourceFilesRecursive(IProject project, IFolder internalPath, File dir) {
+		tracer.up(dir.getAbsolutePath());
+		if (checkFileType(dir.getName()) == IGNORE_FILE) {
+			 tracer.msg("     ignore");
+			return;
+		}
 
 		for (File child : dir.listFiles()) {
 			if (child.isDirectory()) {
@@ -192,6 +253,7 @@ public class VerveineCParser extends VerveineParser {
 				copyFile(project, internalPath, child);
 			}
 		}
+		tracer.down();
 	}
 
 	/**
@@ -202,7 +264,14 @@ public class VerveineCParser extends VerveineParser {
 	 * @param dest -- path within the project where to put the file
 	 */
 	private void copyFile(IProject project, IFolder destPath, File orig) {
-		if (! destPath.exists()) {
+		 tracer.msg(orig.getAbsolutePath());
+		 if (checkFileType(orig.getName()) != SOURCE_FILE) {
+			 tracer.msg("       not source");
+			 return;
+		 }
+		 tracer.msg("       source to be copied");
+
+		 if (! destPath.exists()) {
 			mkdirs(destPath);
 		}
 
@@ -242,14 +311,19 @@ public class VerveineCParser extends VerveineParser {
 	 * @param filename
 	 * @return
 	 */
-	private boolean isValidFileExtension(String filename) {
+	private int checkFileType(String filename) {
+		if (filename.charAt(0) == '.') {
+			return IGNORE_FILE;
+		}
+
 		String[] cppSourceExtensions = { ".cpp", ".hpp", ".hh", ".cc", ".icc", ".c", ".h" };
 		for (String ext : cppSourceExtensions) {
 			if (filename.endsWith(ext)) {
-				return true;
+				return SOURCE_FILE;
 			}
 		}
-		return false;
+
+		return UNKNOWN_FILE;
 
 	}
 

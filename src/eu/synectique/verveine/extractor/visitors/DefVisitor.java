@@ -45,6 +45,7 @@ import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
+import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.ref.CDictionary;
 
@@ -76,7 +77,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	public DefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index, /*visitNodes*/true);
 
-		tracer = new Tracer("DEF>");
+		tracer = new NullTracer("DEF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
@@ -86,6 +87,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	@Override
 	public void visit(ICContainer elt) {
+		tracer.up("ICContainer: "+elt.getElementName());
 		eu.synectique.verveine.core.gen.famix.Package fmx;
 		fmx = dico.ensureFamixPackage(elt.getElementName(), currentPackage);
 		fmx.setIsStub(false);
@@ -93,6 +95,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		currentPackage = fmx;                        // kind of pushing new package on a virtual package stack
 		super.visit(elt);                            // visit container children
 		currentPackage = fmx.getParentPackage();    // kind of popping out the new package from the package stack
+		tracer.down();
 	}
 
 	/**
@@ -127,10 +130,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			e.printStackTrace();
 		}
 		fmx = dico.ensureFamixNamespace(bnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
-
-		if (bnd == null) {
-			return PROCESS_SKIP;
-		}
 
 		if (fmx != null) {
 			this.context.push(fmx);

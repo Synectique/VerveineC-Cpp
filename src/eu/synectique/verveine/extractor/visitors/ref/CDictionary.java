@@ -23,6 +23,7 @@ import eu.synectique.verveine.core.gen.famix.SourceAnchor;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
+import eu.synectique.verveine.extractor.utils.FakePackageBinding;
 
 public class CDictionary extends Dictionary<IIndexBinding> {
 	
@@ -67,7 +68,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return key;
 	}
 
-	protected NamedEntity secureGetEntity(IIndexBinding key) {
+	protected NamedEntity getEntityIfNotNull(IIndexBinding key) {
 		if (key == null) {
 			return null;
 		}
@@ -108,24 +109,26 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	}
 
 	public Namespace ensureFamixNamespace(IIndexBinding key, String name, ScopingEntity parent) {
-		Namespace fmx;
-		fmx = (Namespace) secureGetEntity(key);
-		if (fmx == null) {
-			super.ensureFamixNamespace(key, name);
+		Namespace fmx = super.ensureFamixNamespace(key, name);
+		if (parent != null) {
+			fmx.setParentScope(parent);
 		}
 		return fmx;
 	}
 
 	public Package ensureFamixPackage(String name, Package parent) {
-		Package fmx = super.ensureFamixEntity(Package.class, /*key*/null, name, /*persistIt*/true);
+		IIndexBinding key = FakePackageBinding.getInstance(name, parent);
+		Package fmx = super.ensureFamixEntity(Package.class, key, name, /*persitIt*/true);
 		fmx.setIsStub(false);
-		fmx.setParentPackage(parent);
+		if (parent != null) {
+			fmx.setParentPackage(parent);
+		}
 		return fmx;
 	}
 
 	public eu.synectique.verveine.core.gen.famix.Class ensureFamixClass(IIndexBinding key, String name, ContainerEntity owner) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
-		fmx = (Class) secureGetEntity(key);
+		fmx = (Class) getEntityIfNotNull(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixClass(key, name, owner, /*persistIt*/true);
 		}
@@ -135,7 +138,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public ParameterizableClass ensureFamixParameterizableClass(IIndexBinding key, String name, ContainerEntity owner) {
 		ParameterizableClass fmx;
-		fmx = (ParameterizableClass) secureGetEntity(key);
+		fmx = (ParameterizableClass) getEntityIfNotNull(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixParameterizableClass(key, name, owner, /*persistIt*/true);
 		}
@@ -145,7 +148,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public Function ensureFamixFunction(IIndexBinding key, String name, String sig, ContainerEntity parent) {
 		Function fmx;
-		fmx = (Function) secureGetEntity(key);
+		fmx = (Function) getEntityIfNotNull(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixFunction(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
 			fmx.setCyclomaticComplexity(1);
@@ -156,7 +159,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public Method ensureFamixMethod(IIndexBinding key, String name, String sig, Type parent) {
 		Method fmx;
-		fmx = (Method) secureGetEntity(key);
+		fmx = (Method) getEntityIfNotNull(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixMethod(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
 			fmx.setCyclomaticComplexity(1);
@@ -168,7 +171,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public Attribute ensureFamixAttribute(IIndexBinding key, String name, Type parent) {
 		Attribute fmx;
-		fmx = (Attribute) secureGetEntity(key);
+		fmx = (Attribute) getEntityIfNotNull(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixAttribute(key, name, /*type*/null, parent, /*persistIt*/true);
 		}

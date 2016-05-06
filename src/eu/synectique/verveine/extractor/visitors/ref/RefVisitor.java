@@ -41,6 +41,7 @@ import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
+import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
@@ -67,7 +68,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	public RefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index, /*visitNodes*/true);
 
-		tracer = new Tracer("REF>");
+		tracer = new NullTracer("REF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
