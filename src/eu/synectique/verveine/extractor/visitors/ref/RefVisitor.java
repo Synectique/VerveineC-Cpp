@@ -307,13 +307,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 				return PROCESS_SKIP;
 			}
 
-			if (dico.getEntityByKey(bnd) instanceof Attribute) {
-				fmx = (Attribute) dico.getEntityByKey(bnd);
-			}
-			else if (dico.getEntityByKey(bnd) instanceof Type) {
-				fmx = null;
-			}
-
+			fmx = (Attribute) dico.getEntityByKey(bnd);
 			if (fmx != null) {
 				// now get the declared type
 				fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
