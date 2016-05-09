@@ -123,8 +123,11 @@ public class VerveineCParser extends VerveineParser {
         imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
        	try {
 			this.index = imanager.getIndex(cproject);
+			Thread.sleep(2000);
 		} catch (CoreException e1) {
 			e1.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 
 		// everybody recommends to lock indexer in read.

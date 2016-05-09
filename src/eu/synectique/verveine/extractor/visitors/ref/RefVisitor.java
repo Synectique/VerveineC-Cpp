@@ -4,6 +4,8 @@ import java.io.RandomAccessFile;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
+import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
@@ -13,6 +15,7 @@ import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
@@ -36,11 +39,13 @@ import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
+import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
+import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
@@ -247,6 +252,37 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 		return ASTVisitor.PROCESS_CONTINUE;
 	}
+
+	/**
+	 * Visiting an attribute to get its type
+	 */
+	@Override
+	protected int visit(ICPPASTDeclarator node) {
+		IIndexBinding bnd = null;
+		Attribute fmx = null;
+
+		if ( (node.getParent() instanceof IASTSimpleDeclaration) &&
+				(node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) ) {
+			// this is an Attribute declaration, get it back
+			try {
+				bnd = index.findBinding(node.getName());
+			} catch (CoreException e) {
+				e.printStackTrace();
+			}
+
+			if (bnd == null) {
+				return PROCESS_SKIP;
+			}
+
+			fmx = (Attribute) dico.getEntityByKey(bnd);
+
+			// now get the declared type
+			fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
+		}
+
+		return PROCESS_CONTINUE;
+	}
+
 
 	/**
 	 * Visiting a method or function definition

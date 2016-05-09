@@ -1,6 +1,13 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
+import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
+import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.core.runtime.CoreException;
@@ -8,10 +15,12 @@ import org.eclipse.core.runtime.CoreException;
 import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
+import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
+import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 
@@ -127,6 +136,47 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			context.setLastAccess(acc);
 		}
 		return acc;
+	}
+
+	/**
+	 * From a declSpecifier, looks for a corresponding FamixType, creating it if needed (as a stub)
+	 */
+	protected Type referedType(IASTDeclSpecifier node) {
+		if (node instanceof IASTSimpleDeclSpecifier) {
+			return dico.ensureFamixPrimitiveType( ((IASTSimpleDeclSpecifier) node).getType());
+		}
+		else if (node instanceof IASTNameOwner) {
+			IASTName nodeName = null;
+			IIndexBinding bnd = null;
+
+			// all these tests to call methods with the same name in the end ...
+			if  (node instanceof IASTCompositeTypeSpecifier) {
+				nodeName = ((IASTCompositeTypeSpecifier) node).getName();
+			}
+			else if (node instanceof IASTElaboratedTypeSpecifier) {
+				nodeName = ((IASTElaboratedTypeSpecifier) node).getName();
+			}
+			else if (node instanceof IASTEnumerationSpecifier) {
+				nodeName = ((IASTEnumerationSpecifier) node).getName();
+			}
+			else if (node instanceof IASTNamedTypeSpecifier) {
+				nodeName = ((IASTNamedTypeSpecifier) node).getName();
+			}
+			try {
+				bnd = index.findBinding( nodeName);
+			} catch (CoreException e) {
+				e.printStackTrace();
+			}
+
+			if (bnd == null) {
+				return dico.ensureFamixUniqEntity(Type.class, /*key*/null, nodeName.toString());
+			}
+
+			return (Type) dico.getEntityByKey(bnd);
+		}
+
+		// should not happen
+		return null;
 	}
 
 }

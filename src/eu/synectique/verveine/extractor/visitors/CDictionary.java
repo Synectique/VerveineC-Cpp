@@ -1,6 +1,7 @@
 package eu.synectique.verveine.extractor.visitors;
 
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.index.IIndexBinding;
 
 import ch.akuhn.fame.Repository;
@@ -37,6 +38,14 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	public static final String PACKAGE_NAME_SEPARATOR = "::";
 
 	public final static String DESTRUCTOR_KIND_MARKER = "destructor";
+
+	/*
+	 * names for primitive types
+	 */
+	private static final String PRIM_T_BOOLEAN = "boolean";
+	private static final String PRIM_T_INT = "int";
+	private static final String PRIM_T_REAL = "real";
+	private static final String PRIM_T_CHAR = "char";
 
  	public CDictionary(Repository famixRepo) {
 		super(famixRepo);
@@ -95,7 +104,19 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 		return invok;
 	}
-	
+
+	/**
+	 * Create an UnknownVariable. parent currently not used
+	 */
+	public UnknownVariable createFamixUnknownVariable(String name, NamedEntity parent) {
+		UnknownVariable fmx;
+		
+		fmx = ensureFamixEntity(UnknownVariable.class, /*key*/null, name, /*persistIt*/true);
+		fmx.setIsStub(true);
+		
+		return fmx;
+	}
+
 	public Namespace ensureFamixNamespace(IIndexBinding key, String name, ScopingEntity parent) {
 		Namespace fmx = super.ensureFamixNamespace(key, name);
 		if (parent != null) {
@@ -200,16 +221,27 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	/**
-	 * Create an UnknownVariable. parent currently not used
-	 */
-	public UnknownVariable createFamixUnknownVariable(String name, NamedEntity parent) {
-		UnknownVariable fmx;
-		
-		fmx = ensureFamixEntity(UnknownVariable.class, /*key*/null, name, /*persistIt*/true);
-		fmx.setIsStub(true);
-		
-		return fmx;
+	public Type ensureFamixPrimitiveType(int type) {
+		switch (type) {
+		case IASTSimpleDeclSpecifier.t_bool:
+			return ensureFamixUniqEntity(Type.class, null, PRIM_T_BOOLEAN);
+		case IASTSimpleDeclSpecifier.t_char:
+		case IASTSimpleDeclSpecifier.t_char16_t:
+		case IASTSimpleDeclSpecifier.t_char32_t:
+		case IASTSimpleDeclSpecifier.t_wchar_t:
+			return ensureFamixUniqEntity(Type.class, null, PRIM_T_CHAR);
+		case IASTSimpleDeclSpecifier.t_decimal32:
+		case IASTSimpleDeclSpecifier.t_decimal64:
+		case IASTSimpleDeclSpecifier.t_decimal128:
+		case IASTSimpleDeclSpecifier.t_int:
+		case IASTSimpleDeclSpecifier.t_int128:
+			return ensureFamixUniqEntity(Type.class, null, PRIM_T_INT);
+		case IASTSimpleDeclSpecifier.t_float:
+		case IASTSimpleDeclSpecifier.t_float128:
+		case IASTSimpleDeclSpecifier.t_double:
+			return ensureFamixUniqEntity(Type.class, null, PRIM_T_REAL);
+		}
+		return null;
 	}
 
 	// UTILITIES =========================================================================================================================================
@@ -259,5 +291,6 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	protected static String concatMooseName(String prefix, String name) {
 		return prefix + PACKAGE_NAME_SEPARATOR + name;
 	}
+
 
 }

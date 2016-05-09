@@ -473,7 +473,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			try {
 				bnd = index.findBinding(nodeName);
 			} catch (CoreException e) {
-				System.err.println("error getting index");
 				e.printStackTrace();
 			}
 
