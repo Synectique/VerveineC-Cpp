@@ -69,7 +69,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	public RefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index, /*visitNodes*/true);
 
-		tracer = new Tracer("REF>");
+		tracer = new NullTracer("REF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
@@ -224,7 +224,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		try {
 			bnd = index.findBinding(nodeName);
 		} catch (CoreException e) {
-			System.err.println("error getting index");
 			e.printStackTrace();
 		}
 

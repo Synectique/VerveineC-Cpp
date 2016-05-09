@@ -28,6 +28,7 @@ import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.ICProject;
+import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
@@ -99,6 +100,10 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		case ICElement.C_UNIT:
 			visit( (ITranslationUnit) elt);
 			break;
+		case ICElement.C_INCLUDE:
+			visit( (IInclude) elt);
+			break;
+
 		default:
 			//  don't know what it is, don't know what to do with it
 		}
@@ -113,16 +118,20 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		visitChildren(cont);
 	}
 
-	public void visit(ITranslationUnit tu) {
-		try {
-			this.filename = tu.getFile().getRawLocation().toString();
-			tu.getAST(index, ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT | ITranslationUnit.AST_SKIP_INDEXED_HEADERS).accept(this);
-			this.filename = null;
-		} catch (CoreException e) {
-			System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ tu.getElementName() );
-		}
+	public void visit(IInclude project) {
 	}
 
+	public void visit(ITranslationUnit elt) {
+		try {
+			visitChildren(elt);
+
+			this.filename = elt.getFile().getRawLocation().toString();
+			elt.getAST(index, ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT | ITranslationUnit.AST_SKIP_INDEXED_HEADERS).accept(this);
+			this.filename = null;
+		} catch (CoreException e) {
+			System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ elt.getElementName() );
+		}
+	}
 
 
 	// CDT VISITING METODS ON AST ==========================================================================================================

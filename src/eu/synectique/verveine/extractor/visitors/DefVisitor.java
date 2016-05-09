@@ -1,11 +1,13 @@
 package eu.synectique.verveine.extractor.visitors;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
@@ -25,7 +27,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
@@ -34,6 +35,7 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
+import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
@@ -47,10 +49,8 @@ import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
-import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
-import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
@@ -65,6 +65,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	protected boolean visitHeaders;
 
+	/**
+	 * A set of all unresolved includes so that we report them only once
+	 */
+	protected Set<String> unresolvedIncludes;
+
 	// CONSTRUCTOR ==========================================================================================================================
 
 	/**
@@ -75,6 +80,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	public DefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index, /*visitNodes*/true);
 
+		unresolvedIncludes = new HashSet<String>();
 		tracer = new NullTracer("DEF>");
 	}
 
@@ -96,6 +102,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		tracer.down();
 	}
 
+
 	/**
 	 * Visiting a source file
 	 */
@@ -109,6 +116,18 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		}
 	}
 
+	public void visit(IInclude elt) {
+		if (! elt.isResolved()) {
+			String includeStr;
+			includeStr = elt.isLocal() ? "\"" : "<";
+			includeStr += elt.getIncludeName();
+			includeStr += elt.isLocal() ? "\"" : ">";
+			if (! unresolvedIncludes.contains(includeStr)) {
+				unresolvedIncludes.add(includeStr);
+				System.err.println("Include not resolved: "+ includeStr);
+			}
+		}
+	}
 
 	// CDT VISITING METODS ON AST ==========================================================================================================
 
@@ -512,6 +531,10 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		else {
 			return (! ext.startsWith(".h") );
 		}
+	}
+
+	public int nbUnresolvedIncludes() {
+		return unresolvedIncludes.size();
 	}
 
 }

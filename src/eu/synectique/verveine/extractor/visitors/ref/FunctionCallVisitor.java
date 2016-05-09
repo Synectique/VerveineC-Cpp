@@ -49,7 +49,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	 * so that we can know where to look for the current identifier (or where to create a stub one)
 	 */
 	protected Type priorType;
-	
+
 	// CONSTRUCTOR ==========================================================================================================================
 
 	public FunctionCallVisitor(CDictionary dico, IIndex index, EntityStack context) {
@@ -124,7 +124,6 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	protected int visit(ICPPASTConstructorChainInitializer node) {
 		return PROCESS_SKIP;
 	}
-
 
 	/**
 	 * Other entry point for this visitor
@@ -275,6 +274,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	protected int leave(ICPPASTNamedTypeSpecifier node) {
 		return PROCESS_SKIP;
 	}
+
 
 	// UTILITIES ====================================================================================================================================
 

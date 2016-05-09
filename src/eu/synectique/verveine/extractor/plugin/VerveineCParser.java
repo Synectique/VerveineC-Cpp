@@ -90,7 +90,9 @@ public class VerveineCParser extends VerveineParser {
         step2.visit(cproject);
         step2.setVisitHeaders(false);
         step2.visit(cproject);
-        
+        if (step2.nbUnresolvedIncludes() > 0) {
+        	System.err.println("There were "+step2.nbUnresolvedIncludes()+" unresolved includes");
+        }
 
         System.out.println("step 3 / 3: creating references");
         new RefVisitor(dico, index).visit(cproject);
@@ -172,7 +174,7 @@ public class VerveineCParser extends VerveineParser {
 	private IProject configureProject(IProject project) {
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
 		IProject cProject = null;
-		
+
 		// change a bit workspace description
 		// TODO couldn't we do this on the project description ?
 		IWorkspaceDescription workspaceDesc = workspace.getDescription();
@@ -205,7 +207,7 @@ public class VerveineCParser extends VerveineParser {
 		for (ICConfigurationDescription configDescription : configDecriptions) {
 			ICFolderDescription projectRoot = configDescription.getRootFolderDescription();
 
-			for (ICLanguageSetting setting : projectRoot.getLanguageSettings()) {   // why a loop here ?
+			for (ICLanguageSetting setting : projectRoot.getLanguageSettings()) {
 				List<ICLanguageSettingEntry> includes = new ArrayList<ICLanguageSettingEntry>();
 				includes.addAll(setting.getSettingEntriesList(ICSettingEntry.INCLUDE_PATH));
 				includes.add(new CIncludePathEntry("/usr/include", SYSTEM_INCLUDE_PATH));
