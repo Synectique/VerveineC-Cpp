@@ -29,11 +29,13 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTSimpleDeclaration;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
-import eu.synectique.verveine.core.EntityStack2;
+import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
+import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
@@ -50,7 +52,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	
 	// CONSTRUCTOR ==========================================================================================================================
 
-	public FunctionCallVisitor(CDictionary dico, IIndex index, EntityStack2 context) {
+	public FunctionCallVisitor(CDictionary dico, IIndex index, EntityStack context) {
 		super(dico, index, context, /*visitNodes*/true);
 
 		tracer = new NullTracer("FCV>");
@@ -87,22 +89,32 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 			}
 			
 			if (fmx == null) {
-				// could not find it. try to create a stub from the name (if we have one)
+				// could not find it. Try to create a stub from the name (if we have one)
 				if (nodeName != null) {
 					String stubSig =  mkStubSig(nodeName.toString(), node.getArguments().length);
 					fmx = dico.ensureFamixFunction(/*key*/StubBinding.getInstance(Method.class, stubSig), nodeName.toString(), stubSig, /*container*/null);	
 				}
 			}
 			else if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
-				// found a class instead of a behavioral. Happens in the case of a "throw ClassName(...)"
+				// found a class instead of a behavioral. May happen, for example in the case of a "throw ClassName(...)"
 				String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
 				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, stubSig), fmx.getName(), stubSig, priorType);
 			}
 
 			if (fmx != null) {
-				invocationOfBehavioural((BehaviouralEntity) fmx);
+				if (fmx instanceof BehaviouralEntity) {
+					invocationOfBehavioural((BehaviouralEntity) fmx);
+				}
+				else if (fmx instanceof StructuralEntity) {
+					// fmx is probably a pointer to a BehavioralEntity
+					String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
+					DereferencedInvocation invok = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx );
+					invok.setSignature(stubSig);
+					
+				}
 			}
 		}
+
 		return PROCESS_CONTINUE;
 	}
 

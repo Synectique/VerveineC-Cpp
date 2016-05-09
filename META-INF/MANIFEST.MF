@@ -10,8 +10,8 @@ Require-Bundle: org.eclipse.core.runtime,
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .,
- lib/famix-201603271311.jar,
  lib/akuhn-util-r28011.jar,
  lib/fame-201403040925.jar,
- lib/fast-201603271311.jar,
- lib/verveine.core-201604251958.jar
+ lib/verveine.core-201605081711.jar,
+ lib/famix-201605081711.jar,
+ lib/fast-201605081711.jar

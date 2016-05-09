@@ -23,7 +23,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
@@ -33,10 +32,9 @@ import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
-import eu.synectique.verveine.core.EntityStack2;
+import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
-import eu.synectique.verveine.extractor.utils.Tracer;
 
 /**
  * The superclass of all visitors. These visitors visit an AST to create FAMIX entities.<BR>
@@ -53,7 +51,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	/**
 	 * A stack that keeps the current definition context (package/class/method)
 	 */
-	protected EntityStack2 context;
+	protected EntityStack context;
 
 	protected ITracer tracer = new NullTracer();  // no tracing by default
 
@@ -85,8 +83,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		this.index = index;
 	    this.dico = dico;
 	}
-
-	// VISITING METODS ON ICELEMENT HIERARCHY ======================================================================================================
 
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================

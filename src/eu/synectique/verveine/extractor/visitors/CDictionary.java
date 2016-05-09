@@ -5,11 +5,15 @@ import org.eclipse.cdt.core.index.IIndexBinding;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
+import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
+import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
+import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
+import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
@@ -19,6 +23,7 @@ import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourceAnchor;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
+import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
@@ -77,6 +82,20 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fa;
 	}
 
+	public DereferencedInvocation addFamixDereferencedInvocation(BehaviouralEntity sender, StructuralEntity referencer, String signature, Association prev) {
+		DereferencedInvocation invok = new DereferencedInvocation();
+		invok.setSender(sender);
+		invok.setReferencer(referencer);
+		chainPrevNext(prev, invok);
+		famixRepoAdd(invok);
+
+		if (signature != null) {
+			invok.setSignature(signature);
+		}
+
+		return invok;
+	}
+	
 	public Namespace ensureFamixNamespace(IIndexBinding key, String name, ScopingEntity parent) {
 		Namespace fmx = super.ensureFamixNamespace(key, name);
 		if (parent != null) {
@@ -136,11 +155,11 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public Method ensureFamixMethod(IIndexBinding key, String name, String sig, Type parent) {
+	public Method ensureFamixMethod(IIndexBinding key, String name, String signature, Type parent) {
 		Method fmx;
 		fmx = (Method) getEntityIfNotNull(key);
 		if (fmx == null) {
-			fmx = super.ensureFamixMethod(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
+			fmx = super.ensureFamixMethod(key, name, signature, /*returnType*/null, parent, /*persistIt*/true);
 			fmx.setCyclomaticComplexity(1);
 			fmx.setNumberOfStatements(0);
 		}
@@ -241,5 +260,4 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return prefix + PACKAGE_NAME_SEPARATOR + name;
 	}
 
-	
 }

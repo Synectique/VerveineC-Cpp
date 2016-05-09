@@ -5,7 +5,7 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.core.runtime.CoreException;
 
-import eu.synectique.verveine.core.EntityStack2;
+import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
@@ -39,7 +39,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		super(dico, index, visitNodes);
 	}
 
-	public AbstractRefVisitor(CDictionary dico, IIndex index, EntityStack2 context, boolean visitNodes) {
+	public AbstractRefVisitor(CDictionary dico, IIndex index, EntityStack context, boolean visitNodes) {
 		super(dico, index, visitNodes);
 		this.context = context;
 	}
@@ -91,6 +91,21 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	protected Association invocationOfBehavioural(BehaviouralEntity fmx) {
 		BehaviouralEntity accessor = this.context.topMethod();
 		Invocation invok = dico.addFamixInvocation(accessor, (BehaviouralEntity) fmx, /*receiver*/null, /*signature*/null, context.getLastInvocation());
+		if (invok != null) {
+			context.setLastInvocation(invok);
+		}
+		return invok;
+	}
+
+	/**
+	 * Records an Invocation of a BehaviouralEntity referenced by a variable (a pointer) and sets lastInvocation attribute.
+	 * Assumes the context is correctly set (i.e. top contains a BehaviouralEntity that makes the invocation) 
+	 * @param fmx -- StructuralEntity pointing to a BehaviouralEntity invoked
+	 * @return the invocation created
+	 */
+	protected Association dereferencedInvocation(StructuralEntity fmx) {
+		BehaviouralEntity accessor = this.context.topMethod();
+		Invocation invok = dico.addFamixDereferencedInvocation(accessor, fmx, /*signature*/null, context.getLastInvocation());
 		if (invok != null) {
 			context.setLastInvocation(invok);
 		}

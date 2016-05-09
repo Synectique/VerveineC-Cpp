@@ -38,7 +38,7 @@ import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
-import eu.synectique.verveine.core.EntityStack2;
+import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
@@ -103,7 +103,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	public void visit(ITranslationUnit tu) {
 		if (checkHeader(tu)) {
 			tracer.up("ITranslationUnit: "+tu.getElementName());
-			context = new EntityStack2();    // "reseting" context
+			context = new EntityStack();    // "reseting" context
 			super.visit(tu);
 			tracer.down();
 		}

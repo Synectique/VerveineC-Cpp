@@ -38,8 +38,8 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
-import eu.synectique.famix.CPPSourceLanguage;
 import eu.synectique.verveine.core.VerveineParser;
+import eu.synectique.verveine.core.gen.famix.CSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
@@ -322,7 +322,7 @@ public class VerveineCParser extends VerveineParser {
 
 	@Override
 	protected SourceLanguage getMyLgge() {
-		return new CPPSourceLanguage();
+		return new CSourceLanguage();
 	}
 
 	public void setOptions(String[] args) {

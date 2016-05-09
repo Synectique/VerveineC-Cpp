@@ -8,7 +8,7 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.core.runtime.CoreException;
 
-import eu.synectique.verveine.core.EntityStack2;
+import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
@@ -30,7 +30,7 @@ public class ParamDeclVisitor extends AbstractRefVisitor {
 	 */
 	private Type fmxType;
 
-	public ParamDeclVisitor(CDictionary dico, IIndex index, EntityStack2 context) {
+	public ParamDeclVisitor(CDictionary dico, IIndex index, EntityStack context) {
 		super(dico, index, context, /*visitNodes*/true);
 
 		tracer = new NullTracer("PDV>");
