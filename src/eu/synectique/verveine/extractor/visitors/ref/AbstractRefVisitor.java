@@ -28,7 +28,7 @@ import eu.synectique.verveine.extractor.visitors.CDictionary;
  * Abstract superclass for Reference visitors.<BR>
  * It defines some utility methods to create references to names.
  * It also adds a constructor accepting an existing context stack (see {@link AbstractVisitor#context}), this allows
- * to create specialized sub-visitors (e.g. {@link FunctionCallVisitor} or {@link ParamDeclVisitor}) while visiting an AST
+ * to create specialized sub-visitors (e.g. {@link FunctionCallVisitor}) while visiting an AST
  * with a "main" visitor.
  * @author anquetil
  */

@@ -22,11 +22,13 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.index.IIndex;
@@ -44,6 +46,7 @@ import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
@@ -149,7 +152,32 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	@Override
 	public int visit(IASTParameterDeclaration node) {
-		return new ParamDeclVisitor(dico, index, context).visit(node);
+		IIndexBinding bnd = null;
+		Parameter fmx = null;
+		try {
+			bnd = index.findBinding(node.getDeclarator().getName());
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+
+		if (bnd == null) {
+			return PROCESS_SKIP;
+		}
+
+		fmx = (Parameter) dico.getEntityByKey(bnd);
+
+		if (fmx != null) {
+			// now get the declared type
+			if (node.getParent() instanceof IASTSimpleDeclaration) {
+				fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
+			}
+			else if (node.getParent() instanceof ICPPASTTemplateDeclaration) {
+				// parameterType in a template
+				// ignore for now
+			}
+		}
+		
+		return PROCESS_SKIP;
 	}
 
 
@@ -218,13 +246,13 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 * Visiting a method or function declaration
 	 */
 	@Override
-	protected int visit(IASTFunctionDeclarator node) {
+	protected int visit(ICPPASTFunctionDeclarator node) {
 		IASTName nodeName;
 		IIndexBinding bnd = null;
 		BehaviouralEntity fmx = null;
 
 		nodeName = node.getName();
-		tracer.msg("IASTFunctionDeclarator: "+nodeName);
+		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
 
 		try {
 			bnd = index.findBinding(nodeName);
@@ -240,11 +268,15 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		this.context.push(fmx);
 
+		for (ICPPASTParameterDeclaration param : node.getParameters()) {
+			param.accept(this);
+		}
+		
 		return PROCESS_SKIP;  // already visited all we needed
 	}
 
 	@Override
-	protected int leave(IASTFunctionDeclarator node) {
+	protected int leave(ICPPASTFunctionDeclarator node) {
 		NamedEntity top = context.top();
 		if ( (top != null) &&
 			 (top instanceof BehaviouralEntity) ) {
@@ -262,7 +294,8 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		Attribute fmx = null;
 
 		if ( (node.getParent() instanceof IASTSimpleDeclaration) &&
-				(node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) ) {
+			 (node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) &&
+			 ( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier().getStorageClass() != IASTDeclSpecifier.sc_typedef)  ) {
 			// this is an Attribute declaration, get it back
 			try {
 				bnd = index.findBinding(node.getName());
@@ -274,10 +307,17 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 				return PROCESS_SKIP;
 			}
 
-			fmx = (Attribute) dico.getEntityByKey(bnd);
+			if (dico.getEntityByKey(bnd) instanceof Attribute) {
+				fmx = (Attribute) dico.getEntityByKey(bnd);
+			}
+			else if (dico.getEntityByKey(bnd) instanceof Type) {
+				fmx = null;
+			}
 
-			// now get the declared type
-			fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
+			if (fmx != null) {
+				// now get the declared type
+				fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
+			}
 		}
 
 		return PROCESS_CONTINUE;
@@ -292,7 +332,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		 * visit declarator to ensure the method definition and to get the
 		 * Famix entity (which will be on the top of the context stack)
 		 */
-		this.visit(node.getDeclarator());
+		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator() );
 		if (this.context.top() instanceof BehaviouralEntity) {  // visit(node.getDeclarator()) seems to have been successful
 			node.getBody().accept(this);
 			this.leave(node.getDeclarator()); // to pop the method from the context if it is there

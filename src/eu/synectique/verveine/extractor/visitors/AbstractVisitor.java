@@ -20,6 +20,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
@@ -31,6 +32,7 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTNewExpression;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.EntityStack;
@@ -164,11 +166,17 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	@Override
 	public int visit(IASTDeclarator node) {
-		if (node instanceof IASTFunctionDeclarator) {
+		/* ********************************************************************************************
+		 * BE CAREFULL: The order of the tests is important because:
+		 * ICPPASTFunctionDeclarator is a sub-interface of IASTFunctionDeclarator
+		 * IASTFunctionDeclarator is a sub-interface of ICPPASTDeclarator
+		 * ******************************************************************************************** */
+		if (node instanceof ICPPASTFunctionDeclarator) {
+			return this.visit((ICPPASTFunctionDeclarator)node);
+		}
+		else if (node instanceof IASTFunctionDeclarator) {
 			return this.visit((IASTFunctionDeclarator)node);
 		}
-		// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		// BE CAREFULL: The order is important because IASTFunctionDeclarator is a sub-interface of ICPPASTDeclarator
 		else if (node instanceof ICPPASTDeclarator) {
 			return this.visit((ICPPASTDeclarator)node);
 		}
@@ -178,16 +186,24 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	@Override
 	public int leave(IASTDeclarator node) {
-
-		if (node instanceof IASTFunctionDeclarator) {
+		/* ********************************************************************************************
+		 * BE CAREFULL: The order of the tests is important because:
+		 * ICPPASTFunctionDeclarator is a sub-interface of IASTFunctionDeclarator
+		 * IASTFunctionDeclarator is a sub-interface of ICPPASTDeclarator
+		 * ******************************************************************************************** */
+		if (node instanceof ICPPASTFunctionDeclarator) {
+			return this.leave((ICPPASTFunctionDeclarator)node);
+		}
+		else if (node instanceof IASTFunctionDeclarator) {
 			return this.leave((IASTFunctionDeclarator)node);
 		}
-		// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		// BE CAREFULL: The order is important because IASTFunctionDeclarator is a sub-interface of ICPPASTDeclarator
 		else if (node instanceof ICPPASTDeclarator) {
 			return this.leave((ICPPASTDeclarator)node);
 		}
 
+		if (node instanceof IASTFunctionDeclarator) {
+			return this.leave((IASTFunctionDeclarator)node);
+		}
 		return super.leave(node);
 	}
 
@@ -286,6 +302,14 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int leave(ICPPASTFunctionDefinition node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(ICPPASTFunctionDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(ICPPASTFunctionDeclarator node) {
 		return PROCESS_CONTINUE;
 	}
 

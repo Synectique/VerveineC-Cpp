@@ -156,7 +156,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 			String mthName;
 			if (parent.getImplicitNames().length > 0) {
 				mthName = parent.getImplicitNames()[0].toString();
-				fmx = dico.ensureFamixMethod(/*key*/null, mthName, ((ICPPASTDeclarator)parent).getName()+"(...)", priorType);
+				fmx = dico.ensureFamixMethod(/*key*/null, mthName, mthName+"(...)", priorType);
 			}
 		}
 		
