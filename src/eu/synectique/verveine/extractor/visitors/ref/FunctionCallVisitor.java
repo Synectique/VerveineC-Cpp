@@ -160,7 +160,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, stubSig), mthName, stubSig, priorType);
 			}
 		}
-		
+
 		if (fmx != null) {
 			invocationOfBehavioural((BehaviouralEntity) fmx);
 		}

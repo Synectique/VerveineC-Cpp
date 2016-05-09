@@ -24,6 +24,7 @@ import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
@@ -51,6 +52,7 @@ import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
@@ -81,7 +83,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		super(dico, index, /*visitNodes*/true);
 
 		unresolvedIncludes = new HashSet<String>();
-		tracer = new NullTracer("DEF>");
+		tracer = new Tracer("DEF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
@@ -242,6 +244,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		isTemplate = (node.getParent().getParent() instanceof ICPPASTTemplateDeclaration);
 
 		if (nodeName == null) {
+			tracer.msg("ICPPASTCompositeTypeSpecifier without name");
 			return PROCESS_SKIP;
 		}
 
@@ -250,7 +253,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		try {
 			bnd = index.findBinding(nodeName);
 		} catch (CoreException e) {
-			System.err.println("error getting index");
 			e.printStackTrace();
 		}
 
@@ -281,24 +283,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 		}
 
-		/*Inheritance lastInheritance = null;
-		ICPPClassType classBnd = (ICPPClassType)nodeName.resolveBinding();
-		for (ICPPBase sup : classBnd.getBases()) {
-			IBinding supBnd = sup.getBaseClass();
-			if (supBnd instanceof ICPPClassType) {
-				try {
-					IIndexName[] supNames = index.findDeclarations(supBnd);
-					if (supNames.length > 0) {
-						eu.synectique.verveine.core.gen.famix.Class supFmx;
-						supFmx = dicoDef.ensureClass(supNames[0].getFileLocation().getFileName(), supNames[0].getNodeOffset(), sup.getClassDefinitionName().toString(), /*owner* /null);
-						lastInheritance = dico.ensureFamixInheritance(supFmx, fmx, lastInheritance);
-					}
-				} catch (CoreException e) {
-					e.printStackTrace();
-				}
-			}
-		}*/
-
 		this.context.push(fmx);
 
 		return PROCESS_CONTINUE;
@@ -316,18 +300,17 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 * Visiting a method or function declaration
 	 */
 	@Override
-	protected int visit(IASTFunctionDeclarator node) {
+	protected int visit(ICPPASTFunctionDeclarator node) {
 		IASTName nodeName;
 		IIndexBinding bnd = null;
 		BehaviouralEntity fmx = null;
 
 		nodeName = node.getName();
-		tracer.msg("IASTFunctionDeclarator: "+nodeName);
+		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
 
 		try {
 			bnd = index.findBinding(nodeName);
 		} catch (CoreException e) {
-			System.err.println("error getting index");
 			e.printStackTrace();
 		}
 
@@ -356,7 +339,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	}
 
 	@Override
-	protected int leave(IASTFunctionDeclarator node) {
+	protected int leave(ICPPASTFunctionDeclarator node) {
 		NamedEntity top = context.top();
 		if ( (top != null) &&
 			 (top instanceof BehaviouralEntity) ) {
@@ -404,14 +387,14 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	protected int visit(ICPPASTFunctionDefinition node) {
 		BehaviouralEntity fmx = null;
-
+		tracer.up("ICPPASTFunctionDefinition");
 		/*
 		 * visit declarator to ensure the method definition and to get the
 		 * Famix entity (which will be on the top of the context stack)
 		 */
-		this.visit(node.getDeclarator());
+		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator());
 		fmx = context.topMethod();    // TODO could be a function here ....
-		this.leave(node.getDeclarator());  // at least to popup the function/method from the context stack
+		this.leave((ICPPASTFunctionDeclarator)node.getDeclarator());  // at least to popup the function/method from the context stack
 
 		if (fmx != null) {
 			IASTFileLocation defLoc = node.getFileLocation();
@@ -447,6 +430,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		}
 
 		this.context.pop();
+		tracer.down();
 
 		return PROCESS_SKIP;  // we already visited the children
 	}
