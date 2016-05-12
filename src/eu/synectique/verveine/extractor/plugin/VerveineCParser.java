@@ -7,22 +7,23 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.CCorePlugin;
-import org.eclipse.cdt.core.dom.IPDOMManager;
 import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.core.index.IIndexInclude;
 import org.eclipse.cdt.core.index.IIndexManager;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
-import org.eclipse.cdt.core.settings.model.CIncludePathEntry;
 import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
 import org.eclipse.cdt.core.settings.model.ICFolderDescription;
 import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
 import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
+import org.eclipse.cdt.core.settings.model.ICMacroEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
 import org.eclipse.cdt.core.settings.model.ICSettingEntry;
+import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -43,7 +44,6 @@ import eu.synectique.verveine.core.gen.famix.CSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
-import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 import eu.synectique.verveine.extractor.visitors.DefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
@@ -60,12 +60,6 @@ public class VerveineCParser extends VerveineParser {
 	private static final int SOURCE_FILE = 0;
 	private static final int IGNORE_FILE = 1;
 	private static final int UNKNOWN_FILE = 2;
-
-	/**
-	 * Indicates that an include path is system (as opposed to {@link ICSettingEntry#LOCAL}.
-	 * Reversed engineered the value from CDT code.
-	 */
-	private static final int SYSTEM_INCLUDE_PATH = 0;
 
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 
@@ -120,6 +114,7 @@ public class VerveineCParser extends VerveineParser {
 		// We need this to start looking for references to entities
 		// After that, we can get the indexer to ask it for bindings
         IIndexManager imanager = CCorePlugin.getIndexManager();
+        imanager.reindex(cproject);
         imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
        	try {
 			this.index = imanager.getIndex(cproject);
@@ -205,20 +200,60 @@ public class VerveineCParser extends VerveineParser {
 			exc.printStackTrace();
 		}
 
+		/* 
+		 * trying to set include path to ensure system includes are resolved
+		 * 
+		 * From: http://cdt-devel-faq.wikidot.com/#toc25
+		 * The Include paths [...] are accessible via the CDT Core model.
+		 * In a nutshell: CoreModel -> ICProjectDescription -> ICConfigurationDescription -> ICFolderDescription -> ICLanguageSetting -> ICLanguageSettingEntry.
+		 * The ICLanguageSettingEntry you get in the end will also be an ICIncludePathEntry.
+		 * 
+		 * Along the way you'll need to know which configuration you want (the active one?), which folder (the project root?),
+		 * which language (i.e. assembly/C/C++ — this is tricky, see later), and that the "kind" of the ICLanguageSetting we want
+		 * is ICSettingEntry.INCLUDE_PATH.
+		 */
+/*
+		IManagedBuildInfo buildInfo = ManagedBuildManager.getBuildInfo(project);
+		if (buildInfo != null) {
+		    for (IConfiguration config : buildInfo.getManagedProject().getConfigurations())
+		        CfgDiscoveredPathManager.getInstance().removeDiscoveredInfo(project, new CfgInfoContext(config));
+		}
+*/	
 		ICProjectDescription cprojectDesc = CoreModel.getDefault().getProjectDescription(project, true);
-		ICConfigurationDescription configDecriptions[] = cprojectDesc.getConfigurations();
-		for (ICConfigurationDescription configDescription : configDecriptions) {
-			ICFolderDescription projectRoot = configDescription.getRootFolderDescription();
+		ICConfigurationDescription activeConfig = cprojectDesc.getActiveConfiguration();
+		ICFolderDescription folderDescription = activeConfig.getRootFolderDescription();
+		ICLanguageSettingEntry[] projectDefines = getDefines();
+		for (ICLanguageSetting lang : folderDescription.getLanguageSettings()) {
+			//if (lang.getLanguageId().endsWith("g++")) {   // org.eclipse.cdt.core.g++
+					List<ICLanguageSettingEntry> includes = new ArrayList<ICLanguageSettingEntry>();
+					includes.addAll(lang.getSettingEntriesList(ICSettingEntry.INCLUDE_PATH));
+					includes.add(CDataUtil.createCIncludePathEntry("/usr/include", ICSettingEntry.BUILTIN));
+					lang.setSettingEntries(ICSettingEntry.INCLUDE_PATH, includes);
+					
+					lang.setSettingEntries(ICSettingEntry.MACRO, projectDefines);
+			//		}				
+		}
 
-			for (ICLanguageSetting setting : projectRoot.getLanguageSettings()) {
-				List<ICLanguageSettingEntry> includes = new ArrayList<ICLanguageSettingEntry>();
-				includes.addAll(setting.getSettingEntriesList(ICSettingEntry.INCLUDE_PATH));
-				includes.add(new CIncludePathEntry("/usr/include", SYSTEM_INCLUDE_PATH));
-				setting.setSettingEntries(ICSettingEntry.INCLUDE_PATH, includes);
-			}
+
+		cprojectDesc.setActiveConfiguration(activeConfig);
+		cprojectDesc.setCdtProjectCreated();
+
+		try {
+			CoreModel.getDefault().setProjectDescription(cProject, cprojectDesc, /*force*/true, NULL_PROGRESS_MONITOR);
+		} catch (CoreException e) {
+			e.printStackTrace();
 		}
 
 		return cProject;
+	}
+
+	/* trying to set a C Nacro programmatically
+	 */
+	private ICLanguageSettingEntry[] getDefines() {
+		ArrayList<ICLanguageSettingEntry> defines = new ArrayList<ICLanguageSettingEntry>();
+		ICMacroEntry entry = (ICMacroEntry)CDataUtil.createEntry(ICLanguageSettingEntry.MACRO, "WINDOWS", "yes", null, 0);
+		defines.add(entry);
+		return defines.toArray(new ICLanguageSettingEntry[0]);
 	}
 
 	/**

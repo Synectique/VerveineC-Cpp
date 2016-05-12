@@ -52,6 +52,7 @@ import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
@@ -84,7 +85,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		super(dico, index, /*visitNodes*/true);
 
 		unresolvedIncludes = new HashSet<String>();
-		tracer = new NullTracer("DEF>");
+		tracer = new Tracer("DEF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
@@ -138,10 +139,8 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	public int visit(ICPPASTNamespaceDefinition node) {
 		tracer.up("ICPPASTNamespaceDefinition: "+node.getName());
 		Namespace fmx;
-		IASTName nodeName = node.getName();
-		IIndexBinding bnd = null;
-
 		nodeName = node.getName();
+		bnd = null;
 
 		try {
 			bnd = index.findBinding(nodeName);
@@ -218,31 +217,13 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		IASTName nodeName;
-		IIndexBinding bnd = null;
 		Class fmx;
 		boolean isTemplate;
 
-		nodeName = node.getName();
+		// compute nodeName and binding
+		super.visit(node);
 
 		isTemplate = (node.getParent().getParent() instanceof ICPPASTTemplateDeclaration);
-
-		if (nodeName == null) {
-			tracer.msg("ICPPASTCompositeTypeSpecifier without name");
-			return PROCESS_SKIP;
-		}
-
-		tracer.up("ICPPASTCompositeTypeSpecifier:"+nodeName.toString());
-
-		try {
-			bnd = index.findBinding(nodeName);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
-
-		if (bnd == null) {
-			return PROCESS_SKIP;
-		}
 
 		if (isTemplate) {
 			fmx = dico.ensureFamixParameterizableClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
@@ -251,11 +232,9 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			fmx = dico.ensureFamixClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
 		}
 
-		if (fmx == null) {
-			return PROCESS_SKIP;
+		if (! (bnd instanceof StubBinding)) {
+			fmx.setIsStub(false);
 		}
-
-		fmx.setIsStub(false);
 
 		fmx.setParentPackage(currentPackage);
 		
@@ -285,22 +264,10 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
-		IASTName nodeName;
-		IIndexBinding bnd = null;
 		BehaviouralEntity fmx = null;
 
-		nodeName = node.getName();
-		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
-
-		try {
-			bnd = index.findBinding(nodeName);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
-
-		if (bnd == null) {
-			return PROCESS_SKIP;
-		}
+		// compute nodeName and binding
+		super.visit(node);
 
 		if (bnd instanceof ICPPMethod) {   // C++ method
 			fmx = dico.ensureFamixMethod(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/context.topType());
@@ -311,11 +278,13 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 				((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
 			}
 		}
-		else {                    //   C function ?
+		else {                    //   C function or may be a stub ?
 			fmx = dico.ensureFamixFunction(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/(ContainerEntity)context.top());
 		}
-
-		fmx.setIsStub(false);
+		
+		if (! (bnd instanceof StubBinding)) {
+			fmx.setIsStub(false);
+		}
 
 		context.push(fmx);
 
@@ -332,38 +301,22 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		return ASTVisitor.PROCESS_CONTINUE;
 	}
 
-	protected int visit(IASTSimpleDeclaration node) {
-		if (node.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef) {
-			// this is a typedef, so define a FamixType with the declarator(s)
-			for (IASTDeclarator declarator : node.getDeclarators()) {
-				IASTName nodeName = null;
-				IIndexBinding bnd = null;
-				TypeAlias fmx = null;
+	/**
+	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}
+	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
+	 * thus several nodeName and bnd.
+	 */
+	@Override
+	protected void handleTypedef(IASTSimpleDeclaration node) {
+		TypeAlias fmx;
 
-				nodeName = declarator.getName();
+		fmx = dico.ensureFamixTypeAlias(bnd, nodeName.toString(), (ContainerEntity)context.top());
 
-				tracer.msg("IASTSimpleDeclaration (typedef):"+nodeName.toString());
-
-				try {
-					bnd = index.findBinding(nodeName);
-				} catch (CoreException e) {
-					e.printStackTrace();
-				}
-
-				if (bnd == null) {
-					return PROCESS_SKIP;
-				}
-
-				fmx = dico.ensureFamixTypeAlias(bnd, nodeName.toString(), (ContainerEntity)context.top());
-
-				fmx.setIsStub(false);
-
-				fmx.setParentPackage(currentPackage);
-			}
-			
-			return PROCESS_SKIP;
+		if (! (bnd instanceof StubBinding)) {
+			fmx.setIsStub(false);
 		}
-		return PROCESS_CONTINUE;
+
+		fmx.setParentPackage(currentPackage);
 	}
 
 	/**
@@ -429,25 +382,13 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTDeclarator node) {
-		IASTName nodeName = null;
-		IIndexBinding bnd = null;
 		Attribute fmx = null;
 
-		if ( (node.getParent() instanceof IASTSimpleDeclaration) &&
-				(node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) ) {
-			// OK, it seems to be an Attribute declaration
-			nodeName = node.getName();
+		// compute nodeName and binding
+		bnd = null;
+		super.visit(node);
 
-			try {
-				bnd = index.findBinding(nodeName);
-			} catch (CoreException e) {
-				e.printStackTrace();
-			}
-
-			if (bnd == null) {
-				return PROCESS_SKIP;
-			}
-
+		if (bnd != null) {
 			fmx = dico.ensureFamixAttribute(bnd, nodeName.toString(), context.topType());
 
 			fmx.setIsStub(false);

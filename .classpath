@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry exported="true" kind="lib" path="lib/fast-201605081711.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/famix-201605081711.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/verveine.core-201605081711.jar" sourcepath="/home/anquetil/Documents/RMod/Tools/workspace/verveine.core/src"/>
+	<classpathentry exported="true" kind="lib" path="lib/verveine.core-201605121817.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/fast-201605121817.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/famix-201605121817.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/akuhn-util-r28011.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/fame-201403040925.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>

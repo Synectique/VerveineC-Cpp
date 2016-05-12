@@ -247,6 +247,30 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	// UTILITIES =========================================================================================================================================
 
 	/**
+	 * Computes moose name for a Container.
+	 * This is a convenience method that delegates to one of {@link #mooseName(Method, String)}; {@link #mooseName(Namespace, String)};
+	 * {@link #mooseName(Package, String)}; or {@link #mooseName(Type, String)}
+	 * And this is required because at some point we need to call it with a ContainerEntity declared variable :-(
+	 */
+	public String mooseName(ContainerEntity parent, String name) {
+		if (parent instanceof Namespace) {
+			return mooseName((Namespace)parent, name);
+		}
+		else if (parent instanceof Package) {
+			return mooseName((Package)parent, name);
+		}
+		else if (parent instanceof Type) {
+			return mooseName((Type)parent, name);
+		}
+		else if (parent instanceof Method) {
+			return mooseName((Method)parent, name);
+		}
+		else {
+			return name;
+		}
+	}
+
+	/**
 	 * Computes moose name for a Namespace.
 	 * MooseName is the concatenation of the moosename of the parent Namescape with the simple name of the Namescape
 	 */

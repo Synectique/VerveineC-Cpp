@@ -44,15 +44,18 @@ import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 
 public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
@@ -102,8 +105,9 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	public int visit(ICPPASTNamespaceDefinition node) {
 		tracer.up("ICPPASTNamespaceDefinition: "+node.getName());
 		Namespace fmx;
-		IASTName nodeName = node.getName();
-		IIndexBinding bnd = null;
+	
+		nodeName = node.getName();
+		bnd = null;
 
 		nodeName = node.getName();
 
@@ -154,9 +158,9 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	@Override
 	public int visit(IASTParameterDeclaration node) {
-		IIndexBinding bnd = null;
 		Parameter fmx = null;
-		IASTName nodeName = node.getDeclarator().getName();
+		bnd = null;
+		nodeName = node.getDeclarator().getName();
 		
 		if (nodeName.toString().equals("")) {
 			return PROCESS_SKIP;
@@ -169,7 +173,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 
 		if (bnd == null) {
-			// create one
+			// create one anyway
 			bnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topMethod(), nodeName.toString()));
 		}
 
@@ -200,23 +204,10 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		IASTName nodeName;
-		IIndexBinding bnd = null;
 		eu.synectique.verveine.core.gen.famix.Class fmx;
 
-		nodeName = node.getName();
-		tracer.up("ICPPASTCompositeTypeSpecifier:"+nodeName.toString());
-
-		try {
-			bnd = index.findBinding(nodeName);
-		} catch (CoreException e) {
-			System.err.println("error getting index");
-			e.printStackTrace();
-		}
-
-		if (bnd == null) {
-			return PROCESS_SKIP;
-		}
+		// compute nodeName and binding
+		super.visit(node);
 
 		fmx = (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey(bnd);
 
@@ -225,23 +216,26 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 		
 		// now looking for superclasses
-		Inheritance lastInheritance = null;
-		for (ICPPBase baseClass : ((ICPPClassType)bnd).getBases()) {
-			eu.synectique.verveine.core.gen.famix.Class supFmx = null;
-			IType supBnd = baseClass.getBaseClassType();
+		if (bnd instanceof ICPPClassType) {
+			// would not be the case if we had to create a StubBinding
+			Inheritance lastInheritance = null;
+			for (ICPPBase baseClass : ((ICPPClassType)bnd).getBases()) {
+				eu.synectique.verveine.core.gen.famix.Class supFmx = null;
+				IType supBnd = baseClass.getBaseClassType();
 
-			if(supBnd instanceof IIndexBinding) {
-				supFmx =  (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey((IIndexBinding) supBnd);
-			}
-			if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
-				// create a stub class
-				supFmx = dico.ensureFamixClass(/*key*/null, /*name*/node.getBaseSpecifiers()[0].getNameSpecifier().toString(), /*owner*/null);
-			}
-			if (supFmx != null) {
+				if(supBnd instanceof IIndexBinding) {
+					supFmx =  (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey((IIndexBinding) supBnd);
+				}
+				if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
+					// create a stub class
+					supFmx = dico.ensureFamixClass(/*key*/null, /*name*/node.getBaseSpecifiers()[0].getNameSpecifier().toString(), /*owner*/null);
+				}
+				if (supFmx != null) {
 					lastInheritance = dico.ensureFamixInheritance(supFmx, fmx, lastInheritance);
+				}
 			}
 		}
-
+		
 		this.context.push(fmx);
 		
 		for (IASTDeclaration child : node.getMembers()) {
@@ -268,23 +262,10 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
-		IASTName nodeName;
-		IIndexBinding bnd = null;
 		BehaviouralEntity fmx = null;
 
-		currentBehavioural = null;
-		nodeName = node.getName();
-		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
-
-		try {
-			bnd = index.findBinding(nodeName);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
-
-		if (bnd == null) {
-			return PROCESS_SKIP;
-		}
+		// compute nodeName and binding
+		super.visit(node);
 
 		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
 
@@ -305,23 +286,13 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTDeclarator node) {
-		IIndexBinding bnd = null;
 		Attribute fmx = null;
 
-		if ( (node.getParent() instanceof IASTSimpleDeclaration) &&
-			 (node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) &&
-			 ( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier().getStorageClass() != IASTDeclSpecifier.sc_typedef)  ) {
-			// this is an Attribute declaration, get it back
-			try {
-				bnd = index.findBinding(node.getName());
-			} catch (CoreException e) {
-				e.printStackTrace();
-			}
+		// compute nodeName and binding
+		bnd = null;
+		super.visit(node);
 
-			if (bnd == null) {
-				return PROCESS_SKIP;
-			}
-
+		if (bnd != null) {
 			fmx = (Attribute) dico.getEntityByKey(bnd);
 			if (fmx != null) {
 				// now get the declared type
@@ -348,6 +319,20 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 
 		return PROCESS_SKIP;  // we already visited the children
+	}
+
+	/**
+	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}
+	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
+	 * thus several nodeName and bnd.
+	 */
+	@Override
+	protected void handleTypedef(IASTSimpleDeclaration node) {
+		TypeAlias fmx;
+
+		fmx = (TypeAlias) dico.getEntityByKey(bnd);
+
+		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
 	}
 
 	@Override

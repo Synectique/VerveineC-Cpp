@@ -1,7 +1,10 @@
 package eu.synectique.verveine.extractor.visitors;
 
+import java.util.Stack;
+
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
+import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
@@ -13,6 +16,7 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
+import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
@@ -25,6 +29,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICElementVisitor;
@@ -36,8 +41,17 @@ import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTNewExpression;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.EntityStack;
+import eu.synectique.verveine.core.gen.famix.Attribute;
+import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.ContainerEntity;
+import eu.synectique.verveine.core.gen.famix.Function;
+import eu.synectique.verveine.core.gen.famix.Method;
+import eu.synectique.verveine.core.gen.famix.NamedEntity;
+import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 
 /**
  * The superclass of all visitors. These visitors visit an AST to create FAMIX entities.<BR>
@@ -62,7 +76,20 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	 */
 	protected String filename;
 
+	/**
+	 * CDT index to resolve symbols
+	 */
 	protected IIndex index;
+
+	/**
+	 * A variable used in many visit methods to store the name of the current node
+	 */
+	protected IASTName nodeName;
+
+	/**
+	 * A variable used in many visit methods to store the binding of the current node
+	 */
+	protected IIndexBinding bnd;
 
 	// CONSTRUCTOR ==========================================================================================================================
 
@@ -290,8 +317,40 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	// ADDITIONAL VISITING METODS ON AST =======================================================================================================
 
 	protected int visit(IASTSimpleDeclaration node) {
+		if (node.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef) {
+			// this is a typedef, so define a FamixType with the declarator(s)
+			for (IASTDeclarator declarator : node.getDeclarators()) {
+				TypeAlias fmx = null;
+
+				nodeName = declarator.getName();
+
+				tracer.msg("IASTSimpleDeclaration (typedef):"+nodeName.toString());
+
+				try {
+					bnd = index.findBinding(nodeName);
+				} catch (CoreException e) {
+					e.printStackTrace();
+				}
+
+				if (bnd == null) {
+					// create one anyway, assume this is a function
+					bnd = StubBinding.getInstance(Function.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+				}
+
+				handleTypedef(node);
+			}
+			
+			return PROCESS_SKIP;  // typedef already handled
+		}
 		return PROCESS_CONTINUE;
 	}
+
+	/**
+	 * Call back method from {@link visit(IASTSimpleDeclaration)}
+	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
+	 * thus several nodeName and bnd.
+	 */
+	protected void handleTypedef(IASTSimpleDeclaration node) { }
 
 	protected int leave(IASTSimpleDeclaration node) {
 		return PROCESS_CONTINUE;
@@ -306,6 +365,22 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int visit(ICPPASTFunctionDeclarator node) {
+
+		bnd = null;
+		nodeName = node.getName();
+		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
+
+		try {
+			bnd = index.findBinding(nodeName);
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+
+		if (bnd == null) {
+			// create one anyway, assume this is a function
+			bnd = StubBinding.getInstance(Function.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+		}
+
 		return PROCESS_CONTINUE;
 	}
 
@@ -322,6 +397,26 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int visit(ICPPASTDeclarator node) {
+		bnd = null;
+		nodeName = null;
+
+		if ( (node.getParent() instanceof IASTSimpleDeclaration) &&
+			 (node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) &&
+			 ( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier().getStorageClass() != IASTDeclSpecifier.sc_typedef)  ) {
+			// this is an Attribute declaration, get it back
+			nodeName = node.getName();
+
+			try {
+				bnd = index.findBinding(nodeName);
+			} catch (CoreException e) {
+				e.printStackTrace();
+			}
+
+			if (bnd == null) {
+				bnd = StubBinding.getInstance(Attribute.class, dico.mooseName(context.topType(), nodeName.toString()));
+			}
+		}
+
 		return PROCESS_CONTINUE;
 	}
 
@@ -338,6 +433,27 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		bnd = null;
+		nodeName = node.getName();
+
+		if (nodeName == null) {
+			tracer.msg("ICPPASTCompositeTypeSpecifier without name");
+			return PROCESS_SKIP;
+		}
+
+		tracer.up("ICPPASTCompositeTypeSpecifier:"+nodeName.toString());
+
+		try {
+			bnd = index.findBinding(nodeName);
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+
+		if (bnd == null) {
+			// create one anyway
+			bnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+		}
+
 		return PROCESS_CONTINUE;
 	}
 
@@ -411,6 +527,32 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * Returns the higher-most namespace in the C++ sense on the EntityStack
+	 * C++ namespaces we are interested in are: methods, classes, namespaces
+	 * @return null if could not find a C++ namespace
+	 */
+	protected ContainerEntity getTopCppNamespace() {
+		Stack<NamedEntity> tmp = new Stack<NamedEntity>();
+		NamedEntity top;
+		
+		top = context.pop();
+		tmp.push(top);
+		while ( ! ((top == null) ||
+				   (top instanceof Method) ||
+				   (top instanceof eu.synectique.verveine.core.gen.famix.Class) ||
+				   (top instanceof Namespace) )) {
+			top = context.pop();
+			tmp.push(top);
+		}
+		
+		while (! tmp.empty()) {
+			context.push( tmp.pop());
+		}
+
+		return (ContainerEntity) top;
 	}
 
 }
