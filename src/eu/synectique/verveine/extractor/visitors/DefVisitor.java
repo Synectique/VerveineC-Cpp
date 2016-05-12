@@ -53,6 +53,7 @@ import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
@@ -83,7 +84,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		super(dico, index, /*visitNodes*/true);
 
 		unresolvedIncludes = new HashSet<String>();
-		tracer = new Tracer("DEF>");
+		tracer = new NullTracer("DEF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
@@ -165,28 +166,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	}
 
 	/**
-	 * Visiting a function Parameter. Only creates the FamixParameter
+	 * Parameters are not created in this visitor because it seems they often have a null binding
+	 * anyway. So they are created in {@link RefVisitor#visit(IASTParameterDeclaration}
 	 */
 	@Override
 	public int visit(IASTParameterDeclaration node) {
-		IASTDeclarator nodeParam = node.getDeclarator();
-		IASTName nodeName = nodeParam.getName();
-		IIndexBinding bnd = null;
-		Parameter fmx;
-
-		try {
-			bnd = index.findBinding(nodeName);
-		} catch (CoreException e) {
-			System.err.println("error getting index");
-			e.printStackTrace();
-		}
-
-		fmx = dico.ensureFamixParameter(bnd, nodeName.toString(), context.topMethod());
-
-		fmx.setIsStub(false);
-
-		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
-
 		return ASTVisitor.PROCESS_SKIP;
 	}
 

@@ -35,7 +35,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	/**
 	 * Separator in fully qualified package name
 	 */
-	public static final String PACKAGE_NAME_SEPARATOR = "::";
+	public static final String MOOSE_NAME_SEPARATOR = "::";
 
 	public final static String DESTRUCTOR_KIND_MARKER = "destructor";
 
@@ -245,30 +245,14 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	}
 
 	// UTILITIES =========================================================================================================================================
-	
 
 	/**
-	 * Computes moose name for a ScopingEntity
-	 * This is a convenient method to call {@link #mooseName(Namespace)} or {@link #mooseName(Package)}
-	 * and to make Java type checker happy
-	 */
-	protected static String mooseName(ScopingEntity ent, String name) {
-		if (ent instanceof Package) {
-			return mooseName((Package)ent, name);
-		}
-		if (ent instanceof Namespace) {
-			return mooseName((Namespace)ent, name);
-		}
-		return name;
-	}
-
-	/**
-	 * Computes moose name for a Namespace. NOT USED CURRENTLY (but this may change)
+	 * Computes moose name for a Namespace.
 	 * MooseName is the concatenation of the moosename of the parent Namescape with the simple name of the Namescape
 	 */
-	protected static String mooseName(Namespace parent, String name) {
+	public String mooseName(Namespace parent, String name) {
 		if (parent != null) {
-			return concatMooseName( mooseName(parent.getParentScope(), parent.getName()) , name);
+			return concatMooseName( mooseName((Namespace)parent.getParentScope(), parent.getName()) , name);
 		}
 		else {
 			return name;
@@ -279,7 +263,33 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	 * Computes moose name for a Package
 	 * MooseName is the concatenation of the moosename of the parent Package with the simple name of the Package
 	 */
-	protected static String mooseName(Package parent, String name) {
+	public String mooseName(Package parent, String name) {
+		if (parent != null) {
+			return concatMooseName( mooseName(parent.getParentPackage(), parent.getName()) , name);
+		}
+		else {
+			return name;
+		}
+	}
+
+	/**
+	 * Computes moose name for a Method.
+	 * MooseName is the concatenation of the moosename of the parent type with the simple name of the method
+	 */
+	public String mooseName(Method parent, String name) {
+		if (parent != null) {
+			return concatMooseName( mooseName(parent.getParentType(), parent.getName()) , name);
+		}
+		else {
+			return name;
+		}
+	}
+
+	/**
+	 * Computes moose name for a Type.
+	 * MooseName is the concatenation of the moosename of the parent package with the simple name of the type
+	 */
+	public String mooseName(Type parent, String name) {
 		if (parent != null) {
 			return concatMooseName( mooseName(parent.getParentPackage(), parent.getName()) , name);
 		}
@@ -289,7 +299,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	}
 
 	protected static String concatMooseName(String prefix, String name) {
-		return prefix + PACKAGE_NAME_SEPARATOR + name;
+		return prefix + MOOSE_NAME_SEPARATOR + name;
 	}
 
 

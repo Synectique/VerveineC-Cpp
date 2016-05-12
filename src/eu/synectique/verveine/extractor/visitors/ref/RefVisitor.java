@@ -7,6 +7,7 @@ import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
@@ -50,6 +51,7 @@ import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 
@@ -134,11 +136,11 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	@Override
 	public int visit(IASTDeclaration node) {
-		// includes CPPASTVisibilityLabel
-//		tracer.msg("IASTDeclaration");
 		if (node instanceof ICPPASTFunctionDefinition) {
 			return visit((ICPPASTFunctionDefinition)node);
 		}
+		// includes CPPASTVisibilityLabel
+
 		return super.visit(node);
 	}
 
@@ -154,17 +156,28 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	public int visit(IASTParameterDeclaration node) {
 		IIndexBinding bnd = null;
 		Parameter fmx = null;
+		IASTName nodeName = node.getDeclarator().getName();
+		
+		if (nodeName.toString().equals("")) {
+			return PROCESS_SKIP;
+		}
+
 		try {
-			bnd = index.findBinding(node.getDeclarator().getName());
+			bnd = index.findBinding(nodeName);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
 
 		if (bnd == null) {
-			return PROCESS_SKIP;
+			// create one
+			bnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topMethod(), nodeName.toString()));
 		}
 
-		fmx = (Parameter) dico.getEntityByKey(bnd);
+		fmx = dico.ensureFamixParameter(bnd, nodeName.toString(), context.topMethod());
+		fmx.setIsStub(false);
+		// no sourceAnchor for parameter, they sometimes only appear in the .C file
+		// whereas it would seem more natural to have an anchor in the .H file
+
 
 		if (fmx != null) {
 			// now get the declared type
@@ -230,17 +243,25 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 
 		this.context.push(fmx);
+		
+		for (IASTDeclaration child : node.getMembers()) {
+			child.accept(this);
+		}
 
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(ICPPASTCompositeTypeSpecifier node) {
-		context.pop();
+		this.context.pop();
 		tracer.down();
 
-		return PROCESS_CONTINUE;		
+		return PROCESS_SKIP;
 	}
+
+	/**
+	 * a variable to "communicate" between visit(ICPPASTFunctionDeclarator) and visit(ICPPASTFunctionDefinition):
+	 * When visit(ICPPASTFunctionDefinition) calls visit(ICPPASTFunctionDeclarator) it needs to know whether it was successful or not.
+	 * It cannot rely on the return value of visit(ICPPASTFunctionDeclarator) because it must always be PROCESS_SKIP
+	 * (because visit(ICPPASTFunctionDeclarator) may also be called independently of visit(ICPPASTFunctionDefinition))
+	 * Therefore we use this variable to set the famixBehavioural created in visit(ICPPASTFunctionDeclarator)
+	 */
+	private BehaviouralEntity currentBehavioural;
 
 	/**
 	 * Visiting a method or function declaration
@@ -251,6 +272,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		IIndexBinding bnd = null;
 		BehaviouralEntity fmx = null;
 
+		currentBehavioural = null;
 		nodeName = node.getName();
 		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
 
@@ -267,22 +289,15 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
 
 		this.context.push(fmx);
+		currentBehavioural = fmx; // note: fmx will be popped out of context at the end of this method, but will remain in currentBehavioural
 
 		for (ICPPASTParameterDeclaration param : node.getParameters()) {
 			param.accept(this);
 		}
 		
-		return PROCESS_SKIP;  // already visited all we needed
-	}
+		this.context.pop();
 
-	@Override
-	protected int leave(ICPPASTFunctionDeclarator node) {
-		NamedEntity top = context.top();
-		if ( (top != null) &&
-			 (top instanceof BehaviouralEntity) ) {
-			context.pop();
-		}
-		return ASTVisitor.PROCESS_CONTINUE;
+		return PROCESS_SKIP;  // already visited all we needed
 	}
 
 	/**
@@ -317,32 +332,30 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return PROCESS_CONTINUE;
 	}
 
-
 	/**
 	 * Visiting a method or function definition
 	 */
+	@Override
 	protected int visit(ICPPASTFunctionDefinition node) {
 		/*
 		 * visit declarator to ensure the method definition and to get the
-		 * Famix entity (which will be on the top of the context stack)
+		 * Famix entity (which will be on currentBehavioural)
 		 */
+		currentBehavioural = null;
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator() );
-		if (this.context.top() instanceof BehaviouralEntity) {  // visit(node.getDeclarator()) seems to have been successful
+		if (currentBehavioural != null) {
 			node.getBody().accept(this);
-			this.leave(node.getDeclarator()); // to pop the method from the context if it is there
 		}
 
 		return PROCESS_SKIP;  // we already visited the children
 	}
 
-	protected int leave(ICPPASTFunctionDefinition node) {
-		return this.leave(node.getDeclarator());
-	}
-
+	@Override
 	protected int visit(ICPPASTConstructorChainInitializer node) {
 		return new FunctionCallVisitor(dico, index, context).visit(node);
 	}
 
+	@Override
 	protected int visit(ICPPASTConstructorInitializer node) {
 		return new FunctionCallVisitor(dico, index, context).visit(node);
 	}
