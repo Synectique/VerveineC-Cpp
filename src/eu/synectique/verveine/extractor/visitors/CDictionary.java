@@ -35,6 +35,11 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	/**
 	 * Separator in fully qualified package name
 	 */
+	public static final String CPP_NAME_SEPARATOR = "::";
+
+	/**
+	 * Separator in fully qualified package name
+	 */
 	public static final String MOOSE_NAME_SEPARATOR = "::";
 
 	public final static String DESTRUCTOR_KIND_MARKER = "destructor";

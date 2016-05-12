@@ -229,6 +229,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			fmx = dico.ensureFamixParameterizableClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
 		}
 		else {
+			// if node is a stub with a fully qualified name, its parent is not context.top() :-(
 			fmx = dico.ensureFamixClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
 		}
 

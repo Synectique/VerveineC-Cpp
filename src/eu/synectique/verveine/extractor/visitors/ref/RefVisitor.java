@@ -44,6 +44,7 @@ import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
@@ -227,8 +228,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 					supFmx =  (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey((IIndexBinding) supBnd);
 				}
 				if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
-					// create a stub class
-					supFmx = dico.ensureFamixClass(/*key*/null, /*name*/node.getBaseSpecifiers()[0].getNameSpecifier().toString(), /*owner*/null);
+					supFmx = createStubClass(/*name*/node.getBaseSpecifiers()[0].getNameSpecifier().toString());
 				}
 				if (supFmx != null) {
 					lastInheritance = dico.ensureFamixInheritance(supFmx, fmx, lastInheritance);
@@ -247,6 +247,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		return PROCESS_SKIP;
 	}
+
 
 	/**
 	 * a variable to "communicate" between visit(ICPPASTFunctionDeclarator) and visit(ICPPASTFunctionDefinition):
@@ -397,6 +398,26 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		node.getOperand2().accept(this);
 		
 		return PROCESS_SKIP;
+	}
+
+
+	// UTILITIES ==============================================================================================================================
+	
+
+	private Class createStubClass(String name) {
+		IIndexBinding supBnd;
+		ContainerEntity parent;
+
+		if (fullyQualified(name)) {
+			parent = createParentNamespace(name);
+			name = simpleName(name);
+		}
+		else {
+			parent = getTopCppNamespace();
+		}
+
+		supBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, name));
+		return dico.ensureFamixClass(supBnd, name, parent);
 	}
 
 }

@@ -49,6 +49,7 @@ import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
+import eu.synectique.verveine.core.gen.moose.MooseModel;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
@@ -451,7 +452,13 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 		if (bnd == null) {
 			// create one anyway
-			bnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+			if (fullyQualified(nodeName)) {
+				Namespace parent = createParentNamespace(nodeName);
+				bnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, simpleName(nodeName)));
+			}
+			else {
+				bnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+			}
 		}
 
 		return PROCESS_CONTINUE;
@@ -527,6 +534,80 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
+	}
+
+	protected boolean fullyQualified(IASTName name) {
+		return fullyQualified(name.toString());
+	}
+
+	protected boolean fullyQualified(String name) {
+		return name.indexOf(CDictionary.CPP_NAME_SEPARATOR) > 0;
+	}
+
+	/**
+	 * Returns the last part of a fully qualified name
+	 */
+	protected String simpleName(IASTName name) {
+		
+		return simpleName(name.toString());
+	}
+
+	protected String simpleName(String name) {
+		String str = name.toString(); 
+		int i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		
+		return str.substring(i+2);
+	}
+
+	/**
+	 * Creates recursively namespaces from a fully qualified name.
+	 * The last member of the name is not considered (i.e. a::b::c will yield Namespaces a and a::b)
+	 */
+	protected Namespace createParentNamespace(IASTName name) {
+		return createParentNamespace(name.toString());
+	}
+
+	protected Namespace createParentNamespace(String name) {
+		int i;
+		String str;
+		str = name.toString();
+		i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		
+		if (i > 0) {
+			return createNamespace(str.substring(0, i));
+		}
+		else {
+			return null;
+		}
+	}
+
+	/**
+	 * Creates recursively namespaces from a fully qualified name.
+	 * Assumes the fully qualified name is referent to the root of namespace and not within the current namespace
+	 * This means we do not consider the context
+	 */
+	protected Namespace createNamespace(String name) {
+		int i;
+		String namespaceName, fullyQualifiedNamespaceName;
+		Namespace parent=null;
+		StubBinding bnd;
+		
+		i = name.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		if (i > 0) {
+			fullyQualifiedNamespaceName = name.substring(0, i);
+			namespaceName = name.substring(i+2);  // could also use simpleName(name)
+
+			if (fullyQualified(fullyQualifiedNamespaceName)) {
+				parent = createNamespace(fullyQualifiedNamespaceName);
+			}
+		}
+		else {
+			namespaceName = name;
+		}
+
+		bnd = StubBinding.getInstance(Namespace.class, dico.mooseName(parent, namespaceName));
+		
+		return dico.ensureFamixNamespace(bnd, namespaceName, parent);
 	}
 
 	/**
