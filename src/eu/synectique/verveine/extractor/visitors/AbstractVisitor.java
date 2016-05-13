@@ -588,18 +588,14 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	 */
 	protected Namespace createNamespace(String name) {
 		int i;
-		String namespaceName, fullyQualifiedNamespaceName;
+		String namespaceName;
 		Namespace parent=null;
 		StubBinding bnd;
 		
 		i = name.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		if (i > 0) {
-			fullyQualifiedNamespaceName = name.substring(0, i);
 			namespaceName = name.substring(i+2);  // could also use simpleName(name)
-
-			if (fullyQualified(fullyQualifiedNamespaceName)) {
-				parent = createNamespace(fullyQualifiedNamespaceName);
-			}
+			parent = createNamespace(name.substring(0, i));
 		}
 		else {
 			namespaceName = name;

@@ -85,7 +85,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		super(dico, index, /*visitNodes*/true);
 
 		unresolvedIncludes = new HashSet<String>();
-		tracer = new Tracer("DEF>");
+		tracer = new NullTracer("DEF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
@@ -149,10 +149,9 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			e.printStackTrace();
 		}
 		fmx = dico.ensureFamixNamespace(bnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
+		fmx.setIsStub(false);
 
-		if (fmx != null) {
-			this.context.push(fmx);
-		}
+		this.context.push(fmx);
 
 		return super.visit(node);
 	}
