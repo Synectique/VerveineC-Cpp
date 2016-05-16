@@ -316,6 +316,9 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		currentBehavioural = null;
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator() );
 		if (currentBehavioural != null) {
+			for (ICPPASTConstructorChainInitializer init : node.getMemberInitializers()) {
+				init.accept(this);
+			}
 			node.getBody().accept(this);
 		}
 

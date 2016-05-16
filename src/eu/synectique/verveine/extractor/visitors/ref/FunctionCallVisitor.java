@@ -10,6 +10,7 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitName;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
+import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
@@ -122,6 +123,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	 * Other entry point for this visitor
 	 */
 	protected int visit(ICPPASTConstructorChainInitializer node) {
+		node.getInitializer().accept(this);
 		return PROCESS_SKIP;
 	}
 
@@ -164,6 +166,10 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		if (fmx != null) {
 			invocationOfBehavioural((BehaviouralEntity) fmx);
 		}
+		
+		for (IASTInitializerClause icl : node.getArguments()) {
+			icl.accept(this);
+		}
 
 		return PROCESS_CONTINUE;
 	}
@@ -199,80 +205,10 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 
 
 	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
-	// only defined here because they are abstract. Normally they are not used in this visitor
-
-	@Override
-	protected int visit(IASTFieldReference node) {
-		return PROCESS_SKIP;
-	}
 
 	@Override
 	protected int visit(IASTIdExpression node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTBinaryExpression node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTFunctionDeclarator node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(ICPPASTDeclarator node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(ICASTCompositeTypeSpecifier node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTEnumerationSpecifier node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(ICPPASTNamedTypeSpecifier node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int leave(IASTFunctionDeclarator node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int leave(ICPPASTDeclarator node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int leave(ICASTCompositeTypeSpecifier node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int leave(ICPPASTCompositeTypeSpecifier node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int leave(IASTEnumerationSpecifier node) {
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int leave(ICPPASTNamedTypeSpecifier node) {
+		referenceToName(((IASTIdExpression) node).getName());
 		return PROCESS_SKIP;
 	}
 
