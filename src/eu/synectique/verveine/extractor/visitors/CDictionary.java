@@ -9,6 +9,7 @@ import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
@@ -108,6 +109,14 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		}
 
 		return invok;
+	}
+
+	public BehaviouralReference addFamixBehaviouralReference(BehaviouralEntity ref, BehaviouralEntity fmx) {
+		BehaviouralReference pointer = new BehaviouralReference();
+		pointer.setPointed(fmx);
+		pointer.setReferer(ref);
+		famixRepoAdd(pointer);
+		return pointer;
 	}
 
 	/**
@@ -210,7 +219,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	 * @param persistIt -- whether to persist or not the entity eventually created
 	 * @return the Famix Entity found or created. May return null if "bnd" is null or in case of a Famix error
 	 */
-	public Parameter ensureFamixParameter(IIndexBinding bnd, String name, Method owner) {
+	public Parameter ensureFamixParameter(IIndexBinding bnd, String name, BehaviouralEntity owner) {
 		Parameter fmx = null;
 
 		// --------------- to avoid useless computations if we can
@@ -330,6 +339,5 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	protected static String concatMooseName(String prefix, String name) {
 		return prefix + MOOSE_NAME_SEPARATOR + name;
 	}
-
 
 }

@@ -23,6 +23,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTDeclarator;
@@ -181,7 +182,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 
 	@Override
 	public int visit(IASTName node) {
-		Association assoc = referenceToName(node.getLastName());
+		Association assoc = referenceToName(node.getLastName(), /*reference*/false);
 		
 		if (assoc == null) {
 			// assume it should be a variable
@@ -196,7 +197,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	protected int visit(IASTLiteralExpression node) {
 		if (node.getKind() == ICPPASTLiteralExpression.lk_this) {
 			if (context.topType() != null) {
-				accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topMethod(), /*persistIt*/true));
+				accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity(), /*persistIt*/true));
 				priorType = context.topType();
 			}
 		}
@@ -208,7 +209,10 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 
 	@Override
 	protected int visit(IASTIdExpression node) {
-		referenceToName(((IASTIdExpression) node).getName());
+		boolean reference;
+		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
+					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
+		referenceToName(((IASTIdExpression) node).getName(), reference);
 		return PROCESS_SKIP;
 	}
 

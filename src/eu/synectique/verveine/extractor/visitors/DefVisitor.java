@@ -330,7 +330,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		 * Famix entity (which will be on the top of the context stack)
 		 */
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator());
-		fmx = context.topMethod();    // TODO could be a function here ....
+		fmx = context.topBehaviouralEntity();
 		this.leave((ICPPASTFunctionDeclarator)node.getDeclarator());  // at least to popup the function/method from the context stack
 
 		if (fmx != null) {
@@ -340,7 +340,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 		// using pushMethod() introduces a difference in the handling of the metrics CYCLO/NOS
 		// this behaviour was inherited from VerveineJ and need to be refactored
-		this.context.pushMethod((Method) fmx);
+		this.context.pushBehaviouralEntity(fmx);
 
 		// now visiting the children of the node
 		node.getDeclSpecifier().accept(this);

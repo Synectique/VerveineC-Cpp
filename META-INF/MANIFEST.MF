@@ -12,6 +12,6 @@ Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .,
  lib/akuhn-util-r28011.jar,
  lib/fame-201403040925.jar,
- lib/famix-201605160900.jar,
- lib/fast-201605160900.jar,
- lib/verveine.core-201605160900.jar
+ lib/famix-20160519_1509.jar,
+ lib/fast-20160519_1509.jar,
+ lib/verveine.core-20160519_1509.jar

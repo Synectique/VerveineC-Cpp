@@ -30,6 +30,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.index.IIndex;
@@ -175,10 +176,10 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		if (bnd == null) {
 			// create one anyway
-			bnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topMethod(), nodeName.toString()));
+			bnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
 		}
 
-		fmx = dico.ensureFamixParameter(bnd, nodeName.toString(), context.topMethod());
+		fmx = dico.ensureFamixParameter(bnd, nodeName.toString(), context.topBehaviouralEntity());
 		fmx.setIsStub(false);
 		// no sourceAnchor for parameter, they sometimes only appear in the .C file
 		// whereas it would seem more natural to have an anchor in the .H file
@@ -316,10 +317,14 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		currentBehavioural = null;
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator() );
 		if (currentBehavioural != null) {
+			this.context.push(currentBehavioural);
+
 			for (ICPPASTConstructorChainInitializer init : node.getMemberInitializers()) {
 				init.accept(this);
 			}
 			node.getBody().accept(this);
+
+			this.context.pop();
 		}
 
 		return PROCESS_SKIP;  // we already visited the children
@@ -358,7 +363,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	protected int visit(IASTLiteralExpression node) {
 		if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
 			if (context.topType() != null) {
-				accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topMethod(), /*persistIt*/true));
+				accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity(), /*persistIt*/true));
 			}
 		}
 		return PROCESS_SKIP;
@@ -367,15 +372,23 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	@Override
 	protected int visit(IASTFieldReference node) {
 		// can also be a method invocation
+		boolean reference;
+
 		((IASTFieldReference)node).getFieldOwner().accept(this);
-		referenceToName(((IASTFieldReference) node).getFieldName());
+		
+		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
+					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
+		referenceToName(((IASTFieldReference) node).getFieldName(), reference);
 
 		return PROCESS_SKIP;
 	}
 
 	@Override
 	protected int visit(IASTIdExpression node) {
-		referenceToName(((IASTIdExpression) node).getName());
+		boolean reference;
+		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
+					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
+		referenceToName(((IASTIdExpression) node).getName(), reference);
 		return PROCESS_SKIP;
 	}
 

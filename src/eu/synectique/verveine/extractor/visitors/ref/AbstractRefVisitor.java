@@ -17,6 +17,7 @@ import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
@@ -58,9 +59,10 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	/**
 	 * Records a reference to a name which can be a variable or behavioral name.
 	 * @param nodeName
+	 * @param reference 
 	 * @return the Access or Invocation created
 	 */
-	protected Association referenceToName(IASTName nodeName) {
+	protected Association referenceToName(IASTName nodeName, boolean reference) {
 		IIndexBinding bnd = null;
 		NamedEntity fmx = null;
 
@@ -85,7 +87,12 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			return accessToVar((StructuralEntity) fmx);
 		}
 		else if (fmx instanceof BehaviouralEntity) {
-			return invocationOfBehavioural((BehaviouralEntity) fmx);
+			if (reference) {
+				behaviouralPointer((BehaviouralEntity) fmx);
+			}
+			else {
+				return invocationOfBehavioural((BehaviouralEntity) fmx);
+			}
 		}
 
 		return null;
@@ -98,11 +105,9 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @return the invocation created
 	 */
 	protected Association invocationOfBehavioural(BehaviouralEntity fmx) {
-		BehaviouralEntity accessor = this.context.topMethod();
-		Invocation invok = dico.addFamixInvocation(accessor, (BehaviouralEntity) fmx, /*receiver*/null, /*signature*/null, context.getLastInvocation());
-		if (invok != null) {
-			context.setLastInvocation(invok);
-		}
+		BehaviouralEntity accessor = this.context.topBehaviouralEntity();
+		Invocation invok = dico.addFamixInvocation(accessor, fmx, /*receiver*/null, /*signature*/null, context.getLastInvocation());
+		context.setLastInvocation(invok);
 		return invok;
 	}
 
@@ -113,12 +118,22 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @return the invocation created
 	 */
 	protected Association dereferencedInvocation(StructuralEntity fmx) {
-		BehaviouralEntity accessor = this.context.topMethod();
+		BehaviouralEntity accessor = this.context.topBehaviouralEntity();
 		Invocation invok = dico.addFamixDereferencedInvocation(accessor, fmx, /*signature*/null, context.getLastInvocation());
-		if (invok != null) {
-			context.setLastInvocation(invok);
-		}
+		context.setLastInvocation(invok);
 		return invok;
+	}
+
+	/**
+	 * Records a reference (pointer) to a famixBehaviouralEntity.
+	 * Assumes the context is correctly set (i.e. top contains another BehaviouralEntity that makes the reference) 
+	 * @param fmx -- referenced BehaviouralEntity
+	 * @return the reference created
+	 */
+	protected Association behaviouralPointer(BehaviouralEntity fmx) {
+		BehaviouralEntity referer = this.context.topBehaviouralEntity();
+		BehaviouralReference ref = dico.addFamixBehaviouralReference(referer, fmx);
+		return ref;
 	}
 
 	/**
@@ -129,12 +144,10 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 */
 	protected Association accessToVar(StructuralEntity fmx) {
 		BehaviouralEntity accessor;
-		// put false to isWrite by default, will be corrected in 
-		accessor = this.context.topMethod();
-		Access acc = dico.addFamixAccess(accessor, (StructuralEntity) fmx, /*isWrite*/false, context.getLastAccess());
-		if (acc != null) {
-			context.setLastAccess(acc);
-		}
+		// put false to isWrite by default, will be corrected in the visitor
+		accessor = this.context.topBehaviouralEntity();
+		Access acc = dico.addFamixAccess(accessor, fmx, /*isWrite*/false, context.getLastAccess());
+		context.setLastAccess(acc);
 		return acc;
 	}
 
