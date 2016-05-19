@@ -37,24 +37,35 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 	// CONSTRUCTORS ==========================================================================================================================
 
-	public AbstractRefVisitor(CDictionary dico) {
-		super(dico);
-	}
-
 	public AbstractRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
 	}
 
-	public AbstractRefVisitor(CDictionary dico, IIndex index, boolean visitNodes) {
-		super(dico, index, visitNodes);
-	}
-
-	public AbstractRefVisitor(CDictionary dico, IIndex index, EntityStack context, boolean visitNodes) {
-		super(dico, index, visitNodes);
-		this.context = context;
-	}
-
 	// UTILITIES ==============================================================================================================================
+
+	/**
+	 * Dictionary getter.<BR>
+	 * Only intended for subRef visitors to get the same dictionary as their parent visitor
+	 */
+	protected CDictionary getDico() {
+		return dico;
+	}
+
+	/**
+	 * context getter.<BR>
+	 * Only intended for subRef visitors to get the same context as their parent visitor
+	 */
+	protected EntityStack getContext() {
+		return context;
+	}
+
+	/**
+	 * Index getter.<BR>
+	 * Only intended for subRef visitors to get the same index as their parent visitor
+	 */
+	protected IIndex getIndex() {
+		return index;
+	}
 
 	/**
 	 * Records a reference to a name which can be a variable or behavioral name.

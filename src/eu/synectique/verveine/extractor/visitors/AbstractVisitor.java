@@ -95,17 +95,8 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	// CONSTRUCTOR ==========================================================================================================================
 
-	protected AbstractVisitor(CDictionary dico) {
-		this(dico, /*index*/null, /*visitNodes*/true);
-	    this.dico = dico;
-	}
-
 	public AbstractVisitor(CDictionary dico, IIndex index) {
-		this(dico, index, /*visitNodes*/true);
-	}
-
-	public AbstractVisitor(CDictionary dico, IIndex index, boolean visitNodes) {
-		super(visitNodes);
+		super(/*visitNodes*/true);
 	    /* fine-tuning if visitNodes=false
 	    shouldVisitDeclarations = true;
 	    shouldVisitEnumerators = true;

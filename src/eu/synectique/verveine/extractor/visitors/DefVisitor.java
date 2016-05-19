@@ -82,7 +82,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 * @param index CDT index containing bindings
 	 */
 	public DefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index, /*visitNodes*/true);
+		super(dico, index);
 
 		unresolvedIncludes = new HashSet<String>();
 		tracer = new NullTracer("DEF>");

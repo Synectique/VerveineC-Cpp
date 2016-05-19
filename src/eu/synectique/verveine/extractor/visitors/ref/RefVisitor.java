@@ -82,7 +82,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 * @param index CDT index containing bindings
 	 */
 	public RefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index, /*visitNodes*/true);
+		super(dico, index);
 
 		tracer = new NullTracer("REF>");
 	}
@@ -346,17 +346,17 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	@Override
 	protected int visit(ICPPASTConstructorChainInitializer node) {
-		return new FunctionCallVisitor(dico, index, context).visit(node);
+		return new FunctionCallVisitor(this).visit(node);
 	}
 
 	@Override
 	protected int visit(ICPPASTConstructorInitializer node) {
-		return new FunctionCallVisitor(dico, index, context).visit(node);
+		return new FunctionCallVisitor(this).visit(node);
 	}
 
 	@Override
 	protected int visit(IASTFunctionCallExpression node) {
-		return new FunctionCallVisitor(dico, index, context).visit((IASTFunctionCallExpression)node);
+		return new FunctionCallVisitor(this).visit((IASTFunctionCallExpression)node);
 	}
 
 	@Override

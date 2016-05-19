@@ -24,6 +24,8 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTDeclarator;
@@ -44,7 +46,7 @@ import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 
-public class FunctionCallVisitor extends AbstractRefVisitor {
+public class FunctionCallVisitor extends AbstractRefSubVisitor {
 
 	/**
 	 * In a sequence of identifier, this allows to know what was the type of the previous identifier
@@ -54,8 +56,8 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 
 	// CONSTRUCTOR ==========================================================================================================================
 
-	public FunctionCallVisitor(CDictionary dico, IIndex index, EntityStack context) {
-		super(dico, index, context, /*visitNodes*/true);
+	public FunctionCallVisitor(AbstractRefVisitor parentVisitor) {
+		super(parentVisitor);
 
 		tracer = new NullTracer("FCV>");
 	}
@@ -124,7 +126,18 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	 * Other entry point for this visitor
 	 */
 	protected int visit(ICPPASTConstructorChainInitializer node) {
-		node.getInitializer().accept(this);
+		if (node.getMemberInitializerId().resolveBinding() instanceof ICPPField) {
+			// field initialization that results in an implicit call to the constructor
+			// not used for now
+		}
+		else if (node.getMemberInitializerId().resolveBinding() instanceof ICPPConstructor) {
+			node.getInitializer().accept(this);
+		}
+		else {
+			// not too sure what we have
+			// try to visit it anyway
+			node.getInitializer().accept(this);
+		}
 		return PROCESS_SKIP;
 	}
 
@@ -155,10 +168,16 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 			}
 		}
 
+		// if we could not get it, try to create a meaningful stub
 		if (fmx == null) {
-			String mthName;
+			String mthName = null;
 			if (parent.getImplicitNames().length > 0) {
 				mthName = parent.getImplicitNames()[0].toString();
+			}
+			else if (node.getParent() instanceof ICPPASTConstructorChainInitializer) {
+				mthName = ((ICPPASTConstructorChainInitializer)node.getParent()).getMemberInitializerId().toString();
+			}
+			if (mthName != null) {
 				String stubSig =  mkStubSig(mthName, node.getArguments().length);
 				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, stubSig), mthName, stubSig, priorType);
 			}
