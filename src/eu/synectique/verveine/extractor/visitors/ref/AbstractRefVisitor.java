@@ -1,5 +1,6 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
+import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
@@ -18,8 +19,10 @@ import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
+import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
+import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
@@ -28,17 +31,44 @@ import eu.synectique.verveine.extractor.visitors.CDictionary;
 /**
  * Abstract superclass for Reference visitors.<BR>
  * It defines some utility methods to create references to names.
- * It also adds a constructor accepting an existing context stack (see {@link AbstractVisitor#context}), this allows
- * to create specialized sub-visitors (e.g. {@link FunctionCallVisitor}) while visiting an AST
- * with a "main" visitor.
+ * It also adds a constructor accepting another RefVisitor
+ * to create sub-visitors (e.g. {@link FunctionCallVisitor}).
  * @author anquetil
  */
 public abstract class AbstractRefVisitor extends AbstractVisitor {
 
+	/**
+	 * FamixSourcedEntity created as a result of a visitor.
+	 * This is required to treat it in a parent visit method or a potential parent visitor.
+	 * However, return value of Visitors is already codified by {@link ASTVisitor}
+	 * (see {@link ASTVisitor#PROCESS_CONTINUE}m {@link ASTVisitor#PROCESS_ABORT}m and {@link ASTVisitor#PROCESS_SKIP}.
+	 * This attributes allows to hold "another return value" (together with a getter)
+	 */
+	protected SourcedEntity returnedEntity;
+
+	/**
+	 * see {@link #returnedEntity}
+	 */
+	public SourcedEntity returnedEntity() {
+		return returnedEntity;
+	}
+
 	// CONSTRUCTORS ==========================================================================================================================
 
+	/**
+	 * Constructor for the "main" RefVisitor
+	 */
 	public AbstractRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
+	}
+
+	/**
+	 * Constructor for sub RefVisitors.
+	 * A sub visitor starts in the same state as its parent visitor
+	 */
+	public AbstractRefVisitor(AbstractRefVisitor parentVisitor) {
+		super(parentVisitor.getDico(), parentVisitor.getIndex());
+		context = parentVisitor.getContext(); 
 	}
 
 	// UTILITIES ==============================================================================================================================
@@ -115,7 +145,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @param fmx -- invoked BehaviouralEntity
 	 * @return the invocation created
 	 */
-	protected Association invocationOfBehavioural(BehaviouralEntity fmx) {
+	protected Invocation invocationOfBehavioural(BehaviouralEntity fmx) {
 		BehaviouralEntity accessor = this.context.topBehaviouralEntity();
 		Invocation invok = dico.addFamixInvocation(accessor, fmx, /*receiver*/null, /*signature*/null, context.getLastInvocation());
 		context.setLastInvocation(invok);
@@ -128,9 +158,9 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @param fmx -- StructuralEntity pointing to a BehaviouralEntity invoked
 	 * @return the invocation created
 	 */
-	protected Association dereferencedInvocation(StructuralEntity fmx) {
+	protected DereferencedInvocation dereferencedInvocation(StructuralEntity fmx) {
 		BehaviouralEntity accessor = this.context.topBehaviouralEntity();
-		Invocation invok = dico.addFamixDereferencedInvocation(accessor, fmx, /*signature*/null, context.getLastInvocation());
+		DereferencedInvocation invok = dico.addFamixDereferencedInvocation(accessor, fmx, /*signature*/null, context.getLastInvocation());
 		context.setLastInvocation(invok);
 		return invok;
 	}
@@ -141,7 +171,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @param fmx -- referenced BehaviouralEntity
 	 * @return the reference created
 	 */
-	protected Association behaviouralPointer(BehaviouralEntity fmx) {
+	protected BehaviouralReference behaviouralPointer(BehaviouralEntity fmx) {
 		BehaviouralEntity referer = this.context.topBehaviouralEntity();
 		BehaviouralReference ref = dico.addFamixBehaviouralReference(referer, fmx);
 		return ref;
@@ -153,7 +183,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @param fmx -- Accessed StructuralEntity
 	 * @return the Access created
 	 */
-	protected Association accessToVar(StructuralEntity fmx) {
+	protected Access accessToVar(StructuralEntity fmx) {
 		BehaviouralEntity accessor;
 		// put false to isWrite by default, will be corrected in the visitor
 		accessor = this.context.topBehaviouralEntity();

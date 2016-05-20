@@ -34,11 +34,15 @@ import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack;
+import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
+import eu.synectique.verveine.core.gen.famix.Invocation;
+import eu.synectique.verveine.core.gen.famix.InvocationWithArgs;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
+import eu.synectique.verveine.core.gen.famix.Reference;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
@@ -46,7 +50,7 @@ import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 
-public class FunctionCallVisitor extends AbstractRefSubVisitor {
+public class FunctionCallVisitor extends AbstractRefVisitor {
 
 	/**
 	 * In a sequence of identifier, this allows to know what was the type of the previous identifier
@@ -72,6 +76,7 @@ public class FunctionCallVisitor extends AbstractRefSubVisitor {
 		NamedEntity fmx = null;
 		IIndexBinding bnd = null;
 		IASTName nodeName = null;
+		Invocation invok = null;
 		
 		priorType = context.topType();
 		IASTNode[] children = node.getFunctionNameExpression().getChildren();
@@ -79,6 +84,7 @@ public class FunctionCallVisitor extends AbstractRefSubVisitor {
 			children[i].accept(this);
 		}
 		
+		// try to identify (or create if a stub) the Behavioural being invoked
 		IASTNode lastChild = children[children.length - 1];
 		if (lastChild instanceof IASTName) {
 			nodeName = (IASTName)lastChild;
@@ -105,27 +111,31 @@ public class FunctionCallVisitor extends AbstractRefSubVisitor {
 				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, stubSig), fmx.getName(), stubSig, priorType);
 			}
 
+			// now create the invocation
 			if (fmx != null) {
 				if (fmx instanceof BehaviouralEntity) {
-					invocationOfBehavioural((BehaviouralEntity) fmx);
+					invok = invocationOfBehavioural((BehaviouralEntity) fmx);
 				}
 				else if (fmx instanceof StructuralEntity) {
 					// fmx is probably a pointer to a BehavioralEntity
 					String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
-					DereferencedInvocation invok = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx );
+					invok = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx );
 					invok.setSignature(stubSig);
-					
 				}
 			}
 		}
 
-		return PROCESS_CONTINUE;
+		returnedEntity = invok;
+		visitArguments(node.getArguments());
+
+		return PROCESS_SKIP;
 	}
 
 	/**
 	 * Other entry point for this visitor
 	 */
 	protected int visit(ICPPASTConstructorChainInitializer node) {
+		returnedEntity = null;
 		if (node.getMemberInitializerId().resolveBinding() instanceof ICPPField) {
 			// field initialization that results in an implicit call to the constructor
 			// not used for now
@@ -147,6 +157,7 @@ public class FunctionCallVisitor extends AbstractRefSubVisitor {
 	protected int visit(ICPPASTConstructorInitializer node) {
 		IASTImplicitNameOwner parent = (IASTImplicitNameOwner)node.getParent() ;
 		NamedEntity fmx = null;
+		Invocation invok = null;
 
 		for (IASTImplicitName candidate : parent.getImplicitNames()) {
 			IIndexBinding bnd = null; 
@@ -184,19 +195,13 @@ public class FunctionCallVisitor extends AbstractRefSubVisitor {
 		}
 
 		if (fmx != null) {
-			invocationOfBehavioural((BehaviouralEntity) fmx);
+			invok = invocationOfBehavioural((BehaviouralEntity) fmx);
 		}
 		
-		for (IASTInitializerClause icl : node.getArguments()) {
-			icl.accept(this);
-		}
+		returnedEntity = invok;
+		visitArguments(node.getArguments());
 
-		return PROCESS_CONTINUE;
-	}
-
-	public int visit(ICPPASTLiteralExpression node) {
-		//referenceToName(((IASTName) node).getLastName());
-		return ASTVisitor.PROCESS_SKIP;
+		return PROCESS_SKIP;
 	}
 
 	@Override
@@ -220,7 +225,7 @@ public class FunctionCallVisitor extends AbstractRefSubVisitor {
 				priorType = context.topType();
 			}
 		}
-		return PROCESS_CONTINUE;
+		return PROCESS_SKIP;
 	}
 
 
@@ -231,12 +236,29 @@ public class FunctionCallVisitor extends AbstractRefSubVisitor {
 		boolean reference;
 		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
 					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
-		referenceToName(((IASTIdExpression) node).getName(), reference);
+		returnedEntity = referenceToName(((IASTIdExpression) node).getName(), reference);
 		return PROCESS_SKIP;
 	}
 
 
 	// UTILITIES ====================================================================================================================================
+
+	private void visitArguments(IASTInitializerClause[] args) {
+		for (IASTInitializerClause icl : args) {
+			RefVisitor subVisitor = new RefVisitor(this);
+
+			icl.accept(subVisitor);
+
+			if (returnedEntity instanceof InvocationWithArgs) {
+				if (subVisitor.returnedEntity() instanceof Association) {
+					((InvocationWithArgs)returnedEntity).addArguments((Association) subVisitor.returnedEntity());
+				}
+				else {
+					((InvocationWithArgs)returnedEntity).addArguments((Association)null);
+				}
+			}
+		}
+	}
 
 	private String mkStubSig(String name, int nbParam) {
 		String sig = name + "(";

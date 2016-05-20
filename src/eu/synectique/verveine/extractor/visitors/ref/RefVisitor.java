@@ -76,13 +76,22 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	// CONSTRUCTOR ==========================================================================================================================
 
 	/**
-	 * Default constructor, dicoDef contains entities created during def pass
+	 * Constructor for "main" visitor, dicoDef contains entities created during def pass
 	 * @param dicoDef contains entities created during def pass
 	 * @param dicoRef where entities are created during ref pass (the current pass)
 	 * @param index CDT index containing bindings
 	 */
 	public RefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
+
+		tracer = new NullTracer("REF>");
+	}
+
+	/**
+	 * Constructor when used as sub-visitor
+	 */
+	public RefVisitor(AbstractRefVisitor parent) {
+		super(parent);
 
 		tracer = new NullTracer("REF>");
 	}
@@ -135,7 +144,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	@Override
 	public int leave(ICPPASTNamespaceDefinition node) {
-		this.context.pop();
+		returnedEntity = this.context.pop();
 		tracer.down();
 		return super.leave(node);
 	}
@@ -195,7 +204,8 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 				// ignore for now
 			}
 		}
-		
+		returnedEntity = fmx;
+
 		return PROCESS_SKIP;
 	}
 
@@ -243,44 +253,10 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 			child.accept(this);
 		}
 
-		this.context.pop();
+		returnedEntity = this.context.pop();
 		tracer.down();
 
 		return PROCESS_SKIP;
-	}
-
-
-	/**
-	 * a variable to "communicate" between visit(ICPPASTFunctionDeclarator) and visit(ICPPASTFunctionDefinition):
-	 * When visit(ICPPASTFunctionDefinition) calls visit(ICPPASTFunctionDeclarator) it needs to know whether it was successful or not.
-	 * It cannot rely on the return value of visit(ICPPASTFunctionDeclarator) because it must always be PROCESS_SKIP
-	 * (because visit(ICPPASTFunctionDeclarator) may also be called independently of visit(ICPPASTFunctionDefinition))
-	 * Therefore we use this variable to set the famixBehavioural created in visit(ICPPASTFunctionDeclarator)
-	 */
-	private BehaviouralEntity currentBehavioural;
-
-	/**
-	 * Visiting a method or function declaration
-	 */
-	@Override
-	protected int visit(ICPPASTFunctionDeclarator node) {
-		BehaviouralEntity fmx = null;
-
-		// compute nodeName and binding
-		super.visit(node);
-
-		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
-
-		this.context.push(fmx);
-		currentBehavioural = fmx; // note: fmx will be popped out of context at the end of this method, but will remain in currentBehavioural
-
-		for (ICPPASTParameterDeclaration param : node.getParameters()) {
-			param.accept(this);
-		}
-		
-		this.context.pop();
-
-		return PROCESS_SKIP;  // already visited all we needed
 	}
 
 	/**
@@ -301,8 +277,30 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 				fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
 			}
 		}
+		returnedEntity = fmx;
 
-		return PROCESS_CONTINUE;
+		return PROCESS_SKIP;
+	}
+
+	/**
+	 * Visiting a method or function declaration
+	 */
+	@Override
+	protected int visit(ICPPASTFunctionDeclarator node) {
+		BehaviouralEntity fmx = null;
+
+		// compute nodeName and binding
+		super.visit(node);
+
+		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
+
+		this.context.push(fmx);
+		for (ICPPASTParameterDeclaration param : node.getParameters()) {
+			param.accept(this);
+		}
+		returnedEntity = this.context.pop();
+
+		return PROCESS_SKIP;  // already visited all we needed
 	}
 
 	/**
@@ -311,20 +309,19 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	@Override
 	protected int visit(ICPPASTFunctionDefinition node) {
 		/*
-		 * visit declarator to ensure the method definition and to get the
-		 * Famix entity (which will be on currentBehavioural)
+		 * visit declarator to ensure the method definition and to get the Famix entity
 		 */
-		currentBehavioural = null;
+		returnedEntity = null;
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator() );
-		if (currentBehavioural != null) {
-			this.context.push(currentBehavioural);
+		if (returnedEntity != null) {
+			this.context.push((NamedEntity) this.returnedEntity());
 
 			for (ICPPASTConstructorChainInitializer init : node.getMemberInitializers()) {
 				init.accept(this);
 			}
 			node.getBody().accept(this);
 
-			this.context.pop();
+			returnedEntity = this.context.pop();
 		}
 
 		return PROCESS_SKIP;  // we already visited the children
@@ -342,28 +339,40 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		fmx = (TypeAlias) dico.getEntityByKey(bnd);
 
 		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
+		
+		returnedEntity = fmx;
 	}
 
 	@Override
 	protected int visit(ICPPASTConstructorChainInitializer node) {
-		return new FunctionCallVisitor(this).visit(node);
+		FunctionCallVisitor subVisitor = new FunctionCallVisitor(this);
+		int retVal = subVisitor.visit(node);
+		returnedEntity = subVisitor.returnedEntity();
+		return retVal;
 	}
 
 	@Override
 	protected int visit(ICPPASTConstructorInitializer node) {
-		return new FunctionCallVisitor(this).visit(node);
+		FunctionCallVisitor subVisitor = new FunctionCallVisitor(this);
+		int retVal = subVisitor.visit(node);
+		returnedEntity = subVisitor.returnedEntity();
+		return retVal;
 	}
 
 	@Override
 	protected int visit(IASTFunctionCallExpression node) {
-		return new FunctionCallVisitor(this).visit((IASTFunctionCallExpression)node);
+		FunctionCallVisitor subVisitor = new FunctionCallVisitor(this);
+		int retVal = subVisitor.visit(node);
+		returnedEntity = subVisitor.returnedEntity();
+		return retVal;
 	}
 
 	@Override
 	protected int visit(IASTLiteralExpression node) {
+		returnedEntity = null;
 		if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
 			if (context.topType() != null) {
-				accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity(), /*persistIt*/true));
+				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity(), /*persistIt*/true));
 			}
 		}
 		return PROCESS_SKIP;
@@ -378,7 +387,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		
 		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
 					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
-		referenceToName(((IASTFieldReference) node).getFieldName(), reference);
+		returnedEntity = referenceToName(((IASTFieldReference) node).getFieldName(), reference);
 
 		return PROCESS_SKIP;
 	}
@@ -388,13 +397,13 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		boolean reference;
 		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
 					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
-		referenceToName(((IASTIdExpression) node).getName(), reference);
+		returnedEntity = referenceToName(((IASTIdExpression) node).getName(), reference);
 		return PROCESS_SKIP;
 	}
 
 	public int visit(IASTBinaryExpression node) {
-		Access prevAccess = context.getLastAccess();
 		node.getOperand1().accept(this);
+
 		switch (node.getOperator()) {
 		case IASTBinaryExpression.op_assign:
 		case IASTBinaryExpression.op_binaryAndAssign:
@@ -407,8 +416,8 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		case IASTBinaryExpression.op_plusAssign:
 		case IASTBinaryExpression.op_shiftLeftAssign:
 		case IASTBinaryExpression.op_shiftRightAssign:
-			if (context.getLastAccess() != prevAccess) {
-				context.getLastAccess().setIsWrite(true);
+			if (this.returnedEntity() instanceof Access) {
+				((Access) this.returnedEntity()).setIsWrite(true);
 			}
 		}
 		node.getOperand2().accept(this);
