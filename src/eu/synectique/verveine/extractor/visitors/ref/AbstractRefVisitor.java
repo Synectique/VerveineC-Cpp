@@ -9,6 +9,7 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.core.runtime.CoreException;
@@ -20,11 +21,13 @@ import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
+import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 
@@ -104,15 +107,10 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @return the Access or Invocation created
 	 */
 	protected Association referenceToName(IASTName nodeName, boolean reference) {
-		IIndexBinding bnd = null;
+		IBinding bnd = null;
 		NamedEntity fmx = null;
 
-		try {
-			bnd = index.findBinding(nodeName);
-		} catch (CoreException e) {
-			System.err.println("error getting index");
-			e.printStackTrace();
-		}
+		bnd = getBinding(nodeName);
 
 		if (bnd == null) {
 			return null;
@@ -201,7 +199,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		}
 		else if (node instanceof IASTNameOwner) {
 			IASTName nodeName = null;
-			IIndexBinding bnd = null;
+			IBinding bnd = null;
 
 			// all these tests to call methods with the same name in the end ...
 			if  (node instanceof IASTCompositeTypeSpecifier) {
@@ -216,14 +214,11 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			else if (node instanceof IASTNamedTypeSpecifier) {
 				nodeName = ((IASTNamedTypeSpecifier) node).getName();
 			}
-			try {
-				bnd = index.findBinding( nodeName);
-			} catch (CoreException e) {
-				e.printStackTrace();
-			}
+			bnd = getBinding( nodeName);
 
 			if (bnd == null) {
-				return dico.ensureFamixUniqEntity(Type.class, /*key*/null, nodeName.toString());
+				bnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+				//return dico.ensureFamixUniqEntity(Type.class, bnd, nodeName.toString());
 			}
 
 			return (Type) dico.getEntityByKey(bnd);

@@ -3,6 +3,7 @@
 #include "SaveScale.hpp"
 
 class RadarStatus: public MAS::TFC::MAF::ActiveClass {
+  RadarStatus::RadarStatus( void);
   static RadarStatus *_instance;
   static RadarStatus *getInstance( void);
   SaveScale saveScale;

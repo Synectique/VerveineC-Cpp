@@ -15,6 +15,7 @@ import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
@@ -74,7 +75,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	 */
 	public int visit(IASTFunctionCallExpression node) {
 		NamedEntity fmx = null;
-		IIndexBinding bnd = null;
+		IBinding bnd = null;
 		IASTName nodeName = null;
 		Invocation invok = null;
 		
@@ -88,11 +89,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		IASTNode lastChild = children[children.length - 1];
 		if (lastChild instanceof IASTName) {
 			nodeName = (IASTName)lastChild;
-			try {
-				bnd = index.findBinding( nodeName );
-			} catch (CoreException e) {
-				e.printStackTrace();
-			}
+			bnd = getBinding( nodeName );
 
 			if (bnd != null) {
 				fmx = dico.getEntityByKey(bnd);
@@ -160,13 +157,9 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		Invocation invok = null;
 
 		for (IASTImplicitName candidate : parent.getImplicitNames()) {
-			IIndexBinding bnd = null; 
+			IBinding bnd = null; 
 
-			try {
-				bnd = index.findBinding( candidate );
-			} catch (CoreException e) {
-				e.printStackTrace();
-			}
+			bnd = getBinding( candidate );
 
 			if (bnd != null) {
 				fmx = dico.getEntityByKey(bnd);

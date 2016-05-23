@@ -19,6 +19,7 @@ import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
@@ -29,6 +30,8 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICContainer;
@@ -91,7 +94,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	/**
 	 * A variable used in many visit methods to store the binding of the current node
 	 */
-	protected IIndexBinding bnd;
+	protected /*IIndex*/IBinding bnd;
 
 	// CONSTRUCTOR ==========================================================================================================================
 
@@ -319,11 +322,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 				tracer.msg("IASTSimpleDeclaration (typedef):"+nodeName.toString());
 
-				try {
-					bnd = index.findBinding(nodeName);
-				} catch (CoreException e) {
-					e.printStackTrace();
-				}
+				bnd = getBinding(nodeName);
 
 				if (bnd == null) {
 					// create one anyway, assume this is a function
@@ -363,15 +362,16 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		nodeName = node.getName();
 		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
 
-		try {
-			bnd = index.findBinding(nodeName);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
+		bnd = getBinding(nodeName);
 
 		if (bnd == null) {
-			// create one anyway, assume this is a function
-			bnd = StubBinding.getInstance(Function.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+			// create one anyway, function or method?
+			if (context.top() instanceof eu.synectique.verveine.core.gen.famix.Class) {
+				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)context.top(), nodeName.toString()));
+			}
+			else {
+				bnd = StubBinding.getInstance(Function.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+			}
 		}
 
 		return PROCESS_CONTINUE;
@@ -399,11 +399,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			// this is an Attribute declaration, get it back
 			nodeName = node.getName();
 
-			try {
-				bnd = index.findBinding(nodeName);
-			} catch (CoreException e) {
-				e.printStackTrace();
-			}
+			bnd = getBinding(nodeName);
 
 			if (bnd == null) {
 				bnd = StubBinding.getInstance(Attribute.class, dico.mooseName(context.topType(), nodeName.toString()));
@@ -436,11 +432,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 		tracer.up("ICPPASTCompositeTypeSpecifier:"+nodeName.toString());
 
-		try {
-			bnd = index.findBinding(nodeName);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
+		bnd = getBinding(nodeName);
 
 		if (bnd == null) {
 			// create one anyway
@@ -528,6 +520,25 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		}
 	}
 
+	/**
+	 * Try to get some binding from a IASTName.
+	 * There are two possible way to get bindings: through the Index and by resolveBinding.
+	 * but the second may return different bindings for the same entity in different locations
+	 * @return a binding or null if none found
+	 */
+	protected IBinding getBinding(IASTName name) {
+		IBinding bnd = null;
+		try {
+			bnd = index.findBinding(name);
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+		/*if (bnd == null) {
+			bnd = name.resolveBinding();
+		}*/
+		return bnd;
+	}
+	
 	protected boolean fullyQualified(IASTName name) {
 		return fullyQualified(name.toString());
 	}
@@ -547,8 +558,12 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	protected String simpleName(String name) {
 		String str = name.toString(); 
 		int i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		
-		return str.substring(i+2);
+		if (i < 0) {
+			return name;
+		}
+		else {
+			return str.substring(i+2);
+		}
 	}
 
 	/**
@@ -622,6 +637,50 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		}
 
 		return (ContainerEntity) top;
+	}
+
+
+
+	protected boolean isMethodBinding(IBinding bnd) {
+		if (bnd instanceof ICPPMethod) {
+			return true;
+		}
+		if ( (bnd instanceof StubBinding) && ( ((StubBinding)bnd).getEntityClass().equals(Method.class.getName()) ) ) {
+			return true;
+		}
+		return false;
+	}
+
+	protected boolean isConstructorBinding(IBinding bnd) {
+		if (bnd instanceof ICPPConstructor) {
+			return true;
+		}
+		if (bnd instanceof StubBinding) {
+			String className;
+			String mthName;
+			String fullName = ((StubBinding)bnd).getEntityName();
+			int i;
+			// name of the method, equivalent to 'simpleName()' but we needed the index to find the className
+			i = fullName.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+			mthName = fullName.substring(i+2);
+			// name of the class
+			fullName = fullName.substring(0, i);
+			className = simpleName(fullName);
+			// comparing them
+			return className.equals(mthName);
+		}
+		return false;
+	}
+
+	protected boolean isDestructorBinding(IBinding bnd) {
+		if ( (bnd instanceof ICPPMethod) && (((ICPPMethod)bnd).isDestructor()) ) {
+			return true;
+		}
+		if (bnd instanceof StubBinding) {
+			// simplified test. Could look at the name of the class as in isConstructorBinding(bnd)
+			return simpleName(((StubBinding)bnd).getEntityName()).charAt(0) == '~';
+		}
+		return false;
 	}
 
 }

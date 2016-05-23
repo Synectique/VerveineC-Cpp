@@ -2,7 +2,7 @@ package eu.synectique.verveine.extractor.visitors;
 
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
-import org.eclipse.cdt.core.index.IIndexBinding;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
@@ -31,7 +31,7 @@ import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 
-public class CDictionary extends Dictionary<IIndexBinding> {
+public class CDictionary extends Dictionary<IBinding> {
 
 	/**
 	 * Separator in fully qualified package name
@@ -57,7 +57,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		super(famixRepo);
 	}
 
-	protected NamedEntity getEntityIfNotNull(IIndexBinding key) {
+	protected NamedEntity getEntityIfNotNull(IBinding key) {
 		if (key == null) {
 			return null;
 		}
@@ -131,7 +131,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public Namespace ensureFamixNamespace(IIndexBinding key, String name, ScopingEntity parent) {
+	public Namespace ensureFamixNamespace(IBinding key, String name, ScopingEntity parent) {
 		Namespace fmx = super.ensureFamixNamespace(key, name);
 		if (parent != null) {
 			fmx.setParentScope(parent);
@@ -141,7 +141,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 
 	public Package ensureFamixPackage(String name, Package parent) {
 		String fullname = mooseName(parent, name);
-		IIndexBinding key = StubBinding.getInstance(Package.class, fullname);
+		IBinding key = StubBinding.getInstance(Package.class, fullname);
 		Package fmx = super.ensureFamixEntity(Package.class, key, name, /*persitIt*/true);
 		fmx.setIsStub(false);
 		if (parent != null) {
@@ -150,7 +150,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public TypeAlias ensureFamixTypeAlias(IIndexBinding key, String name, ContainerEntity owner) {
+	public TypeAlias ensureFamixTypeAlias(IBinding key, String name, ContainerEntity owner) {
 		TypeAlias fmx;
 
 		fmx = super.ensureFamixEntity(TypeAlias.class, key, name, /*persistIt*/true);
@@ -159,7 +159,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public eu.synectique.verveine.core.gen.famix.Class ensureFamixClass(IIndexBinding key, String name, ContainerEntity owner) {
+	public eu.synectique.verveine.core.gen.famix.Class ensureFamixClass(IBinding key, String name, ContainerEntity owner) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
 		fmx = (Class) getEntityIfNotNull(key);
 		if (fmx == null) {
@@ -169,7 +169,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public ParameterizableClass ensureFamixParameterizableClass(IIndexBinding key, String name, ContainerEntity owner) {
+	public ParameterizableClass ensureFamixParameterizableClass(IBinding key, String name, ContainerEntity owner) {
 		ParameterizableClass fmx;
 		fmx = (ParameterizableClass) getEntityIfNotNull(key);
 		if (fmx == null) {
@@ -179,7 +179,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public Function ensureFamixFunction(IIndexBinding key, String name, String sig, ContainerEntity parent) {
+	public Function ensureFamixFunction(IBinding key, String name, String sig, ContainerEntity parent) {
 		Function fmx;
 		fmx = (Function) getEntityIfNotNull(key);
 		if (fmx == null) {
@@ -190,7 +190,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public Method ensureFamixMethod(IIndexBinding key, String name, String signature, Type parent) {
+	public Method ensureFamixMethod(IBinding key, String name, String signature, Type parent) {
 		Method fmx;
 		fmx = (Method) getEntityIfNotNull(key);
 		if (fmx == null) {
@@ -202,7 +202,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 		return fmx;
 	}
 
-	public Attribute ensureFamixAttribute(IIndexBinding key, String name, Type parent) {
+	public Attribute ensureFamixAttribute(IBinding key, String name, Type parent) {
 		Attribute fmx;
 		fmx = (Attribute) getEntityIfNotNull(key);
 		if (fmx == null) {
@@ -213,13 +213,13 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	}
 
 	/**
-	 * Returns a Famix Parameter associated with the IIndexBinding.
+	 * Returns a Famix Parameter associated with the IBinding.
 	 * The Entity is created if it does not exist.<br>
 	 * Params: see {@link Dictionary#ensureFamixParameter(Object, String, Type, eu.synectique.verveine.core.gen.famix.BehaviouralEntity, boolean)}.
 	 * @param persistIt -- whether to persist or not the entity eventually created
 	 * @return the Famix Entity found or created. May return null if "bnd" is null or in case of a Famix error
 	 */
-	public Parameter ensureFamixParameter(IIndexBinding bnd, String name, BehaviouralEntity owner) {
+	public Parameter ensureFamixParameter(IBinding bnd, String name, BehaviouralEntity owner) {
 		Parameter fmx = null;
 
 		// --------------- to avoid useless computations if we can
@@ -329,7 +329,7 @@ public class CDictionary extends Dictionary<IIndexBinding> {
 	 */
 	public String mooseName(Type parent, String name) {
 		if (parent != null) {
-			return concatMooseName( mooseName(parent.getParentPackage(), parent.getName()) , name);
+			return concatMooseName( mooseName(parent.getContainer(), parent.getName()) , name);
 		}
 		else {
 			return name;

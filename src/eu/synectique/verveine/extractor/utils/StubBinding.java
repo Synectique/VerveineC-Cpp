@@ -5,26 +5,24 @@ import java.util.Map;
 
 import org.eclipse.cdt.core.dom.ILinkage;
 import org.eclipse.cdt.core.dom.ast.DOMException;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
-import org.eclipse.cdt.core.index.IIndexBinding;
-import org.eclipse.cdt.core.index.IIndexFile;
-import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
-import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Package;
-import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 
 /**
- * This is a CDT {@link IIndexBinding} implementor to serve as key for unresolved entities
- * Rational: The Famix dictionary needs an IIndexBinding as entity key.
+ * This is a CDT {@link IBinding} implementor to serve as key for unresolved entities
+ * Rational: The Famix dictionary needs an IBinding as entity key.
  * But the stubs (and FamixPackages) don't have associated CDT binding
- * So we create this class that will implement a fake IIndexBinding for each stub
+ * So we create this class that will implement a fake IBinding for each stub
  * The actual key will be some string including its Famix type (e.g. "Package") and a name (e.g. the fully qualified name of a Package)
  * (see also {@link #getInstance(String, Package)})
  * @author Anquetil and Bhatti
  */
-public class StubBinding implements IIndexBinding {
+public class StubBinding implements IBinding {
+
+	private static final String KEY_SEPARATOR = "/";
 
 	/**
 	 * The actual key of the entity
@@ -45,7 +43,7 @@ public class StubBinding implements IIndexBinding {
 	 * @return the StubBinding associated with the entity
 	 */
 	public static <T extends NamedEntity>  StubBinding getInstance(Class<T> clazz, String id) {
-		String key = clazz.getName() + "/" + id;
+		String key = clazz.getName() + KEY_SEPARATOR + id;
 		StubBinding inst;
 		
 		inst = instances.get(key);
@@ -56,36 +54,27 @@ public class StubBinding implements IIndexBinding {
 		return inst;
 	}
 
-	private StubBinding(String fkeyname) {
+	private StubBinding(String keyname) {
 		this.keyname = keyname;
 	}
 
+	public String getEntityClass() {
+		int i;
+		i = keyname.indexOf(KEY_SEPARATOR);
+		return keyname.substring(0, i);
+	}
+
+
+	public String getEntityName() {
+		int i;
+		i = keyname.indexOf(KEY_SEPARATOR);
+		return keyname.substring(i+1);
+	}
+
 	/*
-	 * IIndexBinding API to implements.
+	 * IBinding API to implements.
 	 * We do not actually use any of these 
 	 */
-	
-	@Override
-	public ILinkage getLinkage() {
-		return null;
-	}
-
-	@Override
-	public String getName() {
-		// we might as well return keyname since we have it
-		return keyname;
-	}
-
-	@Override
-	public char[] getNameCharArray() {
-		// we might as well return keyname since we have it
-		return keyname.toCharArray();
-	}
-
-	@Override
-	public IScope getScope() throws DOMException {
-		return null;
-	}
 
 	@Override
 	public <T> T getAdapter(Class<T> arg0) {
@@ -93,23 +82,28 @@ public class StubBinding implements IIndexBinding {
 	}
 
 	@Override
-	public IIndexFile getLocalToFile() throws CoreException {
+	public ILinkage getLinkage() {
 		return null;
 	}
 
 	@Override
-	public IIndexBinding getOwner() {
+	public String getName() {
 		return null;
 	}
 
 	@Override
-	public String[] getQualifiedName() {
+	public char[] getNameCharArray() {
 		return null;
 	}
 
 	@Override
-	public boolean isFileLocal() throws CoreException {
-		return false;
+	public IBinding getOwner() {
+		return null;
+	}
+
+	@Override
+	public IScope getScope() throws DOMException {
+		return null;
 	}
 
 }

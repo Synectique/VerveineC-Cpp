@@ -142,12 +142,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		nodeName = node.getName();
 		bnd = null;
 
-		try {
-			bnd = index.findBinding(nodeName);
-		}
-		catch (CoreException e) {
-			e.printStackTrace();
-		}
+		bnd = getBinding(nodeName);
 		fmx = dico.ensureFamixNamespace(bnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
 		fmx.setIsStub(false);
 
@@ -231,11 +226,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			// if node is a stub with a fully qualified name, its parent is not context.top() :-(
 			fmx = dico.ensureFamixClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
 		}
-
-		if (! (bnd instanceof StubBinding)) {
-			fmx.setIsStub(false);
-		}
-
+		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 		fmx.setParentPackage(currentPackage);
 		
 		// dealing with template class/struct
@@ -260,7 +251,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	}
 
 	/**
-	 * Visiting a method or function declaration
+	 * Visiting a method or function declaration (i.e. "header" aka signature)
 	 */
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
@@ -269,22 +260,19 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		// compute nodeName and binding
 		super.visit(node);
 
-		if (bnd instanceof ICPPMethod) {   // C++ method
+		if (isMethodBinding(bnd)) {   // C++ method
 			fmx = dico.ensureFamixMethod(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/context.topType());
-			if ( ((ICPPMethod)bnd).isDestructor() ) {
+			if (isDestructorBinding(bnd)) {
 				((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
 			}
-			if (bnd instanceof ICPPConstructor) {
+			if (isConstructorBinding(bnd)) {
 				((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
 			}
 		}
 		else {                    //   C function or may be a stub ?
 			fmx = dico.ensureFamixFunction(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/(ContainerEntity)context.top());
 		}
-		
-		if (! (bnd instanceof StubBinding)) {
-			fmx.setIsStub(false);
-		}
+		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 
 		context.push(fmx);
 
@@ -325,21 +313,18 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	protected int visit(ICPPASTFunctionDefinition node) {
 		BehaviouralEntity fmx = null;
 		tracer.up("ICPPASTFunctionDefinition");
-		/*
-		 * visit declarator to ensure the method definition and to get the
-		 * Famix entity (which will be on the top of the context stack)
-		 */
+
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator());
 		fmx = context.topBehaviouralEntity();
-		this.leave((ICPPASTFunctionDeclarator)node.getDeclarator());  // at least to popup the function/method from the context stack
+		this.leave((ICPPASTFunctionDeclarator)node.getDeclarator());  // will popup the function/method from the context stack
 
 		if (fmx != null) {
 			IASTFileLocation defLoc = node.getFileLocation();
 			dico.addSourceAnchor(fmx, defLoc.getFileName(), defLoc);
 		}
 
-		// using pushMethod() introduces a difference in the handling of the metrics CYCLO/NOS
-		// this behaviour was inherited from VerveineJ and need to be refactored
+		// using pushBehaviouralEntity()/pushMethod() introduces a difference in the handling of the stack (for metrics CYCLO/NOS)
+		// this behaviour was inherited from VerveineJ and would need to be refactored
 		this.context.pushBehaviouralEntity(fmx);
 
 		// now visiting the children of the node
