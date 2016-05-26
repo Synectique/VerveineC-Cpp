@@ -9,6 +9,7 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
@@ -29,7 +30,6 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack;
@@ -155,6 +155,14 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		Parameter fmx = null;
 		bnd = null;
 		nodeName = node.getDeclarator().getName();
+
+		if (nodeName.toString().equals("")) {
+			// case of a "mth(void)" declaration, seen a s a parameter with no name
+			// could check that:
+			//   node.getDeclSpecifier() instanceof  IASTSimpleDeclSpecifier
+			//   ((IASTSimpleDeclSpecifier) node.getDeclSpecifier()).getType() == IASTSimpleDeclSpecifier.t_void
+			return PROCESS_SKIP;
+		}
 
 		bnd = getBinding(nodeName);
 
