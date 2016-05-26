@@ -29,6 +29,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
@@ -41,6 +42,7 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTNewExpression;
 import org.eclipse.core.runtime.CoreException;
 
@@ -370,6 +372,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)context.top(), nodeName.toString()));
 			}
 			else {
+				if (fullyQualified(nodeName)) {
+					//nodeName.get
+				}
 				bnd = StubBinding.getInstance(Function.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
 			}
 		}
@@ -392,7 +397,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	protected int visit(ICPPASTDeclarator node) {
 		bnd = null;
 		nodeName = null;
-
+CMacroEntry t;
 		if ( (node.getParent() instanceof IASTSimpleDeclaration) &&
 			 (node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) &&
 			 ( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier().getStorageClass() != IASTDeclSpecifier.sc_typedef)  ) {
@@ -425,10 +430,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		bnd = null;
 		nodeName = node.getName();
 
-		if (nodeName == null) {
-			tracer.msg("ICPPASTCompositeTypeSpecifier without name");
-			return PROCESS_SKIP;
-		}
+		tracer.msg("ICPPASTCompositeTypeSpecifier without name");
 
 		tracer.up("ICPPASTCompositeTypeSpecifier:"+nodeName.toString());
 
@@ -528,14 +530,15 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	 */
 	protected IBinding getBinding(IASTName name) {
 		IBinding bnd = null;
+		if (name == null) {
+			return null;
+		}
 		try {
 			bnd = index.findBinding(name);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
-		/*if (bnd == null) {
-			bnd = name.resolveBinding();
-		}*/
+
 		return bnd;
 	}
 	

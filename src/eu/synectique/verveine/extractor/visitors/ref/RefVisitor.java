@@ -155,10 +155,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		Parameter fmx = null;
 		bnd = null;
 		nodeName = node.getDeclarator().getName();
-		
-		if (nodeName.toString().equals("")) {
-			return PROCESS_SKIP;
-		}
 
 		bnd = getBinding(nodeName);
 

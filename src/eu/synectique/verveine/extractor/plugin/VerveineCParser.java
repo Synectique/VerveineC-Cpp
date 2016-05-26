@@ -5,25 +5,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexManager;
+import org.eclipse.cdt.core.model.CModelException;
 import org.eclipse.cdt.core.model.CoreModel;
 import org.eclipse.cdt.core.model.ICProject;
-import org.eclipse.cdt.core.settings.model.ICConfigurationDescription;
-import org.eclipse.cdt.core.settings.model.ICFolderDescription;
-import org.eclipse.cdt.core.settings.model.ICLanguageSetting;
-import org.eclipse.cdt.core.settings.model.ICLanguageSettingEntry;
-import org.eclipse.cdt.core.settings.model.ICMacroEntry;
+import org.eclipse.cdt.core.model.IPathEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
-import org.eclipse.cdt.core.settings.model.ICSettingEntry;
-import org.eclipse.cdt.core.settings.model.util.CDataUtil;
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -38,17 +29,20 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
 
 import eu.synectique.verveine.core.VerveineParser;
 import eu.synectique.verveine.core.gen.famix.CSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 import eu.synectique.verveine.extractor.visitors.DefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class VerveineCParser extends VerveineParser {
+	static final public String WORKSPACE_NAME = "workspace";
 
 	static final public String DEFAULT_PROJECT_NAME = "tempProj";
 
@@ -63,118 +57,42 @@ public class VerveineCParser extends VerveineParser {
 
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 
-	private String projectPath;
+	private String userProjectDir;
 
+	private String[] additionalIncludePath;
+	
 	private IIndex index;
 
 	private ITracer tracer;
 
 	public void parse() {
-		CDictionary dico = null;
+		CDictionary dico = new CDictionary(getFamixRepo());
 
-		System.out.println("step 1 / 3: indexing");
+		tracer = new Tracer();
+		tracer.msg("step 1 / 3: indexing");
 
-        IProject project = configureProject(createEclipseProject(DEFAULT_PROJECT_NAME));
-		ICProject cproject = initializeCProject(project, projectPath);  // projPath set in setOptions()
+        IProject project = createEclipseProject(DEFAULT_PROJECT_NAME);
+        ICProject cproject = initializeCProject(project, userProjectDir);
 
-        System.out.println("step 2 / 3: creating structural entities");
-        dico = new CDictionary(getFamixRepo());
-        DefVisitor step2 = new DefVisitor(dico, index);
-        step2.setVisitHeaders(true);
-        step2.visit(cproject);
-        step2.setVisitHeaders(false);
-        step2.visit(cproject);
-        if (step2.nbUnresolvedIncludes() > 0) {
-        	System.err.println("There were "+step2.nbUnresolvedIncludes()+" unresolved includes");
-        }
+        try {
+    		tracer.msg("step 2 / 3: creating structural entities");
+            DefVisitor step2 = new DefVisitor(dico, index);
+            step2.setVisitHeaders(true);
+			cproject.accept(step2);
+	        step2.setVisitHeaders(false);
+	        cproject.accept(step2);
+	        if (step2.nbUnresolvedIncludes() > 0) {
+	        	tracer.msg("There were "+step2.nbUnresolvedIncludes()+" unresolved includes");
+	        }
 
-        System.out.println("step 3 / 3: creating references");
-        new RefVisitor(dico, index).visit(cproject);
-	}
-
-	/**
-	 * Fill-in the project with source files and index these files
-	 * @param project
-	 * @param sourcePath
-	 */
-	private ICProject initializeCProject(IProject project, String sourcePath) {
-		copySourceFilesInProject(project, new File(sourcePath));
-
-		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
-		try {
-			descManager.updateProjectDescriptions(new IProject[] { project }, NULL_PROGRESS_MONITOR);
+	        tracer.msg("step 3 / 3: creating references");
+	        cproject.accept(new RefVisitor(dico, index));
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
-
-		ICProject cproject = CoreModel.getDefault().getCModel().getCProject(project.getName());
-
-
-		// Joining the indexer ensures it is done indexing the project
-		// We need this to start looking for references to entities
-		// After that, we can get the indexer to ask it for bindings
-        IIndexManager imanager = CCorePlugin.getIndexManager();
-        imanager.reindex(cproject);
-        imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
-       	try {
-			this.index = imanager.getIndex(cproject);
-			Thread.sleep(2000);
-		} catch (CoreException e1) {
-			e1.printStackTrace();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-
-		// everybody recommends to lock indexer in read.
-		// not sure we really need it since we will not alter the source files ...
-		try {
-			this.index.acquireReadLock();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		
-		return cproject;
 	}
 
-	/**
-	 * Creates an empty Project
-	 * @param projName
-	 * @return the IProject created
-	 */
-	private IProject createEclipseProject(String projName) {
-		IWorkspace workspace = ResourcesPlugin.getWorkspace();   // raises an org.eclipse.core.internal.resources.ResourceException if workspace directory does not exist
-		IWorkspaceRoot root = workspace.getRoot();
-		// we make a directory at the workspace root to copy source files
-		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append(projName);
-		
-		if (projectWSPath != null) {
-			new File(projectWSPath.toOSString()).mkdirs();
-		}
-
-		final IProject project = root.getProject(projName);
-		try {
-			// delete if the project exists
-			if (project.exists()) {
-				project.delete(/*deleteContent*/true, /*force*/true, NULL_PROGRESS_MONITOR);
-			}
-		} catch (Exception exc) {
-			exc.printStackTrace();
-		}
-		
-		return project;
-	}
-
-	/**
-	 * Creates an empty CProject
-	 * @param projectName
-	 * @return the project created
-	 */
-	private IProject configureProject(IProject project) {
-		IWorkspace workspace = ResourcesPlugin.getWorkspace();
-		IProject cProject = null;
-
-		// change a bit workspace description
-		// TODO couldn't we do this on the project description ?
+	private void configWorkspace(IWorkspace workspace) {
 		IWorkspaceDescription workspaceDesc = workspace.getDescription();
 		workspaceDesc.setAutoBuilding(false); // we do not want the workspace to rebuild the project every time a new resource is added
 		try {
@@ -183,77 +101,92 @@ public class VerveineCParser extends VerveineParser {
 			System.err.println("Error trying to set workspace description: " + exc.getMessage());
 		}
 
-		IProjectDescription projectDesc = workspace.newProjectDescription(project.getName());
-		IPath projectWSPath = workspace.getRoot().getRawLocation().removeLastSegments(1).append("workspace").append(project.getName());
-		if (projectWSPath != null) {
-			projectDesc.setLocation(projectWSPath); // point path to workspace
+	}
+
+	private IProject createEclipseProject(String projName) {
+		IWorkspace workspace = ResourcesPlugin.getWorkspace();
+		configWorkspace(workspace);
+		IWorkspaceRoot root = workspace.getRoot();
+		// we make a directory at the workspace root to copy source files
+		IPath eclipseProjPath = root.getRawLocation().removeLastSegments(1).append(WORKSPACE_NAME).append(projName);
+		eclipseProjPath.toFile().mkdirs();
+
+		final IProject project = root.getProject(projName);
+		try {
+			// delete content if the project exists
+			if (project.exists()) {
+				project.delete(/*deleteContent*/true, /*force*/true, NULL_PROGRESS_MONITOR);
+				project.refreshLocal(IResource.DEPTH_INFINITE, NULL_PROGRESS_MONITOR);
+			}
+		} catch (Exception exc) {
+			exc.printStackTrace();
 		}
 
+		IProjectDescription eclipseProjDesc = workspace.newProjectDescription(project.getName());
+		eclipseProjDesc.setLocation(eclipseProjPath);
+
 		try {
-			// now we create a C project for real
-			cProject = CCorePlugin.getDefault().createCProject(projectDesc, project, NULL_PROGRESS_MONITOR, project.getName());
-			if (!cProject.isOpen()) {
-				cProject.open(NULL_PROGRESS_MONITOR);
+			project.create(eclipseProjDesc, NULL_PROGRESS_MONITOR);
+			project.open(NULL_PROGRESS_MONITOR);
+		} catch (CoreException e1) {
+			e1.printStackTrace();
+		}
+		
+		try {
+			// now we make it a C project
+			CCorePlugin.getDefault().createCProject(eclipseProjDesc, project, NULL_PROGRESS_MONITOR, project.getName());
+			if (!project.isOpen()) {
+				project.open(NULL_PROGRESS_MONITOR);
 			}
 		} catch (Exception exc) {
 			System.err.println("Error ("+exc.getClass().getSimpleName()+") in Project creation: " + exc.getMessage());
 			exc.printStackTrace();
 		}
 
-		/* 
-		 * trying to set include path to ensure system includes are resolved
-		 * 
-		 * From: http://cdt-devel-faq.wikidot.com/#toc25
-		 * The Include paths [...] are accessible via the CDT Core model.
-		 * In a nutshell: CoreModel -> ICProjectDescription -> ICConfigurationDescription -> ICFolderDescription -> ICLanguageSetting -> ICLanguageSettingEntry.
-		 * The ICLanguageSettingEntry you get in the end will also be an ICIncludePathEntry.
-		 * 
-		 * Along the way you'll need to know which configuration you want (the active one?), which folder (the project root?),
-		 * which language (i.e. assembly/C/C++ — this is tricky, see later), and that the "kind" of the ICLanguageSetting we want
-		 * is ICSettingEntry.INCLUDE_PATH.
-		 */
-/*
-		IManagedBuildInfo buildInfo = ManagedBuildManager.getBuildInfo(project);
-		if (buildInfo != null) {
-		    for (IConfiguration config : buildInfo.getManagedProject().getConfigurations())
-		        CfgDiscoveredPathManager.getInstance().removeDiscoveredInfo(project, new CfgInfoContext(config));
-		}
-*/	
-		ICProjectDescription cprojectDesc = CoreModel.getDefault().getProjectDescription(project, true);
-		ICConfigurationDescription activeConfig = cprojectDesc.getActiveConfiguration();
-		ICFolderDescription folderDescription = activeConfig.getRootFolderDescription();
-		ICLanguageSettingEntry[] projectDefines = getDefines();
-		for (ICLanguageSetting lang : folderDescription.getLanguageSettings()) {
-			//if (lang.getLanguageId().endsWith("g++")) {   // org.eclipse.cdt.core.g++
-					List<ICLanguageSettingEntry> includes = new ArrayList<ICLanguageSettingEntry>();
-					includes.addAll(lang.getSettingEntriesList(ICSettingEntry.INCLUDE_PATH));
-					includes.add(CDataUtil.createCIncludePathEntry("/usr/include", ICSettingEntry.BUILTIN));
-					lang.setSettingEntries(ICSettingEntry.INCLUDE_PATH, includes);
-					
-					lang.setSettingEntries(ICSettingEntry.MACRO, projectDefines);
-			//		}				
-		}
+		ICProjectDescription cProjectDesc = CoreModel.getDefault().getProjectDescription(project, true);
+		cProjectDesc.setCdtProjectCreated();
 
+		return project;
+	}
 
-		cprojectDesc.setActiveConfiguration(activeConfig);
-		cprojectDesc.setCdtProjectCreated();
+	private ICProject initializeCProject(IProject project, String sourcePath) {
+		copySourceFilesInProject(project, new File(sourcePath));
+		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
+        try {
+			descManager.updateProjectDescriptions(new IProject[] { project }, NULL_PROGRESS_MONITOR);
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+		ICProject cproject = CoreModel.getDefault().getCModel().getCProject(project.getName());
 
 		try {
-			CoreModel.getDefault().setProjectDescription(cProject, cprojectDesc, /*force*/true, NULL_PROGRESS_MONITOR);
+			IPathEntry[] oldEntries = cproject.getRawPathEntries();
+			IPathEntry[] newEntries = new IPathEntry[oldEntries.length + additionalIncludePath.length];
+			int i;
+			for (i=0; i < oldEntries.length; i++) {
+				newEntries[i] = oldEntries[i];
+			}
+			for (String path : additionalIncludePath) {
+				newEntries[i] = CoreModel.newIncludeEntry(project.getFullPath(), null, new Path(path), true);
+				i++;
+			}
+			cproject.setRawPathEntries(newEntries, NULL_PROGRESS_MONITOR);
+		} catch (CModelException e) {
+			e.printStackTrace();
+		}
+
+		IIndexManager imanager = CCorePlugin.getIndexManager();
+		imanager.setIndexerId(cproject, "org.eclipse.cdt.core.fastIndexer");
+        imanager.reindex(cproject);
+        imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
+        
+		try {
+			this.index = imanager.getIndex(cproject);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
 
-		return cProject;
-	}
-
-	/* trying to set a C Nacro programmatically
-	 */
-	private ICLanguageSettingEntry[] getDefines() {
-		ArrayList<ICLanguageSettingEntry> defines = new ArrayList<ICLanguageSettingEntry>();
-		ICMacroEntry entry = (ICMacroEntry)CDataUtil.createEntry(ICLanguageSettingEntry.MACRO, "WINDOWS", "yes", null, 0);
-		defines.add(entry);
-		return defines.toArray(new ICLanguageSettingEntry[0]);
+		return cproject;
 	}
 
 	/**
@@ -386,8 +319,20 @@ public class VerveineCParser extends VerveineParser {
 			}
 		}
 
+		// TODO this should not be hard coded
+		additionalIncludePath = new String[] {
+				 "/usr/include/c++/5" ,
+				 "/usr/include/x86_64-linux-gnu/c++/5" ,
+				 "/usr/include/c++/5/backward" ,
+				 "/usr/lib/gcc/x86_64-linux-gnu/5/include" ,
+				 "/usr/local/include" ,
+				 "/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed" ,
+				 "/usr/include/x86_64-linux-gnu" ,
+				 "/usr/include"	
+		};
+
 		for ( ; i < args.length; i++) {
-			projectPath = args[i];
+			userProjectDir = args[i];
 		}
 
 	}

@@ -27,6 +27,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
@@ -261,7 +262,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		super.visit(node);
 
 		if (isMethodBinding(bnd)) {   // C++ method
-			fmx = dico.ensureFamixMethod(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/context.topType());
+			fmx = dico.ensureFamixMethod(bnd, simpleName(nodeName), node.getRawSignature(), /*owner*/context.topType());
 			if (isDestructorBinding(bnd)) {
 				((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
 			}
@@ -270,7 +271,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			}
 		}
 		else {                    //   C function or may be a stub ?
-			fmx = dico.ensureFamixFunction(bnd, formatMemberName(nodeName), /*signature*/bnd.toString(), /*owner*/(ContainerEntity)context.top());
+			fmx = dico.ensureFamixFunction(bnd, simpleName(nodeName), node.getRawSignature(), /*owner*/(ContainerEntity)context.top());
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 
@@ -391,21 +392,21 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	// UTILITIES ==============================================================================================================================
 
-	protected String formatMemberName(IASTName nodeName) {
+/*	protected String formatMemberName(IASTName nodeName) {
 		String ret;
 		String fullname = nodeName.toString();
 		int i;
 		
-		i = fullname.lastIndexOf(':');
+		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		if (i > 0 ) {
-			ret = fullname.substring(i+1);
+			ret = fullname.substring(i+2);
 		}
 		else {
 			ret = fullname;
 		}
 
 		return ret;
-	}
+	}*/
 
 	public void setVisitHeaders(boolean visitHeaders) {
 		this.visitHeaders = visitHeaders;

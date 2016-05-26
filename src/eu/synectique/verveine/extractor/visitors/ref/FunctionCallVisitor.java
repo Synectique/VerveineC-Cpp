@@ -253,7 +253,11 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		}
 	}
 
-	private String mkStubSig(String name, int nbParam) {
+	/**
+	 * Forges a signature for stub BehaviouralEntities
+	 * @return "name(&lt;parameters&gt;)" where parametres are substitued by "_" 
+	 */
+	protected String mkStubSig(String name, int nbParam) {
 		String sig = name + "(";
 		for (int i=0; i < nbParam-1; i++) {
 			sig += "_," ;
