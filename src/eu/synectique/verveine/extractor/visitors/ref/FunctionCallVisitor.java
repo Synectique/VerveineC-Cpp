@@ -1,12 +1,7 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
-import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
-import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitName;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
@@ -14,28 +9,15 @@ import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
-import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
-import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.core.index.IIndexBinding;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTDeclarator;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTSimpleDeclaration;
-import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
-import eu.synectique.verveine.core.EntityStack;
-import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
@@ -43,13 +25,10 @@ import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.InvocationWithArgs;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
-import eu.synectique.verveine.core.gen.famix.Reference;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
-import eu.synectique.verveine.extractor.utils.Tracer;
-import eu.synectique.verveine.extractor.visitors.CDictionary;
 
 public class FunctionCallVisitor extends AbstractRefVisitor {
 
@@ -99,13 +78,13 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 				// could not find it. Try to create a stub from the name (if we have one)
 				if (nodeName != null) {
 					String stubSig =  mkStubSig(nodeName.toString(), node.getArguments().length);
-					fmx = dico.ensureFamixFunction(/*key*/StubBinding.getInstance(Method.class, stubSig), nodeName.toString(), stubSig, /*container*/null);	
+					fmx = dico.ensureFamixFunction(/*key*/StubBinding.getInstance(Method.class, nodeName.toString()+"__"+node.getArguments().length), nodeName.toString(), stubSig, /*container*/null);	
 				}
 			}
 			else if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
 				// found a class instead of a behavioral. May happen, for example in the case of a "throw ClassName(...)"
 				String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
-				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, stubSig), fmx.getName(), stubSig, priorType);
+				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, fmx.getName()+"__"+node.getArguments().length), fmx.getName(), stubSig, priorType);
 			}
 
 			// now create the invocation
@@ -183,7 +162,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 			}
 			if (mthName != null) {
 				String stubSig =  mkStubSig(mthName, node.getArguments().length);
-				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, stubSig), mthName, stubSig, priorType);
+				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, mthName+"__"+node.getArguments().length), mthName, stubSig, priorType);
 			}
 		}
 

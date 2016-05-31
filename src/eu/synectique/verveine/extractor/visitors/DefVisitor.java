@@ -19,6 +19,7 @@ import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNullStatement;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
@@ -51,6 +52,7 @@ import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
+import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
@@ -256,13 +258,39 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
+		String mthName;
 		BehaviouralEntity fmx = null;
 
 		// compute nodeName and binding
 		super.visit(node);
 
-		if (isMethodBinding(bnd)) {   // C++ method
-			fmx = dico.ensureFamixMethod(bnd, simpleName(nodeName), node.getRawSignature(), /*owner*/context.topType());
+		if (isMethodBinding(bnd)) {
+			Type parent;
+			
+			 // get the class owning the method and the method name
+			if (bnd instanceof StubBinding) {
+				String fullName = nodeName.toString();
+				int i = fullName.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+				if (i > 0) {
+					mthName = fullName.substring(i+2);
+					parent = (Type) resolveOrNamespace(fullName.substring(0, i));
+				}
+				else {
+					mthName = fullName;
+					parent = context.topType();
+				}
+
+				fmx = lookForUnboundMethod(parent, mthName, node.getParameters());
+			}
+			else {
+				mthName = simpleName(nodeName);
+				parent = context.topType();
+			}
+
+			if (fmx == null) {
+				fmx = dico.ensureFamixMethod(bnd, mthName, node.getRawSignature(), /*owner*/parent);
+			}
+
 			if (isDestructorBinding(bnd)) {
 				((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
 			}
@@ -279,6 +307,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 		return PROCESS_CONTINUE;
 	}
+
 
 	@Override
 	protected int leave(ICPPASTFunctionDeclarator node) {
@@ -429,6 +458,43 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	public int nbUnresolvedIncludes() {
 		return unresolvedIncludes.size();
+	}
+
+	private BehaviouralEntity lookForUnboundMethod(Type parent, String name, ICPPASTParameterDeclaration[] params) {
+		for (Method mth : parent.getMethods()) {
+			if (mth.getName().equals(name)) {
+				if (checkParams(mth, params)) {
+					return mth;
+				}
+			}
+		}
+		return null;
+	}
+
+	private boolean checkParams(Method mth, ICPPASTParameterDeclaration[] params) {
+		int i;
+		String sig = mth.getSignature();
+		i = sig.indexOf('(');
+		sig = sig.substring(i+1, sig.length()-1);
+		int p = 0;
+		for (String t : sig.split(",")) {
+			t = t.trim();
+			// trying to match the type name
+			String typName = params[p].getDeclSpecifier().getRawSignature();
+			if (! t.startsWith( typName)) {
+				return false;
+			}
+			t = t.substring(typName.length()).trim();
+			// trying to match a pointer
+			for (IASTPointerOperator pointOp : params[p].getDeclarator().getPointerOperators()) {
+				if (t.charAt(0) != '*') {
+					return false;
+				}
+				t = t.substring(1).trim();
+			}
+			p++;
+		}
+		return true;
 	}
 
 }

@@ -174,7 +174,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		fmx = dico.ensureFamixParameter(bnd, nodeName.toString(), context.topBehaviouralEntity());
 		fmx.setIsStub(false);
 		// no sourceAnchor for parameter, they sometimes only appear in the .C file
-		// whereas it would seem more natural to have an anchor in the .H file
+		// whereas it would seem more natural to store the anchor referent to the .H file ...
 
 
 		if (fmx != null) {

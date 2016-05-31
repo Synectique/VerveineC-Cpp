@@ -54,6 +54,7 @@ import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.core.gen.moose.MooseModel;
 import eu.synectique.verveine.extractor.utils.ITracer;
@@ -367,15 +368,24 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		bnd = getBinding(nodeName);
 
 		if (bnd == null) {
+			NamedEntity parent = null;
+			String behavName;
 			// create one anyway, function or method?
-			if (context.top() instanceof eu.synectique.verveine.core.gen.famix.Class) {
-				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)context.top(), nodeName.toString()));
+			int i = nodeName.toString().lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+			if (i > 0) {
+				parent = resolveOrNamespace(nodeName.toString().substring(0, i));
+				behavName = nodeName.toString().substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
 			}
 			else {
-				if (fullyQualified(nodeName)) {
-					//nodeName.get
-				}
-				bnd = StubBinding.getInstance(Function.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+				parent = context.top();
+				behavName = nodeName.toString();
+			}
+			
+			if (parent instanceof eu.synectique.verveine.core.gen.famix.Class) {
+				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)parent, behavName ));
+			}
+			else {
+				bnd = StubBinding.getInstance(Function.class, dico.mooseName((ContainerEntity) parent, behavName));
 			}
 		}
 
@@ -579,12 +589,10 @@ CMacroEntry t;
 
 	protected Namespace createParentNamespace(String name) {
 		int i;
-		String str;
-		str = name.toString();
-		i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		i = name.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		
 		if (i > 0) {
-			return createNamespace(str.substring(0, i));
+			return createNamespace(name.substring(0, i));
 		}
 		else {
 			return null;
@@ -642,7 +650,163 @@ CMacroEntry t;
 		return (ContainerEntity) top;
 	}
 
+	/**
+	 * Tries to find an entity within the current context, from it's fully qualified name.
+	 * If not found, assume it is a Namespace.
+	 */
+	public NamedEntity resolveOrNamespace( String name) {
+		NamedEntity parent = null;
+		NamedEntity tmp;
+		String str = name;
+		int i;
 
+		i = name.indexOf(CDictionary.CPP_NAME_SEPARATOR);		
+		if (i > 0) {
+			// looks for the first component in the fully qualified name
+			tmp = findInParent(name.substring(0, i), context.top(), /*recursive*/true);
+
+			// try to find the next components within the one already found
+			str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+			while ( (tmp != null) && (i > 0) ) {
+				parent = tmp;
+				tmp = findInParent(str.substring(0, i), parent, /*recursive*/false);  // Note: not recursive, we must find in the parent
+				str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+				i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+			}
+		}
+		else {
+			tmp = context.top();
+		}
+
+		if (tmp != null) {
+			parent = tmp;
+			// look for the last component in the fully qualified name
+			tmp = findInParent(str, parent, /*recursive*/false);
+			if (tmp != null) {
+				return tmp;
+			}
+		}
+		
+		// here, we are sure that the first remaining component in "str" was not found
+		// it is possibly followed by other components
+
+		// create last components (not found) as namespaces
+		while (i > 0) {
+			bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str.substring(0, i)));
+			parent = dico.ensureFamixNamespace(bnd, str.substring(0, i), (ScopingEntity) parent);
+
+			str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+		}
+	
+		// and finally the last composant of the fully qualified name
+		bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
+		tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
+
+		return tmp;
+	}
+
+	/**
+	 * Search for a name within the scope of a context.
+	 * If cannot find it and recursive is <code>true</code>, looks in the scope of parent context.
+	 * This is a dispatcher method that calls the correct methods from the type of the second parameter
+	 * @return NamedEntity found or null if none match
+	 */
+	public NamedEntity findInParent(String name, NamedEntity context, boolean recursive) {
+		if (context instanceof eu.synectique.verveine.core.gen.famix.Type) {
+			return findInParent(name, (eu.synectique.verveine.core.gen.famix.Type)context, recursive);
+		}
+		else if (context instanceof ScopingEntity) {
+			return findInParent(name, (ScopingEntity)context, recursive);
+		}
+		else {
+			return null;
+		}
+	}
+
+	/**
+	 * Search for a name within the scope of a context.
+	 * @return NamedEntity found or null if none match
+	 */
+	public NamedEntity findInParent(String name, ContainerEntity context) {		
+		for (eu.synectique.verveine.core.gen.famix.Type child : context.getTypes()) {
+			if (child.getName().equals(name)) {
+				return child;
+			}
+		}
+/* function should be matched on their parameters types too.
+ * We don't do that
+		for (Function child : context.getFunctions()) {
+			if (child.getName().equals(name)) {
+				return child;
+			}
+		}
+*/
+		return null;
+	}
+
+	/**
+	 * Search for a name within the scope of a context.
+	 * If cannot find it and recursive is <code>true</code>, looks in the scope of parent context
+	 * @return NamedEntity found or null if none match
+	 */
+	public NamedEntity findInParent(String name, eu.synectique.verveine.core.gen.famix.Type context, boolean recursive) {
+		NamedEntity found = null;
+
+		found = findInParent(name, (ContainerEntity) context);  // search within child types and functions
+		if (found != null) {
+			return found;
+		}
+
+		for (Attribute child : context.getAttributes()) {  // search within child attributes
+			if (child.getName().equals(name)) {
+				return child;
+			}
+		}
+/* function should be matched on their parameters types too.
+ * We don't do that
+
+		for (Method child : context.getMethods()) {  // search child methods
+			if (child.getName().equals(name)) {
+				return child;
+			}
+		}
+*/
+		if (recursive) {
+			return findInParent(name, (ScopingEntity) context.getBelongsTo());
+		}
+		else {
+			return null;
+		}
+	}
+
+	/**
+	 * Search for a name within the scope of a context.
+	 * If cannot find it and recursive is <code>true</code>, looks in the scope of parent context
+	 * @return NamedEntity found or null if none match
+	 */
+	public NamedEntity findInParent(String name, ScopingEntity context, boolean recursive) {
+		NamedEntity found = null;
+
+		found = findInParent(name, (ContainerEntity) context);  // search within child types and functions
+		if (found != null) {
+			return found;
+		}
+
+		for (ScopingEntity child : context.getChildScopes()) {  // search within child scopingEntities
+			if (child.getName().equals(name)) {
+				found = child;
+			}
+		}
+
+		if (recursive) {
+			return findInParent(name, (ScopingEntity) context.getBelongsTo());
+		}
+		else {
+			return null;
+		}
+	}
 
 	protected boolean isMethodBinding(IBinding bnd) {
 		if (bnd instanceof ICPPMethod) {
