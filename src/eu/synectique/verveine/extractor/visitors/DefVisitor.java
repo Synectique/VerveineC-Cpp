@@ -161,13 +161,21 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		return super.leave(node);
 	}
 
-	/**
-	 * Parameters are not created in this visitor because it seems they often have a null binding
-	 * anyway. So they are created in {@link RefVisitor#visit(IASTParameterDeclaration}
-	 */
 	@Override
 	public int visit(IASTParameterDeclaration node) {
-		return ASTVisitor.PROCESS_SKIP;
+		Parameter fmx = null;
+
+		 // get node name and bnd
+		if (super.visit(node) == PROCESS_SKIP) {
+			return PROCESS_SKIP;
+		}
+
+		fmx = dico.ensureFamixParameter(bnd, nodeName.toString(), context.topBehaviouralEntity());
+		fmx.setIsStub(false);
+		// no sourceAnchor for parameter, they sometimes only appear in the .C file
+		// whereas it would seem more natural to store the anchor referent to the .H file ...
+
+		return PROCESS_SKIP;
 	}
 
 	/**
@@ -289,6 +297,9 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 			if (fmx == null) {
 				fmx = dico.ensureFamixMethod(bnd, mthName, node.getRawSignature(), /*owner*/parent);
+				fmx.setNumberOfParameters(node.getParameters().length);
+				// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
+				// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
 			}
 
 			if (isDestructorBinding(bnd)) {
@@ -302,12 +313,18 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			fmx = dico.ensureFamixFunction(bnd, simpleName(nodeName), node.getRawSignature(), /*owner*/(ContainerEntity)context.top());
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
+		fmx.setNumberOfParameters(node.getParameters().length);
+		// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
+		// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
 
-		context.push(fmx);
+		this.context.push(fmx);
+		for (ICPPASTParameterDeclaration param : node.getParameters()) {
+			param.accept(this);
+		}
+		this.context.pop();
 
-		return PROCESS_CONTINUE;
+		return PROCESS_SKIP;
 	}
-
 
 	@Override
 	protected int leave(ICPPASTFunctionDeclarator node) {

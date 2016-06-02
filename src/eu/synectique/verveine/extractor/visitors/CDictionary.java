@@ -319,7 +319,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	 */
 	public String mooseName(Method parent, String name) {
 		if (parent != null) {
-			return concatMooseName( mooseName(parent.getParentType(), parent.getName()+"__"+parent.numberOfParameters()) , name);
+			return concatMooseName( mooseName(parent.getParentType(), parent.getSignature()) , name);
 		}
 		else {
 			return name;
@@ -332,7 +332,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	 */
 	public String mooseName(Function parent, String name) {
 		if (parent != null) {
-			return concatMooseName( mooseName(parent.getContainer(), parent.getName()+"__"+parent.numberOfParameters()) , name);
+			return concatMooseName( mooseName(parent.getContainer(), parent.getSignature()) , name);
 		}
 		else {
 			return name;

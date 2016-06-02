@@ -179,7 +179,6 @@ public class VerveineCParser extends VerveineParser {
 		imanager.setIndexerId(cproject, "org.eclipse.cdt.core.fastIndexer");
         imanager.reindex(cproject);
         imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
-        
 		try {
 			this.index = imanager.getIndex(cproject);
 		} catch (CoreException e) {

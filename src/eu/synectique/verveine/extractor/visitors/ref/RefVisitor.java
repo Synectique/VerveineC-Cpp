@@ -153,29 +153,12 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	@Override
 	public int visit(IASTParameterDeclaration node) {
 		Parameter fmx = null;
-		bnd = null;
-		nodeName = node.getDeclarator().getName();
 
-		if (nodeName.toString().equals("")) {
-			// case of a "mth(void)" declaration, seen a s a parameter with no name
-			// could check that:
-			//   node.getDeclSpecifier() instanceof  IASTSimpleDeclSpecifier
-			//   ((IASTSimpleDeclSpecifier) node.getDeclSpecifier()).getType() == IASTSimpleDeclSpecifier.t_void
+		 // get node name and bnd
+		if (super.visit(node) == PROCESS_SKIP) {
 			return PROCESS_SKIP;
 		}
-
-		bnd = getBinding(nodeName);
-
-		if (bnd == null) {
-			// create one anyway
-			bnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
-		}
-
-		fmx = dico.ensureFamixParameter(bnd, nodeName.toString(), context.topBehaviouralEntity());
-		fmx.setIsStub(false);
-		// no sourceAnchor for parameter, they sometimes only appear in the .C file
-		// whereas it would seem more natural to store the anchor referent to the .H file ...
-
+		fmx = (Parameter) dico.getEntityByKey(bnd);
 
 		if (fmx != null) {
 			// now get the declared type

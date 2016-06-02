@@ -54,6 +54,7 @@ import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.core.gen.moose.MooseModel;
@@ -481,6 +482,23 @@ CMacroEntry t;
 	}
 
 	public int visit(IASTParameterDeclaration node) {
+		bnd = null;
+		nodeName = node.getDeclarator().getName();
+
+		if (nodeName.toString().equals("")) {
+			// case of a "mth(void)" declaration, seen as a parameter with no name
+			// Additionally (to be on the safe side) could check that:
+			//   node.getDeclSpecifier() instanceof  IASTSimpleDeclSpecifier
+			//   ((IASTSimpleDeclSpecifier) node.getDeclSpecifier()).getType() == IASTSimpleDeclSpecifier.t_void
+			return PROCESS_SKIP;
+		}
+
+		bnd = getBinding(nodeName);
+
+		if (bnd == null) {
+			// create one anyway
+			bnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+		}
 		return PROCESS_CONTINUE;
 	}
 

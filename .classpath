@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry exported="true" kind="lib" path="lib/famix-20160519_1758.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/famix-20160519_1758.jar" sourcepath="/home/anquetil/Documents/RMod/Tools/workspace/verveine.core"/>
 	<classpathentry exported="true" kind="lib" path="lib/fast-20160519_1758.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/verveine.core-20160519_1758.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/akuhn-util-r28011.jar"/>

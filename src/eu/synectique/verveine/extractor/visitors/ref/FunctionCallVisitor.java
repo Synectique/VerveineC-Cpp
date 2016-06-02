@@ -21,6 +21,7 @@ import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
+import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.InvocationWithArgs;
 import eu.synectique.verveine.core.gen.famix.Method;
@@ -78,13 +79,19 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 				// could not find it. Try to create a stub from the name (if we have one)
 				if (nodeName != null) {
 					String stubSig =  mkStubSig(nodeName.toString(), node.getArguments().length);
-					fmx = dico.ensureFamixFunction(/*key*/StubBinding.getInstance(Method.class, nodeName.toString()+"__"+node.getArguments().length), nodeName.toString(), stubSig, /*container*/null);	
+					fmx = dico.ensureFamixFunction(/*key*/StubBinding.getInstance(Function.class, nodeName.toString()+"__"+node.getArguments().length), nodeName.toString(), stubSig, /*container*/null);
+					((Function)fmx).setNumberOfParameters(node.getArguments().length);
+					// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
+					// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
 				}
 			}
 			else if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
 				// found a class instead of a behavioral. May happen, for example in the case of a "throw ClassName(...)"
 				String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
 				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, fmx.getName()+"__"+node.getArguments().length), fmx.getName(), stubSig, priorType);
+				((Method)fmx).setNumberOfParameters(node.getArguments().length);
+				// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
+				// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
 			}
 
 			// now create the invocation
@@ -163,6 +170,9 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 			if (mthName != null) {
 				String stubSig =  mkStubSig(mthName, node.getArguments().length);
 				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, mthName+"__"+node.getArguments().length), mthName, stubSig, priorType);
+				((Method)fmx).setNumberOfParameters(node.getArguments().length);
+				// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
+				// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
 			}
 		}
 
