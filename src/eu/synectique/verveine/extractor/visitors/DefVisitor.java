@@ -3,20 +3,14 @@ package eu.synectique.verveine.extractor.visitors;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
-import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
-import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTForStatement;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIfStatement;
 import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
-import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNullStatement;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
@@ -31,17 +25,12 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack;
@@ -50,15 +39,12 @@ import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
-import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
-import eu.synectique.verveine.extractor.utils.Tracer;
-import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
@@ -298,9 +284,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 			if (fmx == null) {
 				fmx = dico.ensureFamixMethod(bnd, mthName, node.getRawSignature(), /*owner*/parent);
-				fmx.setNumberOfParameters(node.getParameters().length);
-				// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
-				// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
 			}
 
 			if (isDestructorBinding(bnd)) {
@@ -319,22 +302,13 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
 
 		this.context.push(fmx);
+		returnedEntity = fmx;
 		for (ICPPASTParameterDeclaration param : node.getParameters()) {
 			param.accept(this);
 		}
 		this.context.pop();
 
 		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int leave(ICPPASTFunctionDeclarator node) {
-		NamedEntity top = context.top();
-		if ( (top != null) &&
-			 (top instanceof BehaviouralEntity) ) {
-			context.pop();
-		}
-		return ASTVisitor.PROCESS_CONTINUE;
 	}
 
 	/**
@@ -363,8 +337,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		tracer.up("ICPPASTFunctionDefinition");
 
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator());
-		fmx = context.topBehaviouralEntity();
-		this.leave((ICPPASTFunctionDeclarator)node.getDeclarator());  // will popup the function/method from the context stack
+		fmx = (BehaviouralEntity) returnedEntity;
 
 		if (fmx != null) {
 			IASTFileLocation defLoc = node.getFileLocation();
@@ -381,7 +354,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		context.setLastAccess(null);
 		context.setLastInvocation(null);
 		context.setLastReference(null);
-		context.setTopMethodCyclo(0);
+		context.setTopMethodCyclo(1);
 		context.setTopMethodNOS(0);
 		node.getBody().accept(this);
 
@@ -390,11 +363,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			// this was inherited from VerveineJ and requires some refactoring ...
 			int nos = context.getTopMethodNOS();
 			int cyclo = context.getTopMethodCyclo();
-			if (nos > 1) {
-				// if there are statements, cyclomatic complexity is off by 1
-				// because it started at 0 instead of 1
-				cyclo++;
-			}
 			fmx.setNumberOfStatements(nos);
 			fmx.setCyclomaticComplexity(cyclo);
 		}
@@ -451,22 +419,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	// UTILITIES ==============================================================================================================================
 
-/*	protected String formatMemberName(IASTName nodeName) {
-		String ret;
-		String fullname = nodeName.toString();
-		int i;
-		
-		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		if (i > 0 ) {
-			ret = fullname.substring(i+2);
-		}
-		else {
-			ret = fullname;
-		}
-
-		return ret;
-	}*/
-
 	public void setVisitHeaders(boolean visitHeaders) {
 		this.visitHeaders = visitHeaders;
 	}
@@ -516,7 +468,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			}
 			t = t.substring(typName.length()).trim();
 			// trying to match a pointer
-			for (IASTPointerOperator pointOp : params[p].getDeclarator().getPointerOperators()) {
+			for (@SuppressWarnings("unused") IASTPointerOperator pointOp : params[p].getDeclarator().getPointerOperators()) {
 				if (t.charAt(0) != '*') {
 					return false;
 				}

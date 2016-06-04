@@ -40,7 +40,6 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.core.settings.model.CMacroEntry;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.EntityStack;
@@ -52,8 +51,8 @@ import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
+import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
-import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
@@ -95,6 +94,15 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	 * A variable used in many visit methods to store the binding of the current node
 	 */
 	protected /*IIndex*/IBinding bnd;
+
+	/**
+	 * FamixSourcedEntity created as a result of a visitor.
+	 * This is required to treat it in a parent visit method or a potential parent visitor.
+	 * However, return value of Visitors is already codified by {@link ASTVisitor}
+	 * (see {@link ASTVisitor#PROCESS_CONTINUE}m {@link ASTVisitor#PROCESS_ABORT}m and {@link ASTVisitor#PROCESS_SKIP}.
+	 * This attributes allows to hold "another return value" (together with a getter)
+	 */
+	protected SourcedEntity returnedEntity;
 
 	// CONSTRUCTOR ==========================================================================================================================
 
@@ -322,7 +330,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		if (node.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef) {
 			// this is a typedef, so define a FamixType with the declarator(s)
 			for (IASTDeclarator declarator : node.getDeclarators()) {
-				TypeAlias fmx = null;
 
 				nodeName = declarator.getName();
 
@@ -410,7 +417,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	protected int visit(ICPPASTDeclarator node) {
 		bnd = null;
 		nodeName = null;
-CMacroEntry t;
+
 		if ( (node.getParent() instanceof IASTSimpleDeclaration) &&
 			 (node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) &&
 			 ( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier().getStorageClass() != IASTDeclSpecifier.sc_typedef)  ) {

@@ -1,6 +1,5 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
-import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
@@ -35,15 +34,6 @@ import eu.synectique.verveine.extractor.visitors.CDictionary;
  * @author anquetil
  */
 public abstract class AbstractRefVisitor extends AbstractVisitor {
-
-	/**
-	 * FamixSourcedEntity created as a result of a visitor.
-	 * This is required to treat it in a parent visit method or a potential parent visitor.
-	 * However, return value of Visitors is already codified by {@link ASTVisitor}
-	 * (see {@link ASTVisitor#PROCESS_CONTINUE}m {@link ASTVisitor#PROCESS_ABORT}m and {@link ASTVisitor#PROCESS_SKIP}.
-	 * This attributes allows to hold "another return value" (together with a getter)
-	 */
-	protected SourcedEntity returnedEntity;
 
 	/**
 	 * see {@link #returnedEntity}
