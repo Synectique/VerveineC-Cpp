@@ -29,12 +29,10 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTQualifiedName;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICElementVisitor;
@@ -43,12 +41,10 @@ import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.cdt.core.settings.model.CMacroEntry;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTNewExpression;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Attribute;
-import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Method;
@@ -56,8 +52,8 @@ import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
+import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
-import eu.synectique.verveine.core.gen.moose.MooseModel;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
@@ -173,6 +169,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		else if (node instanceof ICPPASTFunctionDefinition) {
 			return visit((ICPPASTFunctionDefinition)node);
 		}
+		else if (node instanceof ICPPASTTemplateDeclaration) {
+			return visit((ICPPASTTemplateDeclaration)node);
+		}
 		//else ICPPASTUsingDirective, ...
 
 		return super.visit(node);
@@ -185,6 +184,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		}
 		else if (node instanceof ICPPASTFunctionDefinition) {
 			return leave((ICPPASTFunctionDefinition)node);
+		}
+		else if (node instanceof ICPPASTTemplateDeclaration) {
+			return leave((ICPPASTTemplateDeclaration)node);
 		}
 		//else ICPPASTUsingDirective, ...
 
@@ -481,6 +483,14 @@ CMacroEntry t;
 		return PROCESS_CONTINUE;
 	}
 
+	protected int visit(ICPPASTTemplateDeclaration node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(ICPPASTTemplateDeclaration node) {
+		return PROCESS_CONTINUE;
+	}
+
 	public int visit(IASTParameterDeclaration node) {
 		bnd = null;
 		nodeName = node.getDeclarator().getName();
@@ -681,16 +691,20 @@ CMacroEntry t;
 		i = name.indexOf(CDictionary.CPP_NAME_SEPARATOR);		
 		if (i > 0) {
 			// looks for the first component in the fully qualified name
+			// it can be in any scope starting from context.top() up to toplevel
 			tmp = findInParent(name.substring(0, i), context.top(), /*recursive*/true);
 
-			// try to find the next components within the one already found
-			str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
-			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
-			while ( (tmp != null) && (i > 0) ) {
-				parent = tmp;
-				tmp = findInParent(str.substring(0, i), parent, /*recursive*/false);  // Note: not recursive, we must find in the parent
+			if (tmp != null) {
+				// try to find the next components within the one already found
 				str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
 				i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+
+				while ( (tmp != null) && (i > 0) ) {
+					parent = tmp;
+					tmp = findInParent(str.substring(0, i), parent, /*recursive*/false);  // Note: not recursive, we must find in the parent
+					str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+					i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+				}
 			}
 		}
 		else {
@@ -714,7 +728,7 @@ CMacroEntry t;
 			bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str.substring(0, i)));
 			parent = dico.ensureFamixNamespace(bnd, str.substring(0, i), (ScopingEntity) parent);
 
-			str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+			str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
 			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
 		}
 	
@@ -732,6 +746,9 @@ CMacroEntry t;
 	 * @return NamedEntity found or null if none match
 	 */
 	public NamedEntity findInParent(String name, NamedEntity context, boolean recursive) {
+		if (context == null) {
+			return findTopLevel(name);
+		}
 		if (context instanceof eu.synectique.verveine.core.gen.famix.Type) {
 			return findInParent(name, (eu.synectique.verveine.core.gen.famix.Type)context, recursive);
 		}
@@ -739,9 +756,24 @@ CMacroEntry t;
 			return findInParent(name, (ScopingEntity)context, recursive);
 		}
 		else {
-			return null;
+			return null;// should look in toplevel if context = null
 		}
 	}
+
+	/**
+	 * Search for a Namespace or Class at top level
+	 * @return NamedEntity found or null if none match
+	 */
+	private ContainerEntity findTopLevel(String name) {
+		for (Namespace ns : dico.getEntityByName(Namespace.class, name)) {
+			return ns;   // return the 1st namespace found (if any)
+		}
+		for (Type cl : dico.getEntityByName(Type.class, name)) {
+			return cl;   // return the 1st type found (if any)
+		}
+		return null;
+	}
+
 
 	/**
 	 * Search for a name within the scope of a context.

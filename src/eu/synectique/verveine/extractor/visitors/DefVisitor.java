@@ -31,6 +31,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
@@ -433,6 +434,18 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		}
 
 		return PROCESS_CONTINUE;
+	}
+
+	@Override
+	protected int visit(ICPPASTTemplateDeclaration node) {
+		node.getDeclaration().accept(this);
+/*
+        ICPPASTTemplateParameter[] params = node.getTemplateParameters(); 
+        for (int i = 0; i < params.length; i++) {
+            params[i].accept(this);
+        }
+*/
+		return PROCESS_SKIP;
 	}
 
 

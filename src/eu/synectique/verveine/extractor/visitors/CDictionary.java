@@ -15,7 +15,6 @@ import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
-import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
@@ -120,7 +119,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	/**
-	 * Create an UnknownVariable. parent currently not used
+//	 * Create an UnknownVariable. parent currently not used
 	 */
 	public UnknownVariable createFamixUnknownVariable(String name, NamedEntity parent) {
 		UnknownVariable fmx;

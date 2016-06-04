@@ -11,17 +11,13 @@ import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.core.index.IIndexBinding;
-import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
-import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
-import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
