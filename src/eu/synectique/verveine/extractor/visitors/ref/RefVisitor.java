@@ -6,6 +6,7 @@ import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
@@ -160,14 +161,14 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 		fmx = (Parameter) dico.getEntityByKey(bnd);
 
+		// now get the declared type
 		if (fmx != null) {
-			// now get the declared type
-			if (node.getParent() instanceof IASTSimpleDeclaration) {
-				fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
-			}
-			else if (node.getParent() instanceof ICPPASTTemplateDeclaration) {
+			if (node.getParent() instanceof ICPPASTTemplateDeclaration) {
 				// parameterType in a template
 				// ignore for now
+			}
+			else {
+				fmx.setDeclaredType( referedType( node.getDeclSpecifier() ) );
 			}
 		}
 		returnedEntity = fmx;
@@ -238,11 +239,12 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		if (bnd != null) {
 			fmx = (Attribute) dico.getEntityByKey(bnd);
-			if (fmx != null) {
-				// now get the declared type
-				fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
-			}
 		}
+		if (fmx != null) {
+			// now get the declared type
+			fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
+		}
+
 		returnedEntity = fmx;
 
 		return PROCESS_SKIP;
@@ -291,22 +293,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 
 		return PROCESS_SKIP;  // we already visited the children
-	}
-
-	/**
-	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}
-	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
-	 * thus several nodeName and bnd.
-	 */
-	@Override
-	protected void handleTypedef(IASTSimpleDeclaration node) {
-		TypeAlias fmx;
-
-		fmx = (TypeAlias) dico.getEntityByKey(bnd);
-
-		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
-		
-		returnedEntity = fmx;
 	}
 
 	@Override
@@ -394,6 +380,22 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	// UTILITIES ==============================================================================================================================
 	
+
+	/**
+	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}
+	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
+	 * thus several nodeName and bnd.
+	 */
+	@Override
+	protected void handleTypedef(IASTSimpleDeclaration node) {
+		TypeAlias fmx;
+
+		fmx = (TypeAlias) dico.getEntityByKey(bnd);
+
+		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
+		
+		returnedEntity = fmx;
+	}
 
 	private Class createStubClass(String name) {
 		IBinding supBnd;
