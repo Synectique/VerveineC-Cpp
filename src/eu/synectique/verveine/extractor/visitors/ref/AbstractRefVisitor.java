@@ -207,7 +207,8 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 				//return dico.ensureFamixUniqEntity(Type.class, bnd, nodeName.toString());
 			}
 
-			return (Type) dico.getEntityByKey(bnd);
+			// get the type or creates a stub
+			return (Type) dico.ensureFamixType(bnd, nodeName.toString());
 		}
 
 		// should not happen

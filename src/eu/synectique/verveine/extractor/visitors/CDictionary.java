@@ -51,6 +51,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	private static final String PRIM_T_INT = "int";
 	private static final String PRIM_T_REAL = "real";
 	private static final String PRIM_T_CHAR = "char";
+	private static final String PRIM_T_UNKNOWN = "unknownPrimitiveType";
 
  	public CDictionary(Repository famixRepo) {
 		super(famixRepo);
@@ -158,6 +159,16 @@ public class CDictionary extends Dictionary<IBinding> {
 		return fmx;
 	}
 
+	public Type ensureFamixType(IBinding key, String name) {
+		Type fmx;
+		fmx = (Type) getEntityIfNotNull(key);
+		if (fmx == null) {
+			fmx = super.ensureFamixType(key, name, /*owner*/null, /*persistIt*/true);
+		}
+		
+		return fmx;
+	}
+
 	public eu.synectique.verveine.core.gen.famix.Class ensureFamixClass(IBinding key, String name, ContainerEntity owner) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
 		fmx = (Class) getEntityIfNotNull(key);
@@ -235,26 +246,32 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public Type ensureFamixPrimitiveType(int type) {
+		StubBinding bnd = StubBinding.getInstance(Type.class, "_primitive_/"+type);
+		String name = PRIM_T_UNKNOWN+":"+type;
 		switch (type) {
 		case IASTSimpleDeclSpecifier.t_bool:
-			return ensureFamixUniqEntity(Type.class, null, PRIM_T_BOOLEAN);
+			name = PRIM_T_BOOLEAN;
+			break;
 		case IASTSimpleDeclSpecifier.t_char:
 		case IASTSimpleDeclSpecifier.t_char16_t:
 		case IASTSimpleDeclSpecifier.t_char32_t:
 		case IASTSimpleDeclSpecifier.t_wchar_t:
-			return ensureFamixUniqEntity(Type.class, null, PRIM_T_CHAR);
+			name = PRIM_T_CHAR;
+			break;
 		case IASTSimpleDeclSpecifier.t_decimal32:
 		case IASTSimpleDeclSpecifier.t_decimal64:
 		case IASTSimpleDeclSpecifier.t_decimal128:
 		case IASTSimpleDeclSpecifier.t_int:
 		case IASTSimpleDeclSpecifier.t_int128:
-			return ensureFamixUniqEntity(Type.class, null, PRIM_T_INT);
+			name = PRIM_T_INT;
+			break;
 		case IASTSimpleDeclSpecifier.t_float:
 		case IASTSimpleDeclSpecifier.t_float128:
 		case IASTSimpleDeclSpecifier.t_double:
-			return ensureFamixUniqEntity(Type.class, null, PRIM_T_REAL);
+			name = PRIM_T_REAL;
+			break;
 		}
-		return null;
+		return ensureFamixPrimitiveType(bnd, name);
 	}
 
 	// UTILITIES =========================================================================================================================================

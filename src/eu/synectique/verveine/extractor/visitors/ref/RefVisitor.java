@@ -6,11 +6,9 @@ import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
@@ -43,11 +41,13 @@ import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
+import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
-import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
+import eu.synectique.verveine.extractor.utils.NullTracer;
+//import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
@@ -199,13 +199,14 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 			// would not be the case if we had to create a StubBinding
 			Inheritance lastInheritance = null;
 			for (ICPPBase baseClass : ((ICPPClassType)bnd).getBases()) {
-				eu.synectique.verveine.core.gen.famix.Class supFmx = null;
+				Type supFmx = null;
 				IType supBnd = baseClass.getBaseClassType();
 
 				if(supBnd instanceof IIndexBinding) {
-					supFmx =  (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey((IIndexBinding) supBnd);
+					supFmx =  (Type) dico.getEntityByKey((IIndexBinding) supBnd);
 				}
 				if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
+					//  may be should create a Type instead of a class here ?
 					supFmx = createStubClass(/*name*/node.getBaseSpecifiers()[0].getNameSpecifier().toString());
 				}
 				if (supFmx != null) {
