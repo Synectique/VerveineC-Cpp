@@ -44,6 +44,7 @@ import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Attribute;
+import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Method;
@@ -52,6 +53,7 @@ import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
+import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
@@ -390,7 +392,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 				parent = context.top();
 				behavName = nodeName.toString();
 			}
-			
+
 			if (parent instanceof eu.synectique.verveine.core.gen.famix.Class) {
 				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)parent, behavName ));
 			}
@@ -747,27 +749,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	/**
-	 * Search for a name within the scope of a context.
-	 * If cannot find it and recursive is <code>true</code>, looks in the scope of parent context.
-	 * This is a dispatcher method that calls the correct methods from the type of the second parameter
-	 * @return NamedEntity found or null if none match
-	 */
-	public NamedEntity findInParent(String name, NamedEntity context, boolean recursive) {
-		if (context == null) {
-			return findTopLevel(name);
-		}
-		if (context instanceof eu.synectique.verveine.core.gen.famix.Type) {
-			return findInParent(name, (eu.synectique.verveine.core.gen.famix.Type)context, recursive);
-		}
-		else if (context instanceof ScopingEntity) {
-			return findInParent(name, (ScopingEntity)context, recursive);
-		}
-		else {
-			return null;// should look in toplevel if context = null
-		}
-	}
-
-	/**
 	 * Search for a Namespace or Class at top level
 	 * @return NamedEntity found or null if none match
 	 */
@@ -781,12 +762,11 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		return null;
 	}
 
-
 	/**
-	 * Search for a name within the scope of a context.
+	 * Search for a name within the scope of a ContainerEntity.
 	 * @return NamedEntity found or null if none match
 	 */
-	public NamedEntity findInParent(String name, ContainerEntity context) {		
+	public NamedEntity findInLocals(String name, ContainerEntity context) {		
 		for (eu.synectique.verveine.core.gen.famix.Type child : context.getTypes()) {
 			if (child.getName().equals(name)) {
 				return child;
@@ -804,61 +784,95 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	/**
-	 * Search for a name within the scope of a context.
-	 * If cannot find it and recursive is <code>true</code>, looks in the scope of parent context
+	 * Search for a name within the scope of a BehaviouralEntity.
 	 * @return NamedEntity found or null if none match
 	 */
-	public NamedEntity findInParent(String name, eu.synectique.verveine.core.gen.famix.Type context, boolean recursive) {
-		NamedEntity found = null;
-
-		found = findInParent(name, (ContainerEntity) context);  // search within child types and functions
-		if (found != null) {
-			return found;
-		}
-
-		for (Attribute child : context.getAttributes()) {  // search within child attributes
+	public NamedEntity findInLocals(String name, BehaviouralEntity context) {		
+		for (StructuralEntity child : context.getLocalVariables()) {
 			if (child.getName().equals(name)) {
 				return child;
 			}
 		}
-/* function should be matched on their parameters types too.
- * We don't do that
 
-		for (Method child : context.getMethods()) {  // search child methods
+		for (StructuralEntity child : context.getParameters()) {
 			if (child.getName().equals(name)) {
 				return child;
 			}
 		}
-*/
-		if (recursive) {
-			return findInParent(name, (ScopingEntity) context.getBelongsTo());
+
+		// if not found call the "super" (by casting the variable)
+		return findInLocals(name, (ContainerEntity)context);
+	}
+
+	/**
+	 * Search for a name within the scope of a Type.
+	 * @return NamedEntity found or null if none match
+	 */
+	public NamedEntity findInLocals(String name, Type context) {		
+
+		for (Attribute child : context.getAttributes()) {
+			if (child.getName().equals(name)) {
+				return child;
+			}
 		}
-		else {
-			return null;
-		}
+
+		// if not found call the "super" (by casting the variable)
+		return findInLocals(name, (ContainerEntity)context);
 	}
 
 	/**
 	 * Search for a name within the scope of a context.
-	 * If cannot find it and recursive is <code>true</code>, looks in the scope of parent context
 	 * @return NamedEntity found or null if none match
 	 */
-	public NamedEntity findInParent(String name, ScopingEntity context, boolean recursive) {
+	public NamedEntity findInLocals(String name, ScopingEntity context) {		
+		for (StructuralEntity child : context.getGlobalVariables()) {
+			if (child.getName().equals(name)) {
+				return child;
+			}
+		}
+
+		for (ScopingEntity child : context.getChildScopes()) {
+			if (child.getName().equals(name)) {
+				return child;
+			}
+		}
+
+		// if not found call the "super" (by casting the variable)
+		return findInLocals(name, (ContainerEntity)context);
+	}
+
+	/**
+	 * Search for a name within the scope of a context.
+	 * If cannot find it and recursive is <code>true</code>, looks in the scope of parent context.
+	 * This is a dispatcher method that calls the correct methods from the type of the second parameter
+	 * @return NamedEntity found or null if none match
+	 */
+	public NamedEntity findInParent(String name, NamedEntity context, boolean recursive) {
 		NamedEntity found = null;
 
-		found = findInParent(name, (ContainerEntity) context);  // search within child types and functions
+		if (context == null) {
+			return findTopLevel(name);
+		}
+		else if (context instanceof BehaviouralEntity) {
+			found = findInLocals(name, (BehaviouralEntity)context);
+		}
+		else if (context instanceof ScopingEntity) {
+			found = findInLocals(name, (ScopingEntity)context);
+		}
+		else if (context instanceof Type) {
+			found = findInLocals(name, (Type)context);
+		}
+		else {
+			// non ContainerEntity, should never happen
+			return null;
+		}
+		
 		if (found != null) {
 			return found;
 		}
 
-		for (ScopingEntity child : context.getChildScopes()) {  // search within child scopingEntities
-			if (child.getName().equals(name)) {
-				found = child;
-			}
-		}
-
 		if (recursive) {
-			return findInParent(name, (ScopingEntity) context.getBelongsTo());
+			return findInParent(name, context.getBelongsTo(), recursive);
 		}
 		else {
 			return null;

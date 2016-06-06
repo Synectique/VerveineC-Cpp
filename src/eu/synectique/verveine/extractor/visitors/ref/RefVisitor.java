@@ -22,6 +22,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
@@ -134,19 +135,12 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	}
 
 	@Override
-	public int visit(IASTDeclaration node) {
-		if (node instanceof ICPPASTFunctionDefinition) {
-			return visit((ICPPASTFunctionDefinition)node);
-		}
-		// includes CPPASTVisibilityLabel
-
-		return super.visit(node);
-	}
-
-	@Override
 	public int leave(IASTDeclaration node) {
 		if (node instanceof ICPPASTFunctionDefinition) {
 			return leave((ICPPASTFunctionDefinition)node);
+		}
+		else if (node instanceof ICPPASTTemplateDeclaration) {
+			return leave((ICPPASTTemplateDeclaration)node);
 		}
 		return super.leave(node);
 	}
@@ -277,20 +271,28 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTFunctionDefinition node) {
-		/*
-		 * visit declarator to ensure the method definition and to get the Famix entity
-		 */
+		BehaviouralEntity fmx = null;
+
+
+		// visit declarator to ensure the method definition and to get the Famix entity
 		returnedEntity = null;
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator() );
-		if (returnedEntity != null) {
+
+		fmx = (BehaviouralEntity) returnedEntity;
+		if (fmx != null) {
 			this.context.push((NamedEntity) this.returnedEntity());
 
 			for (ICPPASTConstructorChainInitializer init : node.getMemberInitializers()) {
 				init.accept(this);
 			}
-			node.getBody().accept(this);
 
-			returnedEntity = this.context.pop();
+			// return type of the Behavioural
+			fmx.setDeclaredType( referedType( node.getDeclSpecifier() ) );
+
+			// body to compute some metrics
+			node.getBody().accept(this);
+			
+			returnedEntity = context.pop();
 		}
 
 		return PROCESS_SKIP;  // we already visited the children
@@ -347,10 +349,10 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	@Override
 	protected int visit(IASTIdExpression node) {
-		boolean reference;
-		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
+		boolean isPointer;
+		isPointer = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
 					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
-		returnedEntity = referenceToName(((IASTIdExpression) node).getName(), reference);
+		returnedEntity = referenceToName(((IASTIdExpression) node).getName(), isPointer);
 		return PROCESS_SKIP;
 	}
 

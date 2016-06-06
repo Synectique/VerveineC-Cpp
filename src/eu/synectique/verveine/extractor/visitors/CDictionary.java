@@ -249,6 +249,10 @@ public class CDictionary extends Dictionary<IBinding> {
 		StubBinding bnd = StubBinding.getInstance(Type.class, "_primitive_/"+type);
 		String name = PRIM_T_UNKNOWN+":"+type;
 		switch (type) {
+		case IASTSimpleDeclSpecifier.t_void:
+			// for type void, we return null as in: "void f()"
+			// but this might not be a good idea, as in: "void *p"
+			return null;
 		case IASTSimpleDeclSpecifier.t_bool:
 			name = PRIM_T_BOOLEAN;
 			break;

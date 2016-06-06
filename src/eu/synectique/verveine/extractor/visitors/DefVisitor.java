@@ -24,13 +24,16 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleTypeTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.EntityStack;
@@ -39,12 +42,14 @@ import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
+import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
+import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
@@ -165,6 +170,22 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		return PROCESS_SKIP;
 	}
 
+	@Override
+	public int visit(ICPPASTTemplateParameter node) {
+		if (node instanceof ICPPASTSimpleTypeTemplateParameter) {
+			nodeName = ((ICPPASTSimpleTypeTemplateParameter)node).getName();
+			try {
+				bnd = index.findBinding(nodeName);
+			} catch (CoreException e) {
+				e.printStackTrace();
+			}
+			if (bnd != null) {
+				returnedEntity = dico.ensureFamixParameterType(bnd, nodeName.toString(), (ContainerEntity) context.top(), /*persistIt*/true);
+			}
+		}
+		return PROCESS_SKIP;
+	}
+
 	/**
 	 * Visiting a statement. Used to compute some metrics on the methods:
 	 * Cyclomatic Complexity and NumberOfStatements
@@ -236,13 +257,14 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		}
 
 		this.context.push(fmx);
+		returnedEntity = fmx;
 
 		return PROCESS_CONTINUE;
 	}
 
 	@Override
 	protected int leave(ICPPASTCompositeTypeSpecifier node) {
-		context.pop();
+		returnedEntity = context.pop();
 		tracer.down();
 
 		return PROCESS_CONTINUE;		
@@ -406,16 +428,20 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	@Override
 	protected int visit(ICPPASTTemplateDeclaration node) {
+		NamedEntity fmx = null;
+
 		node.getDeclaration().accept(this);
-/*
-        ICPPASTTemplateParameter[] params = node.getTemplateParameters(); 
-        for (int i = 0; i < params.length; i++) {
-            params[i].accept(this);
+		fmx = (NamedEntity) returnedEntity;
+ 
+		// template parameters are local to the entity defined in the template declaration
+		context.push(fmx);
+        for (ICPPASTTemplateParameter param : node.getTemplateParameters()) {
+            param.accept(this);
         }
-*/
+        context.pop();
+
 		return PROCESS_SKIP;
 	}
-
 
 	// UTILITIES ==============================================================================================================================
 

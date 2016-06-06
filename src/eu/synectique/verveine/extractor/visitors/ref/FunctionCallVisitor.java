@@ -152,7 +152,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 			if (bnd != null) {
 				fmx = dico.getEntityByKey(bnd);
 			}
-			
+
 			if (fmx != null) {
 				if (fmx instanceof BehaviouralEntity) {
 					break;  // we found one method matching the implicit constructor. We are happy for now.

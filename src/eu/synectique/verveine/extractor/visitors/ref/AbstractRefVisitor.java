@@ -89,20 +89,21 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	/**
 	 * Records a reference to a name which can be a variable or behavioral name.
 	 * @param nodeName
-	 * @param reference 
+	 * @param isPointer 
 	 * @return the Access or Invocation created
 	 */
-	protected Association referenceToName(IASTName nodeName, boolean reference) {
+	protected Association referenceToName(IASTName nodeName, boolean isPointer) {
 		IBinding bnd = null;
 		NamedEntity fmx = null;
 
 		bnd = getBinding(nodeName);
 
-		if (bnd == null) {
-			return null;
+		if (bnd != null) {
+			fmx = dico.getEntityByKey(bnd);
 		}
-
-		fmx = dico.getEntityByKey(bnd);
+		else {
+			fmx = findInParent(nodeName.toString(), context.top(), /*recursive*/true);
+		}
 
 		if (fmx == null) {
 			return null;
@@ -112,7 +113,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			return accessToVar((StructuralEntity) fmx);
 		}
 		else if (fmx instanceof BehaviouralEntity) {
-			if (reference) {
+			if (isPointer) {
 				behaviouralPointer((BehaviouralEntity) fmx);
 			}
 			else {
@@ -204,7 +205,6 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 			if (bnd == null) {
 				bnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
-				//return dico.ensureFamixUniqEntity(Type.class, bnd, nodeName.toString());
 			}
 
 			// get the type or creates a stub
