@@ -10,6 +10,7 @@ import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
@@ -354,6 +355,12 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
 		returnedEntity = referenceToName(((IASTIdExpression) node).getName(), isPointer);
 		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTUnaryExpression node) {
+		node.getOperand().accept(this);
+		return PROCESS_CONTINUE;
 	}
 
 	public int visit(IASTBinaryExpression node) {

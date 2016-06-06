@@ -144,6 +144,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		NamedEntity fmx = null;
 		returnedEntity = null;
 
+		// if this is an implicit call to a constructor (through attribute initialization call)
 		for (IASTImplicitName candidate : parent.getImplicitNames()) {
 			IBinding bnd = null; 
 

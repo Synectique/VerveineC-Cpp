@@ -21,6 +21,7 @@ import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
+import eu.synectique.verveine.core.gen.famix.ParameterizedType;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourceAnchor;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
@@ -184,6 +185,16 @@ public class CDictionary extends Dictionary<IBinding> {
 		fmx = (ParameterizableClass) getEntityIfNotNull(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixParameterizableClass(key, name, owner, /*persistIt*/true);
+		}
+		
+		return fmx;
+	}
+
+	public ParameterizedType ensureFamixParameterizedType(IBinding key, String name, ContainerEntity owner, ParameterizableClass generic) {
+		ParameterizedType fmx;
+		fmx = (ParameterizedType) getEntityIfNotNull(key);
+		if (fmx == null) {
+			fmx = super.ensureFamixParameterizedType(key, name, generic, owner, /*persistIt*/true);
 		}
 		
 		return fmx;

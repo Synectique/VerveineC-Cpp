@@ -16,9 +16,12 @@ import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
+import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
+import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
+import eu.synectique.verveine.core.gen.famix.ParameterizedType;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
@@ -114,7 +117,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		}
 		else if (fmx instanceof BehaviouralEntity) {
 			if (isPointer) {
-				behaviouralPointer((BehaviouralEntity) fmx);
+				return behaviouralPointer((BehaviouralEntity) fmx);
 			}
 			else {
 				return invocationOfBehavioural((BehaviouralEntity) fmx);
@@ -187,7 +190,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		}
 		else if (node instanceof IASTNameOwner) {
 			IASTName nodeName = null;
-			IBinding bnd = null;
+			//IBinding bnd = null;
 
 			// all these tests to call methods with the same name in the end ...
 			if  (node instanceof IASTCompositeTypeSpecifier) {
@@ -232,8 +235,30 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	private Type referedParameterTypeInstance(String name) {
 		int i = name.indexOf('<');
 		String tname = name.substring(0, i);
-		Type fmx = (Type) findInParent(tname, context.top(), /*recursive*/true);
+		ParameterizedType fmx = null;
+		try {
+			ParameterizableClass generic = (ParameterizableClass) findInParent(tname, context.top(), /*recursive*/true);
+			fmx = dico.ensureFamixParameterizedType(bnd, tname, (ContainerEntity)context.top(), generic);
+		}
+		catch (ClassCastException e) {
+			// create a ParameterizedType for an unknown generic
+			fmx = dico.ensureFamixParameterizedType(bnd, tname, (ContainerEntity)context.top(), /*generic*/null);
+		}
 
+		for (String targ : name.substring(i+1, name.length()-1).split(",")) {
+			targ = targ.trim();
+			try {
+				Type arg = (Type) findInParent(targ, context.top(), /*recursive*/true);
+				if (arg != null) {
+					fmx.addArguments(arg);
+				}
+			}
+			catch (ClassCastException e) {
+				// for some reason, findInParent seems to have found an entity with this name but not a Type
+				// just forget it
+			}
+		}
+		
 		return fmx;
 	}
 

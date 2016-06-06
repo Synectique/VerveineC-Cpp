@@ -19,6 +19,7 @@ import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
@@ -315,6 +316,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		else if (node instanceof IASTFunctionCallExpression) {
 			return visit((IASTFunctionCallExpression)node);
 		}
+		else if (node instanceof IASTUnaryExpression) {
+			return visit((IASTUnaryExpression)node);   // to check whether this is an assignement
+		}
 		else if (node instanceof IASTBinaryExpression) {
 			return visit((IASTBinaryExpression)node);   // to check whether this is an assignement
 		}
@@ -530,6 +534,10 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int visit(ICPPASTNewExpression node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTUnaryExpression node) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -762,11 +770,11 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	 * @return NamedEntity found or null if none match
 	 */
 	private ContainerEntity findTopLevel(String name) {
-		for (Namespace ns : dico.getEntityByName(Namespace.class, name)) {
-			return ns;   // return the 1st namespace found (if any)
-		}
 		for (Type cl : dico.getEntityByName(Type.class, name)) {
 			return cl;   // return the 1st type found (if any)
+		}
+		for (Namespace ns : dico.getEntityByName(Namespace.class, name)) {
+			return ns;   // return the 1st namespace found (if any)
 		}
 		return null;
 	}
