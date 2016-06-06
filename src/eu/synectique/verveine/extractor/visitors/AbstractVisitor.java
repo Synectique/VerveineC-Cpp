@@ -697,38 +697,47 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		String str = name;
 		int i;
 
-		i = name.indexOf(CDictionary.CPP_NAME_SEPARATOR);		
-		if (i > 0) {
-			// looks for the first component in the fully qualified name
-			// it can be in any scope starting from context.top() up to toplevel
-			tmp = findInParent(name.substring(0, i), context.top(), /*recursive*/true);
+		i = name.indexOf(CDictionary.CPP_NAME_SEPARATOR);	
+		
+		// solves the case of a fullyqualified name containing only one component (no "::")
+		if (i < 0) {
+			tmp = findInParent(name, context.top(), /*recursive*/true);
 
-			if (tmp != null) {
-				// try to find the next components within the one already found
-				str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+			if (tmp == null) {
+				// create as a stub
+				bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
+				tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
+			}
+			return tmp;
+		}
+
+		// looks for the first component in the fully qualified name
+		// it can be in any scope starting from context.top() up to toplevel
+		tmp = findInParent(name.substring(0, i), context.top(), /*recursive*/true);
+
+		// try to find the next component(s) within the one already found (search is no longer recursive in the stack of contexts)
+		if (tmp != null) {
+			str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+
+			while ( (tmp != null) && (i > 0) ) {
+				parent = tmp;
+				tmp = findInParent(str.substring(0, i), parent, /*recursive*/false);  // Note: not recursive, we must find in the parent
+				str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
 				i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+			}
 
-				while ( (tmp != null) && (i > 0) ) {
-					parent = tmp;
-					tmp = findInParent(str.substring(0, i), parent, /*recursive*/false);  // Note: not recursive, we must find in the parent
-					str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
-					i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+			// look for the last component in the fully qualified name
+			if (tmp != null) {
+				parent = tmp;
+				tmp = findInParent(str, parent, /*recursive*/false);
+				if (tmp != null) {
+					return tmp;
 				}
 			}
 		}
-		else {
-			tmp = context.top();
-		}
 
-		if (tmp != null) {
-			parent = tmp;
-			// look for the last component in the fully qualified name
-			tmp = findInParent(str, parent, /*recursive*/false);
-			if (tmp != null) {
-				return tmp;
-			}
-		}
-		
+
 		// here, we are sure that the first remaining component in "str" was not found
 		// it is possibly followed by other components
 

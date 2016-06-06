@@ -181,6 +181,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * From a declSpecifier, looks for a corresponding FamixType, creating it if needed (as a stub)
 	 */
 	protected Type referedType(IASTDeclSpecifier node) {
+		Type fmx = null;
 		if (node instanceof IASTSimpleDeclSpecifier) {
 			return dico.ensureFamixPrimitiveType( ((IASTSimpleDeclSpecifier) node).getType());
 		}
@@ -207,12 +208,37 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 				bnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
 			}
 
-			// get the type or creates a stub
-			return (Type) dico.ensureFamixType(bnd, nodeName.toString());
+			fmx = (Type) dico.getEntityByKey(bnd);
+			
+			if (fmx == null) {
+				fmx = (Type) findInParent(nodeName.toString(), context.top(), /*recursive*/true);
+			}
+			if (fmx == null) {
+				if (isParameterTypeInstanceName(nodeName.toString())) {
+					fmx = referedParameterTypeInstance(nodeName.toString());
+				}
+				else {
+					fmx = dico.ensureFamixType(bnd, nodeName.toString());
+				}
+			}
+
+			return fmx;
 		}
 
 		// should not happen
 		return null;
+	}
+
+	private Type referedParameterTypeInstance(String name) {
+		int i = name.indexOf('<');
+		String tname = name.substring(0, i);
+		Type fmx = (Type) findInParent(tname, context.top(), /*recursive*/true);
+
+		return fmx;
+	}
+
+	private boolean isParameterTypeInstanceName(String name) {
+		return (name.indexOf('<') > 0) && (name.endsWith(">"));
 	}
 
 }

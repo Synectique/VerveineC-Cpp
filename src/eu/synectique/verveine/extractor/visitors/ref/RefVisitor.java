@@ -280,7 +280,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		fmx = (BehaviouralEntity) returnedEntity;
 		if (fmx != null) {
-			this.context.push((NamedEntity) this.returnedEntity());
+			this.context.push((NamedEntity) returnedEntity);
 
 			for (ICPPASTConstructorChainInitializer init : node.getMemberInitializers()) {
 				init.accept(this);
