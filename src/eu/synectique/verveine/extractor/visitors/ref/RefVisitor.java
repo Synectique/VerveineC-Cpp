@@ -188,7 +188,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 					supFmx =  (Type) dico.getEntityByKey((IIndexBinding) supBnd);
 				}
 				if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
-					//  may be should create a Type instead of a class here ?
+					// could be just a type instead of a class, but there is no way to know for sure
 					supFmx = ensureStubClassInNamespace(/*name*/node.getBaseSpecifiers()[i].getNameSpecifier().toString());
 				}
 				if (supFmx != null) {

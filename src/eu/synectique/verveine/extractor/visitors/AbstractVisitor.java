@@ -398,7 +398,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int visit(ICPPASTFunctionDeclarator node) {
-
 		bnd = null;
 		nodeName = node.getName();
 		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
@@ -410,9 +409,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			String behavName;
 			// create one anyway, function or method?
 			
-			int i = nodeName.toString().lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-			if (i > 0) {
-				parent = recursiveEnsureParentNamespace(nodeName); //(nodeName.toString().substring(0, i));
+			if (isFullyQualified(nodeName)) {
+				int i = nodeName.toString().lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+				parent = resolveOrNamespace(nodeName.toString().substring(0, i));
 			}
 			else {
 				parent = context.top();
@@ -794,7 +793,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		int i;
 		String namespaceName;
 		Namespace parent=null;
-		StubBinding bnd;
 		
 		i = name.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		if (i > 0) {
@@ -815,29 +813,28 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	 * If not found, assume it is a Namespace and creates it.
 	 */
 	protected NamedEntity resolveOrNamespace( String name) {
-		NamedEntity parent = null;
 		NamedEntity tmp;
-		String str = name;
-		int i;
 
-		i = name.indexOf(CDictionary.CPP_NAME_SEPARATOR);	
-		
 		// solves the case of a fully qualified name containing only one component (no "::") -----
-		if (i < 0) {
+		if (! isFullyQualified(name)) {
 			tmp = findInParent(name, context.top(), /*recursive*/true);
 
 			if (tmp == null) {
 				// create as a stub
-				bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
-				tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
+				bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity)null, name));
+				tmp = dico.ensureFamixNamespace(bnd, name, /*parent*/null);
 			}
 			return tmp;
 		}
 		
 		// case of a fully qualified name composed of several names -----
 
+		NamedEntity parent = null;
+		String str = name;
+		int i = name.indexOf(CDictionary.CPP_NAME_SEPARATOR);  // TODO should use String.split() instead of String.substrings()
+
 		// looks for the first component in the fully qualified name
-		// it can be in any scope starting from context.top() up to toplevel
+		// it can be in any scope starting from context.top() up to toplevel	
 		tmp = findInParent(name.substring(0, i), context.top(), /*recursive*/true);
 
 		// try to find the next component(s) within the one already found (search is no longer recursive in the stack of contexts)

@@ -145,18 +145,20 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 			if (parent.getImplicitNames().length > 0) {
 				mthName = parent.getImplicitNames()[0].toString();
 			}
-			else if (node.getParent() instanceof ICPPASTConstructorChainInitializer) {
-				ICPPASTConstructorChainInitializer chainConst = (ICPPASTConstructorChainInitializer)node.getParent();
-				if ( chainConst.getMemberInitializerId().resolveBinding() instanceof ICPPField ) {
+			else if (parent instanceof ICPPASTConstructorChainInitializer) {
+				IASTName memberName = ((ICPPASTConstructorChainInitializer)parent).getMemberInitializerId();
+				if ( memberName.resolveBinding() instanceof ICPPField ) {
 					// field initialization that results in an implicit call to the constructor of the field's type
 					// modeled as a write-Access to the field + invocation of the field's type constructor
-					IASTName fldName = chainConst.getMemberInitializerId();
-					IBinding fldBnd  = getBinding(fldName);
+					IBinding fldBnd  = getBinding(memberName);
 					Attribute fldFmx = (Attribute) dico.getEntityByKey(fldBnd);
 					if (fldFmx != null) {
 						accessToVar(fldFmx).setIsWrite(true);
 					}
 					mthName = fldFmx.getDeclaredType().getName();
+				}
+				else {
+					mthName = memberName.toString();
 				}
 			}
 			if (mthName != null) {

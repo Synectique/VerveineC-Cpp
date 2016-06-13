@@ -251,56 +251,51 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
-		String mthName;
+		String mthSig;
 		BehaviouralEntity fmx = null;
 
 		// compute nodeName and binding
 		super.visit(node);
 
-		if (isMethodBinding(bnd)) {
-			Type parent;
-			
-			 // get the class owning the method and the method name
-			if (bnd instanceof StubBinding) {
-				String fullName = nodeName.toString();
-				int i = fullName.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-				if (i > 0) {
-					mthName = fullName.substring(i+2);
-					parent = (Type) resolveOrNamespace(fullName.substring(0, i));
+		// just in case this is a definition and we already processed the declaration
+		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
+
+		if (fmx == null) {
+			if (isMethodBinding(bnd)) {
+				Type parent;
+
+				if (bnd instanceof StubBinding) {
+					String fullName = ((StubBinding)bnd).getEntityName();
+					// get method name and parent
+					if (isFullyQualified(fullName)) {
+						int i = fullName.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+						mthSig = fullName.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
+						parent = (Type) findInParent(fullName.substring(0,i), context.top(), /*recursive*/true);
+					}
+					else {
+						mthSig = fullName;
+						parent = context.topType();
+					}
 				}
 				else {
-					mthName = fullName;
+					SignatureBuilderVisitor visit = new SignatureBuilderVisitor(dico);
+					node.accept(visit);
+					mthSig = visit.getSignature();
 					parent = context.topType();
 				}
 
-				SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
-				node.accept(sigVisitor);
-				String sig = sigVisitor.getSignature();
+				fmx = dico.ensureFamixMethod(bnd, simpleName(nodeName.toString()), mthSig, /*owner*/parent);
 
-				// TODO instead of this search, method creation could be referenced by 2 keys:
-				//   IBinding (if any) and StubBinding (based on signature)
-				fmx = (BehaviouralEntity) findInLocals(sig, parent);
+				if (isDestructorBinding(bnd)) {
+					((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
+				}
+				if (isConstructorBinding(bnd)) {
+					((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
+				}
 			}
-			else {
-				mthName = simpleName(nodeName);
-				parent = context.topType();
+			else {                    //   C function or may be a stub ?
+				fmx = dico.ensureFamixFunction(bnd, simpleName(nodeName), node.getRawSignature(), /*owner*/(ContainerEntity)context.top());
 			}
-
-			if (fmx == null) {
-				SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
-				node.accept(sigVisitor);
-				fmx = dico.ensureFamixMethod(bnd, mthName, sigVisitor.getSignature(), /*owner*/parent);
-			}
-
-			if (isDestructorBinding(bnd)) {
-				((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
-			}
-			if (isConstructorBinding(bnd)) {
-				((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
-			}
-		}
-		else {                    //   C function or may be a stub ?
-			fmx = dico.ensureFamixFunction(bnd, simpleName(nodeName), node.getRawSignature(), /*owner*/(ContainerEntity)context.top());
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 		fmx.setNumberOfParameters(node.getParameters().length);

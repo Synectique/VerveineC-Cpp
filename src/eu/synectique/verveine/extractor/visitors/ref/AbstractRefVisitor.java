@@ -215,8 +215,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			if ( (fmx == null) && (bnd.getClass() != StubBinding.class) ) {
 				// we have a IBinding but the entity was not created
 				// probably an entity belonging to an included header but not part of the parsed project
-				// TODO resolveOrNamespace(nodeName.toString()) should be on parent part of nodeNAme
-				fmx = dico.ensureFamixParameterizedType(bnd, simpleName(nodeName.toString()), recursiveEnsureParentNamespace(nodeName), /*generic*/null);
+				fmx = dico.ensureFamixType(bnd, simpleName(nodeName.toString()), recursiveEnsureParentNamespace(nodeName), /*persistIt*/true);
 			}
 			else if ( (fmx == null) && (bnd.getClass() == StubBinding.class) ) {
 				// may be not a stub despite the fact that we don't have a IBinding
