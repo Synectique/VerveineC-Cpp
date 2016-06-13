@@ -8,6 +8,7 @@ import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
@@ -18,6 +19,7 @@ import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IBinding;
@@ -110,7 +112,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	// CONSTRUCTOR ==========================================================================================================================
 
 	public AbstractVisitor(CDictionary dico, IIndex index) {
-		super(/*visitNodes*/true);
+			super(/*visitNodes*/true);
 	    /* fine-tuning if visitNodes=false
 	    shouldVisitDeclarations = true;
 	    shouldVisitEnumerators = true;
@@ -249,13 +251,19 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	@Override
 	public int visit(IASTDeclSpecifier node) {
-		if (node instanceof ICASTCompositeTypeSpecifier) {
+		if (node instanceof ICPPASTCompositeTypeSpecifier) {
 			// -> struct/union
+			return this.visit((ICPPASTCompositeTypeSpecifier)node);
+		}
+		else if (node instanceof ICASTCompositeTypeSpecifier) {
+			// -> class
 			return this.visit((ICASTCompositeTypeSpecifier)node);
 		}
-		else if (node instanceof ICPPASTCompositeTypeSpecifier) {
-			// -> class
-			return this.visit((ICPPASTCompositeTypeSpecifier)node);
+		else if (node instanceof IASTElaboratedTypeSpecifier) {
+			return this.visit((IASTElaboratedTypeSpecifier)node);
+		}
+		else if (node instanceof IASTSimpleDeclSpecifier) {
+			return this.visit((IASTSimpleDeclSpecifier)node);
 		}
 		else if (node instanceof IASTEnumerationSpecifier) {
 			// -> enum
@@ -264,6 +272,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		else if (node instanceof ICPPASTNamedTypeSpecifier) {
 			// -> typedef
 			return this.visit((ICPPASTNamedTypeSpecifier)node);
+		}
+		else {
+			// TODO missing subtypes?
 		}
 
 		return super.visit(node);
@@ -387,15 +398,18 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			NamedEntity parent = null;
 			String behavName;
 			// create one anyway, function or method?
+			
 			int i = nodeName.toString().lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 			if (i > 0) {
 				parent = resolveOrNamespace(nodeName.toString().substring(0, i));
-				behavName = nodeName.toString().substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
 			}
 			else {
 				parent = context.top();
-				behavName = nodeName.toString();
 			}
+			// for behavioural, we put the full signature in the key to have better chance of recovering it
+			SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
+			node.accept(sigVisitor);
+			behavName = sigVisitor.getSignature();
 
 			if (parent instanceof eu.synectique.verveine.core.gen.famix.Class) {
 				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)parent, behavName ));
@@ -480,6 +494,10 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		return PROCESS_CONTINUE;
 	}
 
+	public int visit(IASTElaboratedTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
+
 	protected int visit(IASTEnumerationSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
@@ -493,6 +511,10 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int leave(ICPPASTNamedTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
+
+	public int visit(IASTSimpleDeclSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -781,6 +803,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	/**
 	 * Search for a name within the scope of a ContainerEntity.
+	 * In the case of looking for a function, name is actually a signature.
 	 * @return NamedEntity found or null if none match
 	 */
 	public NamedEntity findInLocals(String name, ContainerEntity context) {		
@@ -789,14 +812,15 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 				return child;
 			}
 		}
-/* function should be matched on their parameters types too.
- * We don't do that
+/* function should be matched on their full signature.
+ */
+
 		for (Function child : context.getFunctions()) {
-			if (child.getName().equals(name)) {
+			if (child.getSignature().equals(name)) {
 				return child;
 			}
 		}
-*/
+
 		return null;
 	}
 
@@ -823,12 +847,19 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	/**
 	 * Search for a name within the scope of a Type.
+	 * In the case of looking for a method, name is actually a signature.
 	 * @return NamedEntity found or null if none match
 	 */
 	public NamedEntity findInLocals(String name, Type context) {		
 
 		for (Attribute child : context.getAttributes()) {
 			if (child.getName().equals(name)) {
+				return child;
+			}
+		}
+
+		for (Method child : context.getMethods()) {
+			if (child.getSignature().equals(name)) {
 				return child;
 			}
 		}
@@ -860,6 +891,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	/**
 	 * Search for a name within the scope of a context.
+	 * In the case of looking for a behavioural, name is actually a signature.
 	 * If cannot find it and recursive is <code>true</code>, looks in the scope of parent context.
 	 * This is a dispatcher method that calls the correct methods from the type of the second parameter
 	 * @return NamedEntity found or null if none match
@@ -937,5 +969,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		}
 		return false;
 	}
+
 
 }

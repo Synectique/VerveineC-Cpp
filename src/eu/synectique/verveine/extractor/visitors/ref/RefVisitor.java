@@ -48,6 +48,7 @@ import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
+import eu.synectique.verveine.extractor.visitors.SignatureBuilderVisitor;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 //import eu.synectique.verveine.extractor.utils.Tracer;
 
@@ -257,6 +258,13 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		super.visit(node);
 
 		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
+		if (fmx == null) {
+			// try to resolve it manually
+			SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
+			node.accept(sigVisitor);
+			String sig = sigVisitor.getSignature();
+			fmx = (BehaviouralEntity) findInParent(sig, context.top(), /*recursive*/true);
+		}
 
 		this.context.push(fmx);
 		for (ICPPASTParameterDeclaration param : node.getParameters()) {

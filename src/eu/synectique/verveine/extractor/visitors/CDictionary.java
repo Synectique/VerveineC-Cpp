@@ -258,6 +258,12 @@ public class CDictionary extends Dictionary<IBinding> {
 
 	public Type ensureFamixPrimitiveType(int type) {
 		StubBinding bnd = StubBinding.getInstance(Type.class, "_primitive_/"+type);
+		 return ensureFamixPrimitiveType(bnd, primitiveTypeName(type));
+	}
+
+	// UTILITIES =========================================================================================================================================
+
+	public String primitiveTypeName(int type) {
 		String name = PRIM_T_UNKNOWN+":"+type;
 		switch (type) {
 		case IASTSimpleDeclSpecifier.t_void:
@@ -286,10 +292,8 @@ public class CDictionary extends Dictionary<IBinding> {
 			name = PRIM_T_REAL;
 			break;
 		}
-		return ensureFamixPrimitiveType(bnd, name);
+		return name;
 	}
-
-	// UTILITIES =========================================================================================================================================
 
 	/**
 	 * Computes moose name for an entity in a Container.

@@ -297,7 +297,12 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 					parent = context.topType();
 				}
 
-				fmx = lookForUnboundMethod(parent, mthName, node.getParameters());
+				SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
+				node.accept(sigVisitor);
+				String sig = sigVisitor.getSignature();
+
+
+				fmx = lookForUnboundMethod(parent, sig);
 			}
 			else {
 				mthName = simpleName(nodeName);
@@ -305,7 +310,9 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			}
 
 			if (fmx == null) {
-				fmx = dico.ensureFamixMethod(bnd, mthName, node.getRawSignature(), /*owner*/parent);
+				SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
+				node.accept(sigVisitor);
+				fmx = dico.ensureFamixMethod(bnd, mthName, sigVisitor.getSignature(), /*owner*/parent);
 			}
 
 			if (isDestructorBinding(bnd)) {
@@ -468,6 +475,15 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		return unresolvedIncludes.size();
 	}
 
+	private BehaviouralEntity lookForUnboundMethod(Type parent, String sig) {
+		for (Method mth : parent.getMethods()) {
+			if (mth.getSignature().equals(sig)) {
+					return mth;
+			}
+		}
+		return null;
+	}
+/*
 	private BehaviouralEntity lookForUnboundMethod(Type parent, String name, ICPPASTParameterDeclaration[] params) {
 		for (Method mth : parent.getMethods()) {
 			if (mth.getName().equals(name)) {
@@ -504,5 +520,5 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		}
 		return true;
 	}
-
+*/
 }
