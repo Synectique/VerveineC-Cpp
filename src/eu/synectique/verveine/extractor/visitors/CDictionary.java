@@ -160,16 +160,6 @@ public class CDictionary extends Dictionary<IBinding> {
 		return fmx;
 	}
 
-	public Type ensureFamixType(IBinding key, String name) {
-		Type fmx;
-		fmx = (Type) getEntityIfNotNull(key);
-		if (fmx == null) {
-			fmx = super.ensureFamixType(key, name, /*owner*/null, /*persistIt*/true);
-		}
-		
-		return fmx;
-	}
-
 	public eu.synectique.verveine.core.gen.famix.Class ensureFamixClass(IBinding key, String name, ContainerEntity owner) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
 		fmx = (Class) getEntityIfNotNull(key);

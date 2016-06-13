@@ -13,7 +13,6 @@ import org.eclipse.cdt.core.dom.ast.IASTIfStatement;
 import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
 import org.eclipse.cdt.core.dom.ast.IASTNullStatement;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
@@ -32,11 +31,9 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.IInclude;
-import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
-import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
@@ -49,7 +46,6 @@ import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
-import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
@@ -57,12 +53,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 * The file directory being visited at any given time
 	 */
 	protected eu.synectique.verveine.core.gen.famix.Package currentPackage = null;
-
-	/**
-	 * A flag to allow visiting separately header files (.h) and source files (.c)
-	 * The idea is to visit first the header files
-	 */
-	protected boolean visitHeaders;
 
 	/**
 	 * A set of all unresolved includes so that we report them only once
@@ -99,20 +89,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		super.visit(elt);                            // visit container children
 		currentPackage = fmx.getParentPackage();    // kind of popping out the new package from the package stack
 		tracer.down();
-	}
-
-
-	/**
-	 * Visiting a source file
-	 */
-	@Override
-	public void visit(ITranslationUnit tu) {
-		if (checkHeader(tu)) {
-			tracer.up("ITranslationUnit: "+tu.getElementName());
-			context = new EntityStack();    // "reseting" context
-			super.visit(tu);
-			tracer.down();
-		}
 	}
 
 	public void visit(IInclude elt) {
@@ -301,8 +277,9 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 				node.accept(sigVisitor);
 				String sig = sigVisitor.getSignature();
 
-
-				fmx = lookForUnboundMethod(parent, sig);
+				// TODO instead of this search, method creation could be referenced by 2 keys:
+				//   IBinding (if any) and StubBinding (based on signature)
+				fmx = (BehaviouralEntity) findInLocals(sig, parent);
 			}
 			else {
 				mthName = simpleName(nodeName);
@@ -338,24 +315,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		this.context.pop();
 
 		return PROCESS_SKIP;
-	}
-
-	/**
-	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}
-	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
-	 * thus several nodeName and bnd.
-	 */
-	@Override
-	protected void handleTypedef(IASTSimpleDeclaration node) {
-		TypeAlias fmx;
-
-		fmx = dico.ensureFamixTypeAlias(bnd, nodeName.toString(), (ContainerEntity)context.top());
-
-		if (! (bnd instanceof StubBinding)) {
-			fmx.setIsStub(false);
-		}
-
-		fmx.setParentPackage(currentPackage);
 	}
 
 	/**
@@ -452,73 +411,26 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	// UTILITIES ==============================================================================================================================
 
-	public void setVisitHeaders(boolean visitHeaders) {
-		this.visitHeaders = visitHeaders;
-	}
+	/**
+	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}
+	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
+	 * thus several nodeName and bnd.
+	 */
+	@Override
+	protected void handleTypedef(IASTSimpleDeclaration node) {
+		TypeAlias fmx;
 
-	private boolean checkHeader(ITranslationUnit tu) {
-		String ext;
-		int i = tu.getElementName().lastIndexOf('.');
-		if (i < 0) {
-			return false;    // not a source file
+		fmx = dico.ensureFamixTypeAlias(bnd, nodeName.toString(), (ContainerEntity)context.top());
+
+		if (! (bnd instanceof StubBinding)) {
+			fmx.setIsStub(false);
 		}
-		ext = tu.getElementName().substring(i);
-		if (visitHeaders) {
-			return ext.startsWith(".h");
-		}
-		else {
-			return (! ext.startsWith(".h") );
-		}
+
+		fmx.setParentPackage(currentPackage);
 	}
 
 	public int nbUnresolvedIncludes() {
 		return unresolvedIncludes.size();
 	}
 
-	private BehaviouralEntity lookForUnboundMethod(Type parent, String sig) {
-		for (Method mth : parent.getMethods()) {
-			if (mth.getSignature().equals(sig)) {
-					return mth;
-			}
-		}
-		return null;
-	}
-/*
-	private BehaviouralEntity lookForUnboundMethod(Type parent, String name, ICPPASTParameterDeclaration[] params) {
-		for (Method mth : parent.getMethods()) {
-			if (mth.getName().equals(name)) {
-				if (checkParams(mth, params)) {
-					return mth;
-				}
-			}
-		}
-		return null;
-	}
-
-	private boolean checkParams(Method mth, ICPPASTParameterDeclaration[] params) {
-		int i;
-		String sig = mth.getSignature();
-		i = sig.indexOf('(');
-		sig = sig.substring(i+1, sig.length()-1);
-		int p = 0;
-		for (String t : sig.split(",")) {
-			t = t.trim();
-			// trying to match the type name
-			String typName = params[p].getDeclSpecifier().getRawSignature();
-			if (! t.startsWith( typName)) {
-				return false;
-			}
-			t = t.substring(typName.length()).trim();
-			// trying to match a pointer
-			for (@SuppressWarnings("unused") IASTPointerOperator pointOp : params[p].getDeclarator().getPointerOperators()) {
-				if (t.charAt(0) != '*') {
-					return false;
-				}
-				t = t.substring(1).trim();
-			}
-			p++;
-		}
-		return true;
-	}
-*/
 }

@@ -86,7 +86,11 @@ public class VerveineCParser extends VerveineParser {
 	        }
 
 	        tracer.msg("step 3 / 3: creating references");
-	        cproject.accept(new RefVisitor(dico, index));
+	        RefVisitor step3 = new RefVisitor(dico, index);
+            step3.setVisitHeaders(true);
+			cproject.accept(step3);
+            step3.setVisitHeaders(false);
+			cproject.accept(step3);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}

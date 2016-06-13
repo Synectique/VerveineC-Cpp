@@ -109,6 +109,12 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	 */
 	protected SourcedEntity returnedEntity;
 
+	/**
+	 * A flag to allow visiting separately header files (.h) and source files (.c)
+	 * The idea is to visit first the header files
+	 */
+	protected boolean visitHeaders;
+
 	// CONSTRUCTOR ==========================================================================================================================
 
 	public AbstractVisitor(CDictionary dico, IIndex index) {
@@ -160,17 +166,22 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	public void visit(ITranslationUnit elt) {
-		try {
-			visitChildren(elt);
+		if (checkHeader(elt)) {
+			this.tracer.up("ITranslationUnit: "+elt.getElementName());
+			context = new EntityStack();    // "reseting" context
+			try {
+				visitChildren(elt);
 
-			this.filename = elt.getFile().getRawLocation().toString();
-			elt.getAST(index, ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT | ITranslationUnit.AST_SKIP_INDEXED_HEADERS).accept(this);
-			this.filename = null;
-		} catch (CoreException e) {
-			System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ elt.getElementName() );
+				this.filename = elt.getFile().getRawLocation().toString();
+				elt.getAST(index, ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT | ITranslationUnit.AST_SKIP_INDEXED_HEADERS).accept(this);
+				this.filename = null;
+			} catch (CoreException e) {
+				System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ elt.getElementName() );
+			}
 		}
-	}
 
+		this.tracer.down();
+	}
 
 	// CDT VISITING METODS ON AST ==========================================================================================================
 
@@ -401,7 +412,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			
 			int i = nodeName.toString().lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 			if (i > 0) {
-				parent = resolveOrNamespace(nodeName.toString().substring(0, i));
+				parent = recursiveEnsureParentNamespace(nodeName); //(nodeName.toString().substring(0, i));
 			}
 			else {
 				parent = context.top();
@@ -478,8 +489,8 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 		if (bnd == null) {
 			// create one anyway
-			if (fullyQualified(nodeName)) {
-				Namespace parent = createParentNamespace(nodeName);
+			if (isFullyQualified(nodeName)) {
+				Namespace parent = recursiveEnsureParentNamespace(nodeName);
 				bnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, simpleName(nodeName)));
 			}
 			else {
@@ -587,205 +598,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		return PROCESS_CONTINUE;
 	}
 
-	// UTILITIES ======================================================================================================
-
-	private void visitChildren(IParent elt) {
-		try {
-			for (ICElement child : elt.getChildren()) {
-				child.accept(this);
-			}
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Try to get some binding from a IASTName.
-	 * There are two possible way to get bindings: through the Index and by resolveBinding.
-	 * but the second may return different bindings for the same entity in different locations
-	 * @return a binding or null if none found
-	 */
-	protected IBinding getBinding(IASTName name) {
-		IBinding bnd = null;
-		if (name == null) {
-			return null;
-		}
-		try {
-			bnd = index.findBinding(name);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
-
-		return bnd;
-	}
-	
-	protected boolean fullyQualified(IASTName name) {
-		return fullyQualified(name.toString());
-	}
-
-	protected boolean fullyQualified(String name) {
-		return name.indexOf(CDictionary.CPP_NAME_SEPARATOR) > 0;
-	}
-
-	/**
-	 * Returns the last part of a fully qualified name
-	 */
-	protected String simpleName(IASTName name) {
-		
-		return simpleName(name.toString());
-	}
-
-	protected String simpleName(String name) {
-		String str = name.toString(); 
-		int i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		if (i < 0) {
-			return name;
-		}
-		else {
-			return str.substring(i+2);
-		}
-	}
-
-	/**
-	 * Creates recursively namespaces from a fully qualified name.
-	 * The last member of the name is not considered (i.e. a::b::c will yield Namespaces a and a::b)
-	 */
-	protected Namespace createParentNamespace(IASTName name) {
-		return createParentNamespace(name.toString());
-	}
-
-	protected Namespace createParentNamespace(String name) {
-		int i;
-		i = name.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		
-		if (i > 0) {
-			return createNamespace(name.substring(0, i));
-		}
-		else {
-			return null;
-		}
-	}
-
-	/**
-	 * Creates recursively namespaces from a fully qualified name.
-	 * Assumes the fully qualified name is referent to the root of namespace and not within the current namespace
-	 * This means we do not consider the context
-	 */
-	protected Namespace createNamespace(String name) {
-		int i;
-		String namespaceName;
-		Namespace parent=null;
-		StubBinding bnd;
-		
-		i = name.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		if (i > 0) {
-			namespaceName = name.substring(i+2);  // could also use simpleName(name)
-			parent = createNamespace(name.substring(0, i));
-		}
-		else {
-			namespaceName = name;
-		}
-
-		bnd = StubBinding.getInstance(Namespace.class, dico.mooseName(parent, namespaceName));
-		
-		return dico.ensureFamixNamespace(bnd, namespaceName, parent);
-	}
-
-	/**
-	 * Returns the higher-most namespace in the C++ sense on the EntityStack
-	 * C++ namespaces we are interested in are: methods, classes, namespaces
-	 * @return null if could not find a C++ namespace
-	 */
-	protected ContainerEntity getTopCppNamespace() {
-		Stack<NamedEntity> tmp = new Stack<NamedEntity>();
-		NamedEntity top;
-		
-		top = context.pop();
-		tmp.push(top);
-		while ( ! ((top == null) ||
-				   (top instanceof Method) ||
-				   (top instanceof eu.synectique.verveine.core.gen.famix.Class) ||
-				   (top instanceof Namespace) )) {
-			top = context.pop();
-			tmp.push(top);
-		}
-		
-		while (! tmp.empty()) {
-			context.push( tmp.pop());
-		}
-
-		return (ContainerEntity) top;
-	}
-
-	/**
-	 * Tries to find an entity within the current context, from it's fully qualified name.
-	 * If not found, assume it is a Namespace.
-	 */
-	public NamedEntity resolveOrNamespace( String name) {
-		NamedEntity parent = null;
-		NamedEntity tmp;
-		String str = name;
-		int i;
-
-		i = name.indexOf(CDictionary.CPP_NAME_SEPARATOR);	
-		
-		// solves the case of a fullyqualified name containing only one component (no "::")
-		if (i < 0) {
-			tmp = findInParent(name, context.top(), /*recursive*/true);
-
-			if (tmp == null) {
-				// create as a stub
-				bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
-				tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
-			}
-			return tmp;
-		}
-
-		// looks for the first component in the fully qualified name
-		// it can be in any scope starting from context.top() up to toplevel
-		tmp = findInParent(name.substring(0, i), context.top(), /*recursive*/true);
-
-		// try to find the next component(s) within the one already found (search is no longer recursive in the stack of contexts)
-		if (tmp != null) {
-			str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
-			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
-
-			while ( (tmp != null) && (i > 0) ) {
-				parent = tmp;
-				tmp = findInParent(str.substring(0, i), parent, /*recursive*/false);  // Note: not recursive, we must find in the parent
-				str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
-				i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
-			}
-
-			// look for the last component in the fully qualified name
-			if (tmp != null) {
-				parent = tmp;
-				tmp = findInParent(str, parent, /*recursive*/false);
-				if (tmp != null) {
-					return tmp;
-				}
-			}
-		}
-
-
-		// here, we are sure that the first remaining component in "str" was not found
-		// it is possibly followed by other components
-
-		// create last components (not found) as namespaces
-		while (i > 0) {
-			bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str.substring(0, i)));
-			parent = dico.ensureFamixNamespace(bnd, str.substring(0, i), (ScopingEntity) parent);
-
-			str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
-			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
-		}
-	
-		// and finally the last composant of the fully qualified name
-		bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
-		tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
-
-		return tmp;
-	}
+	// NAME RESOLUTION UTILITIES & STUB CREATION ===========================================================================
 
 	/**
 	 * Search for a Namespace or Class at top level
@@ -806,14 +619,12 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	 * In the case of looking for a function, name is actually a signature.
 	 * @return NamedEntity found or null if none match
 	 */
-	public NamedEntity findInLocals(String name, ContainerEntity context) {		
+	public NamedEntity findInLocals(String name, ContainerEntity context) {
 		for (eu.synectique.verveine.core.gen.famix.Type child : context.getTypes()) {
 			if (child.getName().equals(name)) {
 				return child;
 			}
 		}
-/* function should be matched on their full signature.
- */
 
 		for (Function child : context.getFunctions()) {
 			if (child.getSignature().equals(name)) {
@@ -928,6 +739,300 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		}
 	}
 
+	/**
+	 * Returns the higher-most namespace in the C++ sense on the EntityStack
+	 * C++ namespaces we are interested in are: methods, classes, namespaces
+	 * @return null if could not find a C++ namespace
+	 */
+	protected ContainerEntity getTopCppNamespace() {
+		Stack<NamedEntity> tmp = new Stack<NamedEntity>();
+		NamedEntity top;
+		
+		top = context.pop();
+		tmp.push(top);
+		while ( ! ((top == null) ||
+				   (top instanceof Method) ||
+				   (top instanceof eu.synectique.verveine.core.gen.famix.Class) ||
+				   (top instanceof Namespace) )) {
+			top = context.pop();
+			tmp.push(top);
+		}
+		
+		while (! tmp.empty()) {
+			context.push( tmp.pop());
+		}
+
+		return (ContainerEntity) top;
+	}
+
+	/**
+	 * Creates recursively namespaces from a fully qualified name.
+	 * The last member of the name is not considered (i.e. a::b::c will yield Namespaces a and a::b)
+	 */
+	protected Namespace recursiveEnsureParentNamespace(IASTName name) {
+		return recursiveEnsureParentNamespace(name.toString());
+	}
+
+	protected Namespace recursiveEnsureParentNamespace(String name) {
+		int i;
+		i = name.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		
+		if (i > 0) {
+			return recursiveEnsureNamespace(name.substring(0, i));
+		}
+		else {
+			return null;
+		}
+	}
+
+	/**
+	 * Creates recursively namespaces from a fully qualified name.
+	 * Assumes the fully qualified name is referent to the root of namespace and not within the current namespace
+	 * This means we do not consider the context
+	 */
+	protected Namespace recursiveEnsureNamespace(String name) {
+		int i;
+		String namespaceName;
+		Namespace parent=null;
+		StubBinding bnd;
+		
+		i = name.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		if (i > 0) {
+			namespaceName = name.substring(i+2);  // could also use simpleName(name)
+			parent = recursiveEnsureNamespace(name.substring(0, i));
+		}
+		else {
+			namespaceName = name;
+		}
+
+		bnd = StubBinding.getInstance(Namespace.class, dico.mooseName(parent, namespaceName));
+		
+		return dico.ensureFamixNamespace(bnd, namespaceName, parent);
+	}
+
+	/**
+	 * Tries to find an entity within the current context, from it's fully qualified name.
+	 * If not found, assume it is a Namespace and creates it.
+	 */
+	protected NamedEntity resolveOrNamespace( String name) {
+		NamedEntity parent = null;
+		NamedEntity tmp;
+		String str = name;
+		int i;
+
+		i = name.indexOf(CDictionary.CPP_NAME_SEPARATOR);	
+		
+		// solves the case of a fully qualified name containing only one component (no "::") -----
+		if (i < 0) {
+			tmp = findInParent(name, context.top(), /*recursive*/true);
+
+			if (tmp == null) {
+				// create as a stub
+				bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
+				tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
+			}
+			return tmp;
+		}
+		
+		// case of a fully qualified name composed of several names -----
+
+		// looks for the first component in the fully qualified name
+		// it can be in any scope starting from context.top() up to toplevel
+		tmp = findInParent(name.substring(0, i), context.top(), /*recursive*/true);
+
+		// try to find the next component(s) within the one already found (search is no longer recursive in the stack of contexts)
+		if (tmp != null) {
+			str = name.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+
+			while ( (tmp != null) && (i > 0) ) {
+				parent = tmp;
+				tmp = findInParent(str.substring(0, i), parent, /*recursive*/false);  // Note: not recursive, we must find in the parent
+				str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+				i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+			}
+
+			// look for the last component in the fully qualified name
+			if (tmp != null) {
+				parent = tmp;
+				tmp = findInParent(str, parent, /*recursive*/false);
+				if (tmp != null) {
+					return tmp;
+				}
+			}
+		}
+
+
+		// here, we are sure that the first remaining component in "str" was not found
+		// it is possibly followed by other components
+
+		// create last components (not found) as namespaces
+		while (i > 0) {
+			bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str.substring(0, i)));
+			parent = dico.ensureFamixNamespace(bnd, str.substring(0, i), (ScopingEntity) parent);
+
+			str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
+			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
+		}
+	
+		// and finally the last composant of the fully qualified name
+		bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
+		tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
+
+		return tmp;
+	}
+
+	/**
+	 * Ensures a stub class and its parent (a namespace).
+	 * Deals with fully qualified class name and not qualified class name (parent is current namespace in this case)
+	 */
+	protected eu.synectique.verveine.core.gen.famix.Class ensureStubClassInNamespace(String name) {
+		IBinding supBnd;
+		ContainerEntity parent;
+
+		if (isFullyQualified(name)) {
+			parent = recursiveEnsureParentNamespace(name);
+			name = simpleName(name);
+		}
+		else {
+			parent = getTopCppNamespace();
+		}
+
+		supBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, name));
+		return dico.ensureFamixClass(supBnd, name, parent);
+	}
+
+	protected BehaviouralEntity makeStubBehavioural(String name, int nbArgs, boolean isMethod) {
+		BehaviouralEntity fmx;
+		String stubSig =  mkStubSig(name, nbArgs);
+		if (isMethod) {
+			fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, name+"__"+nbArgs), name, stubSig, /*container*/null);
+		}
+		else {
+			fmx = dico.ensureFamixFunction(/*key*/StubBinding.getInstance(Function.class, name+"__"+nbArgs), name, stubSig, /*container*/null);
+		}
+		fmx.setNumberOfParameters(nbArgs);
+		// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
+		// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
+		return fmx;
+	}
+
+	/**
+	 * Forges a signature for stub BehaviouralEntities
+	 * @return "name(&lt;parameters&gt;)" where parametres are substitued by "_" 
+	 */
+	protected String mkStubSig(String name, int nbParam) {
+		String sig = name + "(";
+		for (int i=0; i < nbParam-1; i++) {
+			sig += "_," ;
+		}
+		if (nbParam > 0) {
+			sig += "_)" ;
+		}
+		else {
+			sig += ")" ;
+		}
+		return sig;
+	}
+
+/*
+	private BehaviouralEntity lookForUnboundMethod(Type parent, String name, ICPPASTParameterDeclaration[] params) {
+		for (Method mth : parent.getMethods()) {
+			if (mth.getName().equals(name)) {
+				if (checkParams(mth, params)) {
+					return mth;
+				}
+			}
+		}
+		return null;
+	}
+
+	private boolean checkParams(Method mth, ICPPASTParameterDeclaration[] params) {
+		int i;
+		String sig = mth.getSignature();
+		i = sig.indexOf('(');
+		sig = sig.substring(i+1, sig.length()-1);
+		int p = 0;
+		for (String t : sig.split(",")) {
+			t = t.trim();
+			// trying to match the type name
+			String typName = params[p].getDeclSpecifier().getRawSignature();
+			if (! t.startsWith( typName)) {
+				return false;
+			}
+			t = t.substring(typName.length()).trim();
+			// trying to match a pointer
+			for (@SuppressWarnings("unused") IASTPointerOperator pointOp : params[p].getDeclarator().getPointerOperators()) {
+				if (t.charAt(0) != '*') {
+					return false;
+				}
+				t = t.substring(1).trim();
+			}
+			p++;
+		}
+		return true;
+	}
+*/
+
+	// UTILITIES ======================================================================================================
+
+	private void visitChildren(IParent elt) {
+		try {
+			for (ICElement child : elt.getChildren()) {
+				child.accept(this);
+			}
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Try to get some binding from a IASTName.
+	 * There are two possible way to get bindings: through the Index and by resolveBinding.
+	 * but the second may return different bindings for the same entity in different locations
+	 * @return a binding or null if none found
+	 */
+	protected IBinding getBinding(IASTName name) {
+		IBinding bnd = null;
+		if (name == null) {
+			return null;
+		}
+		try {
+			bnd = index.findBinding(name);
+		} catch (CoreException e) {
+			e.printStackTrace();
+		}
+
+		return bnd;
+	}
+	
+	protected boolean isFullyQualified(IASTName name) {
+		return isFullyQualified(name.toString());
+	}
+
+	protected boolean isFullyQualified(String name) {
+		return name.indexOf(CDictionary.CPP_NAME_SEPARATOR) > 0;
+	}
+
+	/**
+	 * Returns the last part of a fully qualified name
+	 */
+	protected String simpleName(IASTName name) {
+		
+		return simpleName(name.toString());
+	}
+
+	protected String simpleName(String name) {
+		String str = name.toString(); 
+		int i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		if (i < 0) {
+			return name;
+		}
+		else {
+			return str.substring(i+2);
+		}
+	}
+
 	protected boolean isMethodBinding(IBinding bnd) {
 		if (bnd instanceof ICPPMethod) {
 			return true;
@@ -970,5 +1075,23 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		return false;
 	}
 
+	public void setVisitHeaders(boolean visitHeaders) {
+		this.visitHeaders = visitHeaders;
+	}
+
+	protected boolean checkHeader(ITranslationUnit tu) {
+		String ext;
+		int i = tu.getElementName().lastIndexOf('.');
+		if (i < 0) {
+			return false;    // not a source file
+		}
+		ext = tu.getElementName().substring(i);
+		if (visitHeaders) {
+			return ext.startsWith(".h");
+		}
+		else {
+			return (! ext.startsWith(".h") );
+		}
+	}
 
 }

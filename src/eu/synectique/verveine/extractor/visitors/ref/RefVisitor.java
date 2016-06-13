@@ -11,7 +11,6 @@ import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
-import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
@@ -23,34 +22,29 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPBase;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICElementVisitor;
-import org.eclipse.cdt.core.model.ITranslationUnit;
 
 import eu.synectique.verveine.core.Dictionary;
-import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
-import eu.synectique.verveine.core.gen.famix.Class;
-import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
+import eu.synectique.verveine.extractor.utils.NullTracer;
+//import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 import eu.synectique.verveine.extractor.visitors.CDictionary;
 import eu.synectique.verveine.extractor.visitors.SignatureBuilderVisitor;
-import eu.synectique.verveine.extractor.utils.NullTracer;
-//import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
@@ -89,18 +83,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
-
-	/**
-	 * Visiting a source file
-	 */
-	@Override
-	public void visit(ITranslationUnit tu) {
-		tracer.up("ITranslationUnit: "+tu.getElementName());
-		context = new EntityStack();    // "reseting" context
-		super.visit(tu);
-		tracer.down();
-	}
-
 
 	// CDT VISITING METODS ON AST ==========================================================================================================
 
@@ -186,6 +168,9 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		fmx = (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey(bnd);
 
+		if ( (fmx == null) && (bnd.getClass() != StubBinding.class) ) {
+			fmx = dico.ensureFamixClass(bnd, nodeName.toString(), recursiveEnsureParentNamespace(nodeName));
+		}
 		if (fmx == null) {
 			return PROCESS_SKIP;
 		}
@@ -194,6 +179,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		if (bnd instanceof ICPPClassType) {
 			// would not be the case if we had to create a StubBinding
 			Inheritance lastInheritance = null;
+			int i = 0;
 			for (ICPPBase baseClass : ((ICPPClassType)bnd).getBases()) {
 				Type supFmx = null;
 				IType supBnd = baseClass.getBaseClassType();
@@ -203,11 +189,12 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 				}
 				if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
 					//  may be should create a Type instead of a class here ?
-					supFmx = createStubClass(/*name*/node.getBaseSpecifiers()[0].getNameSpecifier().toString());
+					supFmx = ensureStubClassInNamespace(/*name*/node.getBaseSpecifiers()[i].getNameSpecifier().toString());
 				}
 				if (supFmx != null) {
 					lastInheritance = dico.ensureFamixInheritance(supFmx, fmx, lastInheritance);
 				}
+				i++;
 			}
 		}
 		
@@ -413,22 +400,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
 		
 		returnedEntity = fmx;
-	}
-
-	private Class createStubClass(String name) {
-		IBinding supBnd;
-		ContainerEntity parent;
-
-		if (fullyQualified(name)) {
-			parent = createParentNamespace(name);
-			name = simpleName(name);
-		}
-		else {
-			parent = getTopCppNamespace();
-		}
-
-		supBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, name));
-		return dico.ensureFamixClass(supBnd, name, parent);
 	}
 
 }

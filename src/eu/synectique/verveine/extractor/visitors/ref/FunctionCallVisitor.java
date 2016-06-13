@@ -14,16 +14,14 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Association;
+import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
-import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Invocation;
-import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
@@ -47,7 +45,6 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 
 		tracer = new NullTracer("FCV>");
 	}
-
 
 	// VISITING METODS ON AST ===============================================================================================================
 
@@ -79,20 +76,12 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 			if (fmx == null) {
 				// could not find it. Try to create a stub from the name (if we have one)
 				if (nodeName != null) {
-					String stubSig =  mkStubSig(nodeName.toString(), node.getArguments().length);
-					fmx = dico.ensureFamixFunction(/*key*/StubBinding.getInstance(Function.class, nodeName.toString()+"__"+node.getArguments().length), nodeName.toString(), stubSig, /*container*/null);
-					((Function)fmx).setNumberOfParameters(node.getArguments().length);
-					// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
-					// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
+					fmx = makeStubBehavioural(nodeName.toString(), node.getArguments().length, /*isMethod*/false);
 				}
 			}
 			else if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
 				// found a class instead of a behavioral. May happen, for example in the case of a "throw ClassName(...)"
-				String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
-				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, fmx.getName()+"__"+node.getArguments().length), fmx.getName(), stubSig, priorType);
-				((Method)fmx).setNumberOfParameters(node.getArguments().length);
-				// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
-				// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
+				fmx = makeStubBehavioural(fmx.getName(), node.getArguments().length, /*isMethod*/true);
 			}
 
 			// now create the invocation
@@ -120,19 +109,8 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	 * Other entry point for this visitor
 	 */
 	protected int visit(ICPPASTConstructorChainInitializer node) {
-		returnedEntity = null;
-		if (node.getMemberInitializerId().resolveBinding() instanceof ICPPField) {
-			// field initialization that results in an implicit call to the constructor
-			// not used for now
-		}
-		else if (node.getMemberInitializerId().resolveBinding() instanceof ICPPConstructor) {
-			node.getInitializer().accept(this);
-		}
-		else {
-			// not too sure what we have
-			// try to visit it anyway
-			node.getInitializer().accept(this);
-		}
+		node.getInitializer().accept(this);
+
 		return PROCESS_SKIP;
 	}
 
@@ -168,14 +146,21 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 				mthName = parent.getImplicitNames()[0].toString();
 			}
 			else if (node.getParent() instanceof ICPPASTConstructorChainInitializer) {
-				mthName = ((ICPPASTConstructorChainInitializer)node.getParent()).getMemberInitializerId().toString();
+				ICPPASTConstructorChainInitializer chainConst = (ICPPASTConstructorChainInitializer)node.getParent();
+				if ( chainConst.getMemberInitializerId().resolveBinding() instanceof ICPPField ) {
+					// field initialization that results in an implicit call to the constructor of the field's type
+					// modeled as a write-Access to the field + invocation of the field's type constructor
+					IASTName fldName = chainConst.getMemberInitializerId();
+					IBinding fldBnd  = getBinding(fldName);
+					Attribute fldFmx = (Attribute) dico.getEntityByKey(fldBnd);
+					if (fldFmx != null) {
+						accessToVar(fldFmx).setIsWrite(true);
+					}
+					mthName = fldFmx.getDeclaredType().getName();
+				}
 			}
 			if (mthName != null) {
-				String stubSig =  mkStubSig(mthName, node.getArguments().length);
-				fmx = dico.ensureFamixMethod(/*key*/StubBinding.getInstance(Method.class, mthName+"__"+node.getArguments().length), mthName, stubSig, priorType);
-				((Method)fmx).setNumberOfParameters(node.getArguments().length);
-				// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
-				// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
+				fmx = makeStubBehavioural(mthName, node.getArguments().length, /*isMethod*/true);
 			}
 		}
 
@@ -211,7 +196,6 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		return PROCESS_SKIP;
 	}
 
-
 	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
 
 	@Override
@@ -222,7 +206,6 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		returnedEntity = referenceToName(((IASTIdExpression) node).getName(), reference);
 		return PROCESS_SKIP;
 	}
-
 
 	// UTILITIES ====================================================================================================================================
 
@@ -246,24 +229,6 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 				((Invocation)returnedEntity).addArguments(dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null));
 			}
 		}
-	}
-
-	/**
-	 * Forges a signature for stub BehaviouralEntities
-	 * @return "name(&lt;parameters&gt;)" where parametres are substitued by "_" 
-	 */
-	protected String mkStubSig(String name, int nbParam) {
-		String sig = name + "(";
-		for (int i=0; i < nbParam-1; i++) {
-			sig += "_," ;
-		}
-		if (nbParam > 0) {
-			sig += "_)" ;
-		}
-		else {
-			sig += ")" ;
-		}
-		return sig;
 	}
 
 }
