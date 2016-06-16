@@ -109,30 +109,40 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	 * Other entry point for this visitor
 	 */
 	protected int visit(ICPPASTConstructorChainInitializer node) {
+		IASTName memberName = node.getMemberInitializerId();
+		returnedEntity = null;
+		bnd = getBinding(memberName);
+		if ( bnd instanceof ICPPField ) {
+			// "field initialization", modeled as a write-Access to the field + invocation of the field's type constructor (done in visit(ICPPASTConstructorInitializer))
+			Attribute fldFmx = (Attribute) dico.getEntityByKey(bnd);
+			returnedEntity = fldFmx;
+			if (fldFmx != null) {
+				accessToVar(fldFmx).setIsWrite(true);
+			}
+		}
 		node.getInitializer().accept(this);
 
 		return PROCESS_SKIP;
 	}
 
 	/**
-	 * Other entry point for this visitor
+	 * Other entry point for this visitor.
+	 * This is the node for superConstructor calls and implicit constructor calls (e.g. done through an attribute initialization).
+	 * Might be called by visit(ICPPASTConstructorChainInitializer). In this case, returnedEntity might be set to something interesting.
 	 */
 	protected int visit(ICPPASTConstructorInitializer node) {
 		IASTImplicitNameOwner parent = (IASTImplicitNameOwner)node.getParent() ;
 		NamedEntity fmx = null;
-		returnedEntity = null;
 
 		// if this is an implicit call to a constructor (through attribute initialization call)
 		for (IASTImplicitName candidate : parent.getImplicitNames()) {
-			IBinding bnd = null; 
+			IBinding constBnd = null; 
 
-			bnd = getBinding( candidate );
+			constBnd = getBinding( candidate );
 
-			if (bnd != null) {
-				fmx = dico.getEntityByKey(bnd);
-			}
+			if (constBnd != null) {
+				fmx = dico.getEntityByKey(constBnd);
 
-			if (fmx != null) {
 				if (fmx instanceof BehaviouralEntity) {
 					break;  // we found one method matching the implicit constructor. We are happy for now.
 				}
@@ -141,26 +151,20 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 
 		// if we could not get it, try to create a meaningful stub
 		if (fmx == null) {
+			// get the name of the called constructor
 			String mthName = null;
 			if (parent.getImplicitNames().length > 0) {
 				mthName = parent.getImplicitNames()[0].toString();
 			}
 			else if (parent instanceof ICPPASTConstructorChainInitializer) {
-				IASTName memberName = ((ICPPASTConstructorChainInitializer)parent).getMemberInitializerId();
-				if ( memberName.resolveBinding() instanceof ICPPField ) {
-					// field initialization that results in an implicit call to the constructor of the field's type
-					// modeled as a write-Access to the field + invocation of the field's type constructor
-					IBinding fldBnd  = getBinding(memberName);
-					Attribute fldFmx = (Attribute) dico.getEntityByKey(fldBnd);
-					if (fldFmx != null) {
-						accessToVar(fldFmx).setIsWrite(true);
-					}
-					mthName = fldFmx.getDeclaredType().getName();
+				if ( returnedEntity instanceof Attribute ) {   // set by visit(ICPPASTConstructorChainInitializer)
+					mthName = ((Attribute)returnedEntity).getDeclaredType().getName();
 				}
 				else {
-					mthName = memberName.toString();
+					mthName = ((ICPPASTConstructorChainInitializer)parent).getMemberInitializerId().toString();
 				}
 			}
+			// create the constructor
 			if (mthName != null) {
 				fmx = makeStubBehavioural(mthName, node.getArguments().length, /*isMethod*/true);
 			}

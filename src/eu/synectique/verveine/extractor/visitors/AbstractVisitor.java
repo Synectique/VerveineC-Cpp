@@ -879,18 +879,14 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		// and finally the last composant of the fully qualified name
 		// first compute the type of this composant
 		// rule of the thumb: if parent is not a namespace (class or method), then we create a Class
-		Class tmpClass;
 		if ( (parent == null) || (parent instanceof Namespace) ) {
-			tmpClass = Namespace.class;
+			bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
+			tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
 		}
 		else {
-			tmpClass = eu.synectique.verveine.core.gen.famix.Class.class;
+			bnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName((ContainerEntity) parent, str));
+			tmp = dico.ensureFamixClass(bnd, str, (ContainerEntity) parent);
 		}
-		bnd = StubBinding.getInstance(tmpClass, dico.mooseName((ContainerEntity) parent, str));
-		if (parent instanceof Type) {
-			tmp = null;
-		}
-		tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
 
 		return tmp;
 	}
