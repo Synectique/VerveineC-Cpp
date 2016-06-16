@@ -11,6 +11,7 @@ import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
@@ -176,20 +177,20 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 		
 		// now looking for superclasses
-		if (bnd instanceof ICPPClassType) {
-			// would not be the case if we had to create a StubBinding
+		if (bnd instanceof ICPPClassType) {   // would not be the case if we had to create a StubBinding
 			Inheritance lastInheritance = null;
 			int i = 0;
 			for (ICPPBase baseClass : ((ICPPClassType)bnd).getBases()) {
 				Type supFmx = null;
 				IType supBnd = baseClass.getBaseClassType();
 
-				if(supBnd instanceof IIndexBinding) {
-					supFmx =  (Type) dico.getEntityByKey((IIndexBinding) supBnd);
+				if(supBnd instanceof IBinding) {
+					String supName = ((IBinding)supBnd).getName();
+					supFmx =  ensureStubClassInNamespace((IBinding)supBnd, supName);
 				}
 				if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
 					// could be just a type instead of a class, but there is no way to know for sure
-					supFmx = ensureStubClassInNamespace(/*name*/node.getBaseSpecifiers()[i].getNameSpecifier().toString());
+					supFmx = ensureStubClassInNamespace((IBinding)null, /*name*/node.getBaseSpecifiers()[i].getNameSpecifier().toString());
 				}
 				if (supFmx != null) {
 					lastInheritance = dico.ensureFamixInheritance(supFmx, fmx, lastInheritance);
@@ -197,9 +198,9 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 				i++;
 			}
 		}
-		
+
 		this.context.push(fmx);
-		
+
 		for (IASTDeclaration child : node.getMembers()) {
 			child.accept(this);
 		}

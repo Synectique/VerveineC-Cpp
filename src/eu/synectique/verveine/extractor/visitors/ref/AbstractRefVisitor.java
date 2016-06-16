@@ -9,7 +9,9 @@ import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.internal.core.pdom.dom.cpp.IPDOMCPPClassType;
 
 import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Access;
@@ -189,9 +191,8 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		}
 		else if (node instanceof IASTNameOwner) {
 			IASTName nodeName = null;
-			//IBinding bnd = null;
 
-			// all these tests to call methods with the same name in the end ...
+			// all these tests only to call the right getName() methods in the end :-(
 			if  (node instanceof IASTCompositeTypeSpecifier) {
 				nodeName = ((IASTCompositeTypeSpecifier) node).getName();
 			}
@@ -211,25 +212,17 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			}
 
 			fmx = (Type) dico.getEntityByKey(bnd);
-			
-			if ( (fmx == null) && (bnd.getClass() != StubBinding.class) ) {
-				// we have a IBinding but the entity was not created
-				// probably an entity belonging to an included header but not part of the parsed project
-				fmx = dico.ensureFamixType(bnd, simpleName(nodeName.toString()), recursiveEnsureParentNamespace(nodeName), /*persistIt*/true);
-			}
-			else if ( (fmx == null) && (bnd.getClass() == StubBinding.class) ) {
-				// may be not a stub despite the fact that we don't have a IBinding
-				// try to find it in the current context
+
+			if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
 				fmx = (Type) findInParent(nodeName.toString(), context.top(), /*recursive*/true);
 			}
-			
-			// still not found, create it
-			if (fmx == null) {
+
+			if (fmx == null) {  // still not found, create it
 				if (isParameterTypeInstanceName(nodeName.toString())) {
 					fmx = referedParameterTypeInstance(nodeName.toString());
 				}
 				else {
-					fmx = dico.ensureFamixType(bnd, simpleName(nodeName), /*owner*/recursiveEnsureParentNamespace(nodeName), /*persistIt*/true);
+					fmx = dico.ensureFamixType(bnd, simpleName(nodeName), /*owner*/recursiveEnsureParentNamespace(nodeName));
 				}
 			}
 
@@ -246,11 +239,11 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		ParameterizedType fmx = null;
 		try {
 			ParameterizableClass generic = (ParameterizableClass) findInParent(tname, context.top(), /*recursive*/true);
-			fmx = dico.ensureFamixParameterizedType(bnd, tname, recursiveEnsureParentNamespace(nodeName), generic);
+			fmx = dico.ensureFamixParameterizedType(bnd, tname, generic, recursiveEnsureParentNamespace(nodeName));
 		}
 		catch (ClassCastException e) {
 			// create a ParameterizedType for an unknown generic
-			fmx = dico.ensureFamixParameterizedType(bnd, tname, recursiveEnsureParentNamespace(nodeName), /*generic*/null);
+			fmx = dico.ensureFamixParameterizedType(bnd, tname, /*generic*/null, recursiveEnsureParentNamespace(nodeName));
 		}
 
 		for (String targ : name.substring(i+1, name.length()-1).split(",")) {
@@ -263,7 +256,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			}
 			catch (ClassCastException e) {
 				// for some reason, findInParent seems to have found an entity with this name but not a Type
-				// just forget it
+				// just ignore it
 			}
 		}
 		

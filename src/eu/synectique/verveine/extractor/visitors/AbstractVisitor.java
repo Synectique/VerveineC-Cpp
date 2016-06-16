@@ -881,22 +881,22 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	/**
 	 * Ensures a stub class and its parent (a namespace).
-	 * Deals with fully qualified class name and not qualified class name (parent is current namespace in this case)
+	 * Deals with fully qualified class name and not qualified class name (puts class in toplevel namespace (i.e. null) in this case).
+	 * @param classBnd class binding or null (in which case creates a StubBinding)
+	 * @param name of the stub class to create
 	 */
-	protected eu.synectique.verveine.core.gen.famix.Class ensureStubClassInNamespace(String name) {
-		IBinding supBnd;
-		ContainerEntity parent;
+	protected eu.synectique.verveine.core.gen.famix.Class ensureStubClassInNamespace(IBinding classBnd, String name) {
+		ContainerEntity parent = null;
 
 		if (isFullyQualified(name)) {
 			parent = recursiveEnsureParentNamespace(name);
 			name = simpleName(name);
 		}
-		else {
-			parent = getTopCppNamespace();
-		}
 
-		supBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, name));
-		return dico.ensureFamixClass(supBnd, name, parent);
+		if (classBnd == null) {
+			classBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, name));
+		}
+		return dico.ensureFamixClass(classBnd, name, parent);
 	}
 
 	protected BehaviouralEntity makeStubBehavioural(String name, int nbArgs, boolean isMethod) {

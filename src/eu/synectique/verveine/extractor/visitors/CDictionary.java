@@ -160,6 +160,16 @@ public class CDictionary extends Dictionary<IBinding> {
 		return fmx;
 	}
 
+	public Type ensureFamixType(IBinding key, String name, ContainerEntity owner) {
+		Type fmx;
+		fmx = (Type) getEntityIfNotNull(key);
+		if (fmx == null) {
+			fmx = super.ensureFamixType(key, name, owner, /*persistIt*/true);
+		}
+		
+		return fmx;
+	}
+
 	public eu.synectique.verveine.core.gen.famix.Class ensureFamixClass(IBinding key, String name, ContainerEntity owner) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
 		fmx = (Class) getEntityIfNotNull(key);
@@ -180,7 +190,7 @@ public class CDictionary extends Dictionary<IBinding> {
 		return fmx;
 	}
 
-	public ParameterizedType ensureFamixParameterizedType(IBinding key, String name, ContainerEntity owner, ParameterizableClass generic) {
+	public ParameterizedType ensureFamixParameterizedType(IBinding key, String name, ParameterizableClass generic, ContainerEntity owner) {
 		ParameterizedType fmx;
 		fmx = (ParameterizedType) getEntityIfNotNull(key);
 		if (fmx == null) {
@@ -188,6 +198,11 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 		
 		return fmx;
+	}
+
+	public Type ensureFamixPrimitiveType(int type) {
+		StubBinding bnd = StubBinding.getInstance(Type.class, "_primitive_/"+type);
+		 return ensureFamixPrimitiveType(bnd, primitiveTypeName(type));
 	}
 
 	public Function ensureFamixFunction(IBinding key, String name, String sig, ContainerEntity parent) {
@@ -244,11 +259,6 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 
 		return fmx;
-	}
-
-	public Type ensureFamixPrimitiveType(int type) {
-		StubBinding bnd = StubBinding.getInstance(Type.class, "_primitive_/"+type);
-		 return ensureFamixPrimitiveType(bnd, primitiveTypeName(type));
 	}
 
 	// UTILITIES =========================================================================================================================================
