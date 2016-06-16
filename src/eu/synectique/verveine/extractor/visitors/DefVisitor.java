@@ -5,6 +5,8 @@ import java.util.Set;
 
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
+import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
@@ -397,7 +399,14 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		// template parameters are local to the entity defined in the template declaration
 		context.push(fmx);
         for (ICPPASTTemplateParameter param : node.getTemplateParameters()) {
-            param.accept(this);
+        	if (param instanceof ICPPASTParameterDeclaration ) {
+        		// i.e. a variable parameter to the template
+        		// ignore for now
+        	}
+        	else {
+        		// should be a ICPPASTTemplateParameter (i.e. a type parameter to the template)
+        		param.accept(this);
+        	}
         }
         context.pop();
 
@@ -407,9 +416,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	// UTILITIES ==============================================================================================================================
 
 	/**
-	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}
+	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}.
+	 * Creates an AliasType for the definedType.
 	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
 	 * thus several nodeName and bnd.
+	 * @param node not used in DefVisitor
 	 */
 	@Override
 	protected void handleTypedef(IASTSimpleDeclaration node) {
@@ -417,9 +428,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 		fmx = dico.ensureFamixTypeAlias(bnd, nodeName.toString(), (ContainerEntity)context.top());
 
-		if (! (bnd instanceof StubBinding)) {
-			fmx.setIsStub(false);
-		}
+		fmx.setIsStub(false);
 
 		fmx.setParentPackage(currentPackage);
 	}

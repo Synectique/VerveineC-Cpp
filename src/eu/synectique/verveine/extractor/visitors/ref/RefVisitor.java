@@ -3,7 +3,9 @@ package eu.synectique.verveine.extractor.visitors.ref;
 import java.io.RandomAccessFile;
 
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
+import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
@@ -38,6 +40,7 @@ import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
+import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
@@ -211,26 +214,48 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return PROCESS_SKIP;
 	}
 
+	@Override
+	protected int visit(IASTSimpleDeclaration node) {
+		// compute nodeName and binding
+		// also handles typedefs (see handleTypedef)
+		// here we are interested in functions/methods declarations
+		// to get the return type of the function
+		if (super.visit(node) == PROCESS_SKIP) {
+			// this was a typedef and it was handled. Can stop processing of this node
+			return PROCESS_SKIP;
+		}
+
+		if (node.getDeclarators().length > 0) {
+			for (IASTDeclarator declarator : node.getDeclarators()) {
+				returnedEntity = null;
+				this.visit( declarator );
+
+				if (returnedEntity instanceof BehaviouralEntity) {
+					((BehaviouralEntity)returnedEntity).setDeclaredType( referedType( node.getDeclSpecifier() ) );
+				}
+				else if (returnedEntity instanceof StructuralEntity) {
+					((StructuralEntity)returnedEntity).setDeclaredType( referedType( node.getDeclSpecifier() ) );
+				}
+			}
+			return PROCESS_SKIP;
+		}
+
+		return PROCESS_CONTINUE;
+	}
+
 	/**
-	 * Visiting an attribute to get its type
+	 * Visiting an attribute just to get it.
+	 * {@link #visit(IASTSimpleDeclaration)} takes care of setting the return type
 	 */
 	@Override
 	protected int visit(ICPPASTDeclarator node) {
-		Attribute fmx = null;
-
 		// compute nodeName and binding
 		bnd = null;
 		super.visit(node);
 
 		if (bnd != null) {
-			fmx = (Attribute) dico.getEntityByKey(bnd);
+			returnedEntity = (Attribute) dico.getEntityByKey(bnd);
 		}
-		if (fmx != null) {
-			// now get the declared type
-			fmx.setDeclaredType( referedType( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier() ) );
-		}
-
-		returnedEntity = fmx;
 
 		return PROCESS_SKIP;
 	}
@@ -389,6 +414,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	/**
 	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}
+	 * sets the referedType for the AliasType of the typedef.
 	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
 	 * thus several nodeName and bnd.
 	 */
@@ -399,7 +425,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		fmx = (TypeAlias) dico.getEntityByKey(bnd);
 
 		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
-		
+
 		returnedEntity = fmx;
 	}
 

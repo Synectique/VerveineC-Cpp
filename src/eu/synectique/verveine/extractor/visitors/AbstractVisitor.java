@@ -356,7 +356,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	protected int visit(IASTSimpleDeclaration node) {
 		if (node.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef) {
-			// this is a typedef, so define a FamixType with the declarator(s)
+			// this is a typedef, so the declarator(s) should be a FAMIXType
 			for (IASTDeclarator declarator : node.getDeclarators()) {
 
 				nodeName = declarator.getName();
@@ -366,10 +366,14 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 				bnd = getBinding(nodeName);
 
 				if (bnd == null) {
-					// create one anyway, assume this is a function
-					bnd = StubBinding.getInstance(Function.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+					// create one anyway, assume this is a Type
+					bnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
 				}
 
+				/* Call back method.
+				 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
+				 * thus several nodeName and bnd
+				 */
 				handleTypedef(node);
 			}
 			
@@ -810,7 +814,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 	/**
 	 * Tries to find an entity within the current context, from it's fully qualified name.
-	 * If not found, assume it is a Namespace and creates it.
+	 * If not found, tries to create it with the correct type (Namespace being the default)
 	 */
 	protected NamedEntity resolveOrNamespace( String name) {
 		NamedEntity tmp;
@@ -826,7 +830,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			}
 			return tmp;
 		}
-		
+
 		// case of a fully qualified name composed of several names -----
 
 		NamedEntity parent = null;
@@ -871,9 +875,21 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
 			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
 		}
-	
+
 		// and finally the last composant of the fully qualified name
-		bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
+		// first compute the type of this composant
+		// rule of the thumb: if parent is not a namespace (class or method), then we create a Class
+		Class tmpClass;
+		if ( (parent == null) || (parent instanceof Namespace) ) {
+			tmpClass = Namespace.class;
+		}
+		else {
+			tmpClass = eu.synectique.verveine.core.gen.famix.Class.class;
+		}
+		bnd = StubBinding.getInstance(tmpClass, dico.mooseName((ContainerEntity) parent, str));
+		if (parent instanceof Type) {
+			tmp = null;
+		}
 		tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
 
 		return tmp;
