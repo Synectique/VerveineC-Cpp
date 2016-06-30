@@ -88,12 +88,12 @@ public class StubBinding implements IBinding {
 
 	@Override
 	public String getName() {
-		return null;
+		return getEntityName();
 	}
 
 	@Override
 	public char[] getNameCharArray() {
-		return null;
+		return getName().toCharArray();
 	}
 
 	@Override

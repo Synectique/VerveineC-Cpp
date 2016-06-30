@@ -33,6 +33,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
@@ -196,6 +197,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		else if (node instanceof ICPPASTTemplateDeclaration) {
 			return visit((ICPPASTTemplateDeclaration)node);
 		}
+		else if (node instanceof ICPPASTVisibilityLabel) {
+			return visit((ICPPASTVisibilityLabel)node);
+		}
 		//else ICPPASTUsingDirective, ...
 
 		return super.visit(node);
@@ -211,6 +215,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		}
 		else if (node instanceof ICPPASTTemplateDeclaration) {
 			return leave((ICPPASTTemplateDeclaration)node);
+		}
+		else if (node instanceof ICPPASTVisibilityLabel) {
+			return leave((ICPPASTVisibilityLabel)node);
 		}
 		//else ICPPASTUsingDirective, ...
 
@@ -445,6 +452,14 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int leave(IASTFunctionDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(ICPPASTVisibilityLabel node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(ICPPASTVisibilityLabel node) {
 		return PROCESS_CONTINUE;
 	}
 

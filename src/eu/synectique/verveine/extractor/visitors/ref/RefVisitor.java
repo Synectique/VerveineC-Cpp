@@ -123,17 +123,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	}
 
 	@Override
-	public int leave(IASTDeclaration node) {
-		if (node instanceof ICPPASTFunctionDefinition) {
-			return leave((ICPPASTFunctionDefinition)node);
-		}
-		else if (node instanceof ICPPASTTemplateDeclaration) {
-			return leave((ICPPASTTemplateDeclaration)node);
-		}
-		return super.leave(node);
-	}
-
-	@Override
 	public int visit(IASTParameterDeclaration node) {
 		Parameter fmx = null;
 

@@ -42,11 +42,11 @@ import eu.synectique.verveine.extractor.visitors.DefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class VerveineCParser extends VerveineParser {
-	static final public String WORKSPACE_NAME = "workspace";
+	static final public String WORKSPACE_NAME = "tempWS";
 
 	static final public String DEFAULT_PROJECT_NAME = "tempProj";
 
-	private static final String SOURCE_ROOT_DIR = "/" + DEFAULT_PROJECT_NAME;
+	private static final String SOURCE_ROOT_DIR = File.separator + DEFAULT_PROJECT_NAME;
 
 	/**
 	 * different types of files that need to be checked when copying the project 

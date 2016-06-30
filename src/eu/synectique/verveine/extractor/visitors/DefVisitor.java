@@ -5,8 +5,6 @@ import java.util.Set;
 
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
-import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
@@ -29,6 +27,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleTypeTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
@@ -48,6 +47,7 @@ import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
+import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
@@ -204,6 +204,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
 
+	protected int visit(ICPPASTVisibilityLabel node) {
+		tracer.msg("    visibility="+node.getVisibility());  //v_public = 1; v_protected = 2; v_private = 3;
+		return PROCESS_CONTINUE;
+	}
+
 	/** Visiting a class definition
 	 */
 	@Override
@@ -270,9 +275,8 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 					String fullName = ((StubBinding)bnd).getEntityName();
 					// get method name and parent
 					if (isFullyQualified(fullName)) {
-						int i = fullName.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-						mthSig = fullName.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
-						parent = (Type) findInParent(fullName.substring(0,i), context.top(), /*recursive*/true);
+						mthSig = extractMethodName(fullName);
+						parent = (Type) findInParent(extractMethodParentName(fullName), context.top(), /*recursive*/true);
 					}
 					else {
 						mthSig = fullName;
@@ -313,6 +317,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 		return PROCESS_SKIP;
 	}
+
 
 	/**
 	 * Visiting a method or function definition
@@ -435,6 +440,22 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	public int nbUnresolvedIncludes() {
 		return unresolvedIncludes.size();
+	}
+
+	private String extractMethodName(String fullname) {
+		int i;
+		i = fullname.indexOf('(');
+		fullname = fullname.substring(0, i);
+		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		return fullname.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
+	}
+
+	private String extractMethodParentName(String fullname) {
+		int i;
+		i = fullname.indexOf('(');
+		fullname = fullname.substring(0, i);
+		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		return fullname.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
 	}
 
 }
