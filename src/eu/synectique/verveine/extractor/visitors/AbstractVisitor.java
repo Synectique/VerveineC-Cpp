@@ -430,7 +430,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			// for behavioural, we put the full signature in the key to have better chance of recovering it
 			SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
 			node.accept(sigVisitor);
-			behavName = sigVisitor.getSignature();
+			behavName = sigVisitor.getFullSignature(node);
 
 			if (parent instanceof eu.synectique.verveine.core.gen.famix.Class) {
 				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)parent, behavName ));
@@ -744,7 +744,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			// non ContainerEntity, should never happen
 			return null;
 		}
-		
+
 		if (found != null) {
 			return found;
 		}
@@ -959,45 +959,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		return sig;
 	}
 
-/*
-	private BehaviouralEntity lookForUnboundMethod(Type parent, String name, ICPPASTParameterDeclaration[] params) {
-		for (Method mth : parent.getMethods()) {
-			if (mth.getName().equals(name)) {
-				if (checkParams(mth, params)) {
-					return mth;
-				}
-			}
-		}
-		return null;
-	}
-
-	private boolean checkParams(Method mth, ICPPASTParameterDeclaration[] params) {
-		int i;
-		String sig = mth.getSignature();
-		i = sig.indexOf('(');
-		sig = sig.substring(i+1, sig.length()-1);
-		int p = 0;
-		for (String t : sig.split(",")) {
-			t = t.trim();
-			// trying to match the type name
-			String typName = params[p].getDeclSpecifier().getRawSignature();
-			if (! t.startsWith( typName)) {
-				return false;
-			}
-			t = t.substring(typName.length()).trim();
-			// trying to match a pointer
-			for (@SuppressWarnings("unused") IASTPointerOperator pointOp : params[p].getDeclarator().getPointerOperators()) {
-				if (t.charAt(0) != '*') {
-					return false;
-				}
-				t = t.substring(1).trim();
-			}
-			p++;
-		}
-		return true;
-	}
-*/
-
 	// UTILITIES ======================================================================================================
 
 	private void visitChildren(IParent elt) {
@@ -1079,6 +1040,8 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			// name of the method, equivalent to 'simpleName()' but we needed the index to find the className
 			i = fullName.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 			mthName = fullName.substring(i+2);
+			i = mthName.lastIndexOf('(');
+			mthName = mthName.substring(0, i);
 			// name of the class
 			fullName = fullName.substring(0, i);
 			className = simpleName(fullName);

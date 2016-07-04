@@ -264,7 +264,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 			// try to resolve it manually
 			SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
 			node.accept(sigVisitor);
-			String sig = sigVisitor.getSignature();
+			String sig = sigVisitor.getFullSignature(node);
 			fmx = (BehaviouralEntity) findInParent(sig, context.top(), /*recursive*/true);
 		}
 

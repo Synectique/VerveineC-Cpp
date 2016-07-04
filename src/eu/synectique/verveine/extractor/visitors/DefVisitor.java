@@ -16,6 +16,7 @@ import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
@@ -28,6 +29,9 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
@@ -271,12 +275,12 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			if (isMethodBinding(bnd)) {
 				Type parent;
 
+				/* get method name and parent */
 				if (bnd instanceof StubBinding) {
 					String fullName = ((StubBinding)bnd).getEntityName();
-					// get method name and parent
 					if (isFullyQualified(fullName)) {
 						mthSig = extractMethodSignature(fullName);
-						parent = (Type) findInParent(extractMethodParentName(fullName), context.top(), /*recursive*/true);
+						parent = (Type) resolveOrNamespace(extractMethodParentName(fullName));
 					}
 					else {
 						mthSig = fullName;
@@ -285,12 +289,22 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 				}
 				else {
 					SignatureBuilderVisitor visit = new SignatureBuilderVisitor(dico);
-					node.accept(visit);
-					mthSig = visit.getSignature();
-					parent = context.topType();
+					mthSig = visit.getFullSignature(node);
+					if (isFullyQualified(nodeName)) {
+						ICPPClassType parentBnd = ((ICPPMethod)bnd).getClassOwner(); 
+						parent = (Type) dico.getEntityByKey(parentBnd);
+					}
+					else {
+						parent = context.topType();
+					}
 				}
-
-				fmx = dico.ensureFamixMethod(bnd, simpleName(nodeName.toString()), mthSig, /*owner*/parent);
+				
+				/* last try to recover method ... */
+				fmx = (BehaviouralEntity) findInParent(mthSig, parent, false);
+				/* ... or create it */
+				if (fmx == null) {
+					fmx = dico.ensureFamixMethod(bnd, simpleName(nodeName.toString()), mthSig, /*owner*/parent);
+				}
 
 				if (isDestructorBinding(bnd)) {
 					((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);

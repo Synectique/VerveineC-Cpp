@@ -264,7 +264,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	// UTILITIES =========================================================================================================================================
 
 	public String primitiveTypeName(int type) {
-		String name = PRIM_T_UNKNOWN+":"+type;
+		String name = PRIM_T_UNKNOWN+"_"+type;
 		switch (type) {
 		case IASTSimpleDeclSpecifier.t_void:
 			// for type void, we return null as in: "void f()"
