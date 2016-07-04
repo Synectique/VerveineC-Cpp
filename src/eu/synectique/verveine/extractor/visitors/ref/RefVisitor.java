@@ -125,12 +125,28 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	@Override
 	public int visit(IASTParameterDeclaration node) {
 		Parameter fmx = null;
+		String paramName = null;
+		BehaviouralEntity parent = null;
 
 		 // get node name and bnd
 		if (super.visit(node) == PROCESS_SKIP) {
 			return PROCESS_SKIP;
 		}
 		fmx = (Parameter) dico.getEntityByKey(bnd);
+
+		if (fmx == null) {
+			/* get param name and parent */
+			parent = context.topBehaviouralEntity();
+			paramName = nodeName.toString();
+
+			/* last try to recover parameter */
+			fmx = (Parameter) findInParent(paramName, parent, false);
+		}
+
+		if (fmx == null) {
+			// should really really not happen
+			fmx = dico.ensureFamixParameter(bnd, paramName, parent);
+		}
 
 		// now get the declared type
 		if (fmx != null) {
