@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.index.IIndex;
@@ -31,6 +33,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 
+import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.VerveineParser;
 import eu.synectique.verveine.core.gen.famix.CSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
@@ -55,15 +58,55 @@ public class VerveineCParser extends VerveineParser {
 	private static final int IGNORE_FILE = 1;
 	private static final int UNKNOWN_FILE = 2;
 
+	/**
+	 * local variable to keep eclipse platform quiet
+	 */
 	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 
+	/**
+	 * Directory where the project to analyze is located
+	 */
 	private String userProjectDir;
 
-	private String[] additionalIncludePath;
-	
+	/**
+	 * Default include paths for Linux
+	 */
+    static final public String[] LINUX_DEFAULT_INCLUDE = new String[] {
+			 "/usr/include/c++/5" ,
+			 "/usr/include/x86_64-linux-gnu/c++/5" ,
+			 "/usr/include/c++/5/backward" ,
+			 "/usr/lib/gcc/x86_64-linux-gnu/5/include" ,
+			 "/usr/local/include" ,
+			 "/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed" ,
+			 "/usr/include/x86_64-linux-gnu" ,
+			 "/usr/include"	
+    };
+
+	/**
+	 * Temporary variable to gather include paths from the command line.
+	 */
+	private List<String> argIncludes;
+
+	/**
+	 * Temporary variable to gather macros defined from the command line
+	 */
+	private List<String> argDefined;
+
+	/**
+	 * Eclipse CDT indexer
+	 */
 	private IIndex index;
 
+	/**
+	 * A tracer for debugging
+	 */
 	private ITracer tracer;
+
+	public VerveineCParser() {
+		super();
+		this.argIncludes = new ArrayList<String>();
+		this.argDefined = new ArrayList<String>();
+	}
 
 	public void parse() {
 		CDictionary dico = new CDictionary(getFamixRepo());
@@ -71,8 +114,10 @@ public class VerveineCParser extends VerveineParser {
 		tracer = new Tracer();
 		tracer.msg("step 1 / 3: indexing");
 
-        IProject project = createEclipseProject(DEFAULT_PROJECT_NAME);
-        ICProject cproject = initializeCProject(project, userProjectDir);
+        ICProject cproject = createEclipseProject(DEFAULT_PROJECT_NAME, userProjectDir);
+
+        configIndexer(cproject);
+		computeIndex(cproject);
 
         try {
     		tracer.msg("step 2 / 3: creating structural entities");
@@ -107,7 +152,7 @@ public class VerveineCParser extends VerveineParser {
 
 	}
 
-	private IProject createEclipseProject(String projName) {
+	private ICProject createEclipseProject(String projName, String sourcePath) {
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
 		configWorkspace(workspace);
 		IWorkspaceRoot root = workspace.getRoot();
@@ -135,7 +180,7 @@ public class VerveineCParser extends VerveineParser {
 		} catch (CoreException e1) {
 			e1.printStackTrace();
 		}
-		
+
 		try {
 			// now we make it a C project
 			CCorePlugin.getDefault().createCProject(eclipseProjDesc, project, NULL_PROGRESS_MONITOR, project.getName());
@@ -150,10 +195,6 @@ public class VerveineCParser extends VerveineParser {
 		ICProjectDescription cProjectDesc = CoreModel.getDefault().getProjectDescription(project, true);
 		cProjectDesc.setCdtProjectCreated();
 
-		return project;
-	}
-
-	private ICProject initializeCProject(IProject project, String sourcePath) {
 		copySourceFilesInProject(project, new File(sourcePath));
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
         try {
@@ -161,24 +202,55 @@ public class VerveineCParser extends VerveineParser {
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
-		ICProject cproject = CoreModel.getDefault().getCModel().getCProject(project.getName());
+		return CoreModel.getDefault().getCModel().getCProject(project.getName());
+	}
 
-		try {
-			IPathEntry[] oldEntries = cproject.getRawPathEntries();
-			IPathEntry[] newEntries = new IPathEntry[oldEntries.length + additionalIncludePath.length];
-			int i;
-			for (i=0; i < oldEntries.length; i++) {
-				newEntries[i] = oldEntries[i];
-			}
-			for (String path : additionalIncludePath) {
-				newEntries[i] = CoreModel.newIncludeEntry(project.getFullPath(), null, new Path(path), true);
-				i++;
-			}
-			cproject.setRawPathEntries(newEntries, NULL_PROGRESS_MONITOR);
+	/**
+	 * sets include path (system, given by user) and macros into the project
+	 */
+	private void configIndexer(ICProject proj) {
+		IPath projPath = proj.getPath();
+
+		IPathEntry[] oldEntries=null;
+		try {			
+			oldEntries = proj.getRawPathEntries();
+		} catch (CModelException e) {
+			e.printStackTrace();
+			return;
+		}
+
+		IPathEntry[] newEntries = new IPathEntry[oldEntries.length + LINUX_DEFAULT_INCLUDE.length + argIncludes.size() + argDefined.size()];
+		int i;
+
+		/* include paths */
+		for (i=0; i < oldEntries.length; i++) {
+			newEntries[i] = oldEntries[i];
+		}
+		/* include paths */
+		for (String path : LINUX_DEFAULT_INCLUDE) {
+			newEntries[i] = CoreModel.newIncludeEntry(projPath, null, new Path(path), /*isSystemInclude*/true);
+			i++;
+		}
+		/* include paths */
+		for (String path : argIncludes) {
+			newEntries[i] = CoreModel.newIncludeEntry(projPath, null, new Path(path), /*isSystemInclude*/false);
+			i++;
+		}
+
+		/* macros  defined */
+		for (String macro : argDefined) {
+			CoreModel.newMacroEntry(projPath, macro, "");
+		}
+
+		try {			
+			proj.setRawPathEntries(newEntries, NULL_PROGRESS_MONITOR);
+
 		} catch (CModelException e) {
 			e.printStackTrace();
 		}
+	}
 
+	private void computeIndex(ICProject cproject) {
 		IIndexManager imanager = CCorePlugin.getIndexManager();
 		imanager.setIndexerId(cproject, "org.eclipse.cdt.core.fastIndexer");
         imanager.reindex(cproject);
@@ -188,8 +260,6 @@ public class VerveineCParser extends VerveineParser {
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
-
-		return cproject;
 	}
 
 	/**
@@ -309,6 +379,12 @@ public class VerveineCParser extends VerveineParser {
 			if (arg.equals("-h")) {
 				usage();
 			}
+			else if (arg.startsWith("-I")) {
+				argIncludes.add(arg.substring(2));
+			}
+			else if (arg.startsWith("-D")) {
+				argDefined.add(arg.substring(2));
+			}
 			else {
 				int j = super.setOption(i - 1, args);
 				if (j > 0) {     // j is the number of args consumed by super.setOption()
@@ -322,28 +398,17 @@ public class VerveineCParser extends VerveineParser {
 			}
 		}
 
-		// TODO this should not be hard coded
-		additionalIncludePath = new String[] {
-				 "/usr/include/c++/5" ,
-				 "/usr/include/x86_64-linux-gnu/c++/5" ,
-				 "/usr/include/c++/5/backward" ,
-				 "/usr/lib/gcc/x86_64-linux-gnu/5/include" ,
-				 "/usr/local/include" ,
-				 "/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed" ,
-				 "/usr/include/x86_64-linux-gnu" ,
-				 "/usr/include"	
-		};
-
 		for ( ; i < args.length; i++) {
 			userProjectDir = args[i];
 		}
-
 	}
 
 	protected void usage() {
 		System.err.println("Usage: VerveineC [-h] [-o <output-file-name>] <eclipse-Cproject-to-parse>");
 		System.err.println("      [-h] prints this message");
 		System.err.println("      [-o <output-file-name>] specifies the name of the output file (default: output.mse)");
+		System.err.println("      [-D<macro>] specifies a defined macro");
+		System.err.println("      [-I<include-dir>] specifies the name of an additionnal directory");
 		System.err.println("      <eclipse-Cproject-to-parse> existing Eclipse C-project to export in MSE");
 		System.exit(0);
 	}

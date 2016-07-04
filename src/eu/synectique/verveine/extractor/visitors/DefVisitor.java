@@ -275,7 +275,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 					String fullName = ((StubBinding)bnd).getEntityName();
 					// get method name and parent
 					if (isFullyQualified(fullName)) {
-						mthSig = extractMethodName(fullName);
+						mthSig = extractMethodSignature(fullName);
 						parent = (Type) findInParent(extractMethodParentName(fullName), context.top(), /*recursive*/true);
 					}
 					else {
@@ -442,11 +442,10 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		return unresolvedIncludes.size();
 	}
 
-	private String extractMethodName(String fullname) {
+	private String extractMethodSignature(String fullname) {
 		int i;
 		i = fullname.indexOf('(');
-		fullname = fullname.substring(0, i);
-		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		i = fullname.substring(0, i).lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		return fullname.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
 	}
 
@@ -455,7 +454,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		i = fullname.indexOf('(');
 		fullname = fullname.substring(0, i);
 		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		return fullname.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
+		return fullname.substring(0, i);
 	}
 
 }
