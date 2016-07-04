@@ -92,8 +92,8 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 				else if (fmx instanceof StructuralEntity) {
 					// fmx is probably a pointer to a BehavioralEntity
 					String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
-					returnedEntity = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx );
-					((Invocation)returnedEntity).setSignature(stubSig);
+					returnedEntity = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx, stubSig);
+					dico.addSourceAnchor(returnedEntity, filename, node.getFileLocation());
 				}
 			}
 		}

@@ -147,9 +147,9 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @param fmx -- StructuralEntity pointing to a BehaviouralEntity invoked
 	 * @return the invocation created
 	 */
-	protected DereferencedInvocation dereferencedInvocation(StructuralEntity fmx) {
+	protected DereferencedInvocation dereferencedInvocation(StructuralEntity fmx, String sig) {
 		BehaviouralEntity accessor = this.context.topBehaviouralEntity();
-		DereferencedInvocation invok = dico.addFamixDereferencedInvocation(accessor, fmx, /*signature*/null, context.getLastInvocation());
+		DereferencedInvocation invok = dico.addFamixDereferencedInvocation(accessor, fmx, /*signature*/sig, context.getLastInvocation());
 		context.setLastInvocation(invok);
 		return invok;
 	}
