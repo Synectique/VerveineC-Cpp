@@ -276,12 +276,9 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		super.visit(node);
 
 		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
+
 		if (fmx == null) {
-			// try to resolve it manually
-			SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
-			node.accept(sigVisitor);
-			String sig = sigVisitor.getFullSignature(node);
-			fmx = (BehaviouralEntity) findInParent(sig, context.top(), /*recursive*/true);
+			fmx = recoverBehaviouralManually(node, bnd);
 		}
 
 		this.context.push(fmx);

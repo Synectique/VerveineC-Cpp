@@ -1081,4 +1081,61 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		}
 	}
 
+
+
+	protected BehaviouralEntity recoverBehaviouralManually(ICPPASTFunctionDeclarator node, IBinding bnd) {
+		String mthSig;
+		Type parent;
+		BehaviouralEntity fmx;
+		if (isMethodBinding(bnd)) {
+			/* get method name and parent */
+			if (bnd instanceof StubBinding) {
+				String fullName = ((StubBinding)bnd).getEntityName();
+				if (isFullyQualified(fullName)) {
+					mthSig = extractMethodSignature(fullName);
+					parent = (Type) resolveOrNamespace(extractMethodParentName(fullName));
+				}
+				else {
+					mthSig = fullName;
+					parent = context.topType();
+				}
+			}
+			else {
+				mthSig = new SignatureBuilderVisitor(dico).getFullSignature(node);
+				if (isFullyQualified(nodeName)) {
+					parent = (Type) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
+				}
+				else {
+					parent = context.topType();
+				}
+			}
+			
+			/* last try to recover method ... */
+			fmx = (BehaviouralEntity) findInParent(mthSig, parent, false);
+			/* ... or create it */
+			if (fmx == null) {
+				fmx = dico.ensureFamixMethod(bnd, simpleName(nodeName.toString()), mthSig, /*owner*/parent);
+			}
+		}
+		else {                    //   C function or may be a stub ?
+			fmx = dico.ensureFamixFunction(bnd, simpleName(nodeName), new SignatureBuilderVisitor(dico).getFullSignature(node), (ContainerEntity)context.top());
+		}
+		return fmx;
+	}
+
+	protected String extractMethodSignature(String fullname) {
+		int i;
+		i = fullname.indexOf('(');
+		i = fullname.substring(0, i).lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		return fullname.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
+	}
+
+	protected String extractMethodParentName(String fullname) {
+		int i;
+		i = fullname.indexOf('(');
+		fullname = fullname.substring(0, i);
+		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		return fullname.substring(0, i);
+	}
+
 }

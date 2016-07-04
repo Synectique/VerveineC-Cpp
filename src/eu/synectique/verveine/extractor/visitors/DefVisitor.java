@@ -16,7 +16,6 @@ import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
-import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
@@ -31,7 +30,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
@@ -47,10 +45,8 @@ import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
-import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.utils.NullTracer;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
@@ -262,7 +258,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
-		String mthSig;
 		BehaviouralEntity fmx = null;
 
 		// compute nodeName and binding
@@ -272,50 +267,14 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
 
 		if (fmx == null) {
-			if (isMethodBinding(bnd)) {
-				Type parent;
+			fmx = recoverBehaviouralManually(node, bnd);
+		}
 
-				/* get method name and parent */
-				if (bnd instanceof StubBinding) {
-					String fullName = ((StubBinding)bnd).getEntityName();
-					if (isFullyQualified(fullName)) {
-						mthSig = extractMethodSignature(fullName);
-						parent = (Type) resolveOrNamespace(extractMethodParentName(fullName));
-					}
-					else {
-						mthSig = fullName;
-						parent = context.topType();
-					}
-				}
-				else {
-					SignatureBuilderVisitor visit = new SignatureBuilderVisitor(dico);
-					mthSig = visit.getFullSignature(node);
-					if (isFullyQualified(nodeName)) {
-						ICPPClassType parentBnd = ((ICPPMethod)bnd).getClassOwner(); 
-						parent = (Type) dico.getEntityByKey(parentBnd);
-					}
-					else {
-						parent = context.topType();
-					}
-				}
-				
-				/* last try to recover method ... */
-				fmx = (BehaviouralEntity) findInParent(mthSig, parent, false);
-				/* ... or create it */
-				if (fmx == null) {
-					fmx = dico.ensureFamixMethod(bnd, simpleName(nodeName.toString()), mthSig, /*owner*/parent);
-				}
-
-				if (isDestructorBinding(bnd)) {
-					((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
-				}
-				if (isConstructorBinding(bnd)) {
-					((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
-				}
-			}
-			else {                    //   C function or may be a stub ?
-				fmx = dico.ensureFamixFunction(bnd, simpleName(nodeName), node.getRawSignature(), /*owner*/(ContainerEntity)context.top());
-			}
+		if (isDestructorBinding(bnd)) {
+			((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
+		}
+		if (isConstructorBinding(bnd)) {
+			((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 		fmx.setNumberOfParameters(node.getParameters().length);
@@ -331,7 +290,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 		return PROCESS_SKIP;
 	}
-
 
 	/**
 	 * Visiting a method or function definition
@@ -454,21 +412,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	public int nbUnresolvedIncludes() {
 		return unresolvedIncludes.size();
-	}
-
-	private String extractMethodSignature(String fullname) {
-		int i;
-		i = fullname.indexOf('(');
-		i = fullname.substring(0, i).lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		return fullname.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
-	}
-
-	private String extractMethodParentName(String fullname) {
-		int i;
-		i = fullname.indexOf('(');
-		fullname = fullname.substring(0, i);
-		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		return fullname.substring(0, i);
 	}
 
 }

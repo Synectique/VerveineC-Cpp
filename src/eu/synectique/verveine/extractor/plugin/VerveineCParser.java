@@ -33,7 +33,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 
-import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.VerveineParser;
 import eu.synectique.verveine.core.gen.famix.CSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
@@ -72,14 +71,14 @@ public class VerveineCParser extends VerveineParser {
 	 * Default include paths for Linux
 	 */
     static final public String[] LINUX_DEFAULT_INCLUDE = new String[] {
-			 "/usr/include/c++/5" ,
-			 "/usr/include/x86_64-linux-gnu/c++/5" ,
-			 "/usr/include/c++/5/backward" ,
-			 "/usr/lib/gcc/x86_64-linux-gnu/5/include" ,
+			 "/usr/include",
 			 "/usr/local/include" ,
-			 "/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed" ,
+			 "/usr/include/c++/5" ,
+			 "/usr/include/c++/5/backward" ,
 			 "/usr/include/x86_64-linux-gnu" ,
-			 "/usr/include"	
+			 "/usr/include/x86_64-linux-gnu/c++/5" ,
+			 "/usr/lib/gcc/x86_64-linux-gnu/5/include" ,
+			 "/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed"
     };
 
 	/**
