@@ -13,6 +13,8 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 
+import eu.synectique.verveine.extractor.plugin.CDictionary;
+
 /**
  * A visitor specialized in reconstructing the signature of a method/function.
  * It works by visiting the node itself to get the name and parameters, and visiting the DeclSpecifier of the node's parent
@@ -45,7 +47,8 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 			((IASTFunctionDefinition)node.getParent()).getDeclSpecifier().accept(this);
 		}
 		// else ???
-		fullSignature += ":" + signature;
+
+		fullSignature += "->" + signature;
 
 		return fullSignature;
 	}

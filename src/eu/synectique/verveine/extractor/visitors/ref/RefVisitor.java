@@ -43,11 +43,11 @@ import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
+import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 //import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
-import eu.synectique.verveine.extractor.visitors.CDictionary;
 import eu.synectique.verveine.extractor.visitors.SignatureBuilderVisitor;
 
 public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
@@ -194,11 +194,11 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 				if(supBnd instanceof IBinding) {
 					String supName = ((IBinding)supBnd).getName();
-					supFmx =  ensureStubClassInNamespace((IBinding)supBnd, supName);
+					supFmx =  ensureStubSuperClassInNamespace((IBinding)supBnd, supName);
 				}
 				if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
 					// could be just a type instead of a class, but there is no way to know for sure
-					supFmx = ensureStubClassInNamespace((IBinding)null, /*name*/node.getBaseSpecifiers()[i].getNameSpecifier().toString());
+					supFmx = ensureStubSuperClassInNamespace((IBinding)null, /*name*/node.getBaseSpecifiers()[i].getNameSpecifier().toString());
 				}
 				if (supFmx != null) {
 					lastInheritance = dico.ensureFamixInheritance(supFmx, fmx, lastInheritance);

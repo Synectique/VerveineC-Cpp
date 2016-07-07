@@ -26,9 +26,9 @@ import eu.synectique.verveine.core.gen.famix.ParameterizedType;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
-import eu.synectique.verveine.extractor.visitors.CDictionary;
 
 /**
  * Abstract superclass for Reference visitors.<BR>

@@ -1,11 +1,8 @@
 package eu.synectique.verveine.extractor.plugin;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.eclipse.cdt.core.CCorePlugin;
@@ -17,9 +14,6 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.IPathEntry;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.core.settings.model.ICProjectDescriptionManager;
-import org.eclipse.core.resources.IContainer;
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
@@ -29,17 +23,16 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 
 import eu.synectique.verveine.core.VerveineParser;
 import eu.synectique.verveine.core.gen.famix.CSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
+import eu.synectique.verveine.extractor.utils.Constants;
+import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.ITracer;
-import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
-import eu.synectique.verveine.extractor.visitors.CDictionary;
 import eu.synectique.verveine.extractor.visitors.DefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
@@ -49,18 +42,6 @@ public class VerveineCParser extends VerveineParser {
 	static final public String DEFAULT_PROJECT_NAME = "tempProj";
 
 	private static final String SOURCE_ROOT_DIR = File.separator + DEFAULT_PROJECT_NAME;
-
-	/**
-	 * different types of files that need to be checked when copying the project 
-	 */
-	private static final int SOURCE_FILE = 0;
-	private static final int IGNORE_FILE = 1;
-	private static final int UNKNOWN_FILE = 2;
-
-	/**
-	 * local variable to keep eclipse platform quiet
-	 */
-	private IProgressMonitor NULL_PROGRESS_MONITOR = new NullProgressMonitor();
 
 	/**
 	 * Directory where the project to analyze is located
@@ -101,10 +82,16 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	private ITracer tracer;
 
+	/**
+	 * flag telling whether we need to look for all possible include dir
+	 */
+	private boolean autoinclude;
+
 	public VerveineCParser() {
 		super();
 		this.argIncludes = new ArrayList<String>();
 		this.argDefined = new ArrayList<String>();
+		this .autoinclude = false;
 	}
 
 	public void parse() {
@@ -163,8 +150,8 @@ public class VerveineCParser extends VerveineParser {
 		try {
 			// delete content if the project exists
 			if (project.exists()) {
-				project.delete(/*deleteContent*/true, /*force*/true, NULL_PROGRESS_MONITOR);
-				project.refreshLocal(IResource.DEPTH_INFINITE, NULL_PROGRESS_MONITOR);
+				project.delete(/*deleteContent*/true, /*force*/true, Constants.NULL_PROGRESS_MONITOR);
+				project.refreshLocal(IResource.DEPTH_INFINITE, Constants.NULL_PROGRESS_MONITOR);
 			}
 		} catch (Exception exc) {
 			exc.printStackTrace();
@@ -174,17 +161,17 @@ public class VerveineCParser extends VerveineParser {
 		eclipseProjDesc.setLocation(eclipseProjPath);
 
 		try {
-			project.create(eclipseProjDesc, NULL_PROGRESS_MONITOR);
-			project.open(NULL_PROGRESS_MONITOR);
+			project.create(eclipseProjDesc, Constants.NULL_PROGRESS_MONITOR);
+			project.open(Constants.NULL_PROGRESS_MONITOR);
 		} catch (CoreException e1) {
 			e1.printStackTrace();
 		}
 
 		try {
 			// now we make it a C project
-			CCorePlugin.getDefault().createCProject(eclipseProjDesc, project, NULL_PROGRESS_MONITOR, project.getName());
+			CCorePlugin.getDefault().createCProject(eclipseProjDesc, project, Constants.NULL_PROGRESS_MONITOR, project.getName());
 			if (!project.isOpen()) {
-				project.open(NULL_PROGRESS_MONITOR);
+				project.open(Constants.NULL_PROGRESS_MONITOR);
 			}
 		} catch (Exception exc) {
 			System.err.println("Error ("+exc.getClass().getSimpleName()+") in Project creation: " + exc.getMessage());
@@ -194,10 +181,10 @@ public class VerveineCParser extends VerveineParser {
 		ICProjectDescription cProjectDesc = CoreModel.getDefault().getProjectDescription(project, true);
 		cProjectDesc.setCdtProjectCreated();
 
-		copySourceFilesInProject(project, new File(sourcePath));
+		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, new File(sourcePath));
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
         try {
-			descManager.updateProjectDescriptions(new IProject[] { project }, NULL_PROGRESS_MONITOR);
+			descManager.updateProjectDescriptions(new IProject[] { project }, Constants.NULL_PROGRESS_MONITOR);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
@@ -242,7 +229,7 @@ public class VerveineCParser extends VerveineParser {
 		}
 
 		try {			
-			proj.setRawPathEntries(newEntries, NULL_PROGRESS_MONITOR);
+			proj.setRawPathEntries(newEntries, Constants.NULL_PROGRESS_MONITOR);
 
 		} catch (CModelException e) {
 			e.printStackTrace();
@@ -261,110 +248,6 @@ public class VerveineCParser extends VerveineParser {
 		}
 	}
 
-	/**
-	 * Copies all source files from src to the source directory of project
-	 * @param project -- project where to copy the file(s)
-	 * @param src -- A directory of file to copy to the project
-	 */
-	private void copySourceFilesInProject(IProject project, File src) {
-		tracer = new NullTracer("Cpy");
-		if (src.isDirectory()) {
-			copySourceFilesRecursive(project, project.getFolder(SOURCE_ROOT_DIR), src);
-		}
-		else {
-			copyFile(project, project.getFolder(SOURCE_ROOT_DIR), src);
-		}
-	}
-
-	private void copySourceFilesRecursive(IProject project, IFolder internalPath, File dir) {
-		tracer.up(dir.getAbsolutePath());
-		if (checkFileType(dir.getName()) == IGNORE_FILE) {
-			 tracer.msg("     ignore");
-			return;
-		}
-
-		for (File child : dir.listFiles()) {
-			if (child.isDirectory()) {
-				copySourceFilesRecursive(project, internalPath.getFolder(child.getName()), child);
-			}
-			else {
-				copyFile(project, internalPath, child);
-			}
-		}
-		tracer.down();
-	}
-
-	/**
-	 * Copies one source file in an Eclipse project to dest.
-	 * If dest already exist, it is silently overriden
-	 * @param project -- project where to copy the file
-	 * @param orig -- file to copy in the project
-	 * @param dest -- path within the project where to put the file
-	 */
-	private void copyFile(IProject project, IFolder destPath, File orig) {
-		 tracer.msg(orig.getAbsolutePath());
-		 if (checkFileType(orig.getName()) != SOURCE_FILE) {
-			 tracer.msg("       not source");
-			 return;
-		 }
-		 tracer.msg("       source to be copied");
-
-		 if (! destPath.exists()) {
-			mkdirs(destPath);
-		}
-
-		try {
-			InputStream source = new ByteArrayInputStream( Files.readAllBytes(orig.toPath()) );
-			IFile file = destPath.getFile(orig.getName());
-
-			file.create(source, /*force*/true, NULL_PROGRESS_MONITOR);
-			file.refreshLocal(IResource.DEPTH_ZERO, NULL_PROGRESS_MONITOR);
-
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void mkdirs(IFolder destPath) {
-		IContainer parent = destPath.getParent(); 
-		if (! parent.exists()) {
-			if (parent instanceof IFolder) {
-				mkdirs((IFolder) parent);
-			}
-			else if (parent instanceof IProject) {
-				mkdirs( ((IProject)parent).getFolder(".") );
-			}
-		}
-		try {
-			destPath.create(/*force*/true, /*local*/true, NULL_PROGRESS_MONITOR);
-		} catch (CoreException e) {
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Check whether a file name looks like a legitimate C/C++ source file
-	 * @param filename
-	 * @return
-	 */
-	private int checkFileType(String filename) {
-		if (filename.charAt(0) == '.') {
-			return IGNORE_FILE;
-		}
-
-		String[] cppSourceExtensions = { ".cpp", ".hpp", ".hh", ".cc", ".icc", ".c", ".h" };
-		for (String ext : cppSourceExtensions) {
-			if (filename.endsWith(ext)) {
-				return SOURCE_FILE;
-			}
-		}
-
-		return UNKNOWN_FILE;
-
-	}
-
 	@Override
 	protected SourceLanguage getMyLgge() {
 		return new CSourceLanguage();
@@ -377,6 +260,9 @@ public class VerveineCParser extends VerveineParser {
 
 			if (arg.equals("-h")) {
 				usage();
+			}
+			else if (arg.equals("-autoinclude")) {
+				autoinclude = true;
 			}
 			else if (arg.startsWith("-I")) {
 				argIncludes.add(arg.substring(2));
@@ -399,16 +285,24 @@ public class VerveineCParser extends VerveineParser {
 
 		for ( ; i < args.length; i++) {
 			userProjectDir = args[i];
+			
+			if (autoinclude) {
+				for (String inc : FileUtil.gatherIncludeDirs(args[i])) {
+					argIncludes.add(inc);					
+				}
+			}
 		}
 	}
 
 	protected void usage() {
-		System.err.println("Usage: VerveineC [-h] [-o <output-file-name>] <eclipse-Cproject-to-parse>");
-		System.err.println("      [-h] prints this message");
-		System.err.println("      [-o <output-file-name>] specifies the name of the output file (default: output.mse)");
-		System.err.println("      [-D<macro>] specifies a defined macro");
-		System.err.println("      [-I<include-dir>] specifies the name of an additionnal directory");
-		System.err.println("      <eclipse-Cproject-to-parse> existing Eclipse C-project to export in MSE");
+		System.err.println("Usage: VerveineC [<options>] <eclipse-Cproject-to-parse>");
+		System.err.println("Recognized options:");
+		System.err.println("      -h: prints this message");
+		System.err.println("      -o <output-file-name>: changes the name of the output file (default: output.mse)");
+		//System.err.println("      -D<macro>: defines a C/C++ macro");
+		System.err.println("      -I<include-dir>: adds a directory containing include files");
+		System.err.println("      -autoinclude: looks for _all_ directories containing .h/.hh files and add them in the include paths");
+		System.err.println("      <eclipse-Cproject-to-parse>: directory containing the C/C++ project to export in MSE");
 		System.exit(0);
 	}
 

@@ -46,6 +46,7 @@ import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
+import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 
@@ -78,7 +79,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
 
 	/**
-	 * Visit an file directory. They are treated as Package
+	 * Visit a file directory. They are treated as Package
 	 */
 	@Override
 	public void visit(ICContainer elt) {

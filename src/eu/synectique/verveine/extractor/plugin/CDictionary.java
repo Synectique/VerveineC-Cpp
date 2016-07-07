@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.visitors;
+package eu.synectique.verveine.extractor.plugin;
 
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;

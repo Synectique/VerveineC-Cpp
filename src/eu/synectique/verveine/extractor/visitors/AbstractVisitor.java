@@ -59,6 +59,8 @@ import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
@@ -99,7 +101,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	/**
 	 * A variable used in many visit methods to store the binding of the current node
 	 */
-	protected /*IIndex*/IBinding bnd;
+	protected IBinding bnd;
 
 	/**
 	 * FamixSourcedEntity created as a result of a visitor.
@@ -907,23 +909,31 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	/**
-	 * Ensures a stub class and its parent (a namespace).
+	 * Ensures a stub type/class and its parent (a namespace).
 	 * Deals with fully qualified class name and not qualified class name (puts class in toplevel namespace (i.e. null) in this case).
 	 * @param classBnd class binding or null (in which case creates a StubBinding)
 	 * @param name of the stub class to create
 	 */
-	protected eu.synectique.verveine.core.gen.famix.Class ensureStubClassInNamespace(IBinding classBnd, String name) {
+	protected Type ensureStubSuperClassInNamespace(IBinding classBnd, String name) {
 		ContainerEntity parent = null;
+		Type typ;
 
 		if (isFullyQualified(name)) {
 			parent = recursiveEnsureParentNamespace(name);
 			name = simpleName(name);
 		}
 
-		if (classBnd == null) {
-			classBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, name));
+		
+		// sometimes the "class" happens to have been created as a type before ...
+		typ = (Type) findInParent(name, parent, /*recursive*/false);
+		
+		if (typ == null) {
+			if (classBnd == null) {
+				classBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, name));
+			}
+			typ = dico.ensureFamixClass(classBnd, name, parent);
 		}
-		return dico.ensureFamixClass(classBnd, name, parent);
+		return typ;
 	}
 
 	protected BehaviouralEntity makeStubBehavioural(String name, int nbArgs, boolean isMethod) {
@@ -1033,20 +1043,20 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			return true;
 		}
 		if (bnd instanceof StubBinding) {
-			String className;
-			String mthName;
 			String fullName = ((StubBinding)bnd).getEntityName();
 			int i;
-			// name of the method, equivalent to 'simpleName()' but we needed the index to find the className
-			i = fullName.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-			mthName = fullName.substring(i+2);
-			i = mthName.lastIndexOf('(');
-			mthName = mthName.substring(0, i);
-			// name of the class
-			fullName = fullName.substring(0, i);
-			className = simpleName(fullName);
-			// comparing them
-			return className.equals(mthName);
+			// remove parameters from the name
+			i = fullName.indexOf('(');
+
+//System.err.println("isConstructorBinding // "+fullName);
+	        fullName = fullName.substring(0, i);
+			String[] parts = fullName.split(CDictionary.CPP_NAME_SEPARATOR);
+			
+			i = parts.length;
+			if (i < 2) {
+				return false; // not a qualified name, can be a simple, top level, function
+			}
+			return parts[i-2].equals(parts[i-1]);  // className (second to last part) = methName (last part) ?
 		}
 		return false;
 	}
@@ -1067,17 +1077,11 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected boolean checkHeader(ITranslationUnit tu) {
-		String ext;
-		int i = tu.getElementName().lastIndexOf('.');
-		if (i < 0) {
-			return false;    // not a source file
-		}
-		ext = tu.getElementName().substring(i);
 		if (visitHeaders) {
-			return ext.startsWith(".h");
+			return FileUtil.isHeader(tu);
 		}
 		else {
-			return (! ext.startsWith(".h") );
+			return (! FileUtil.isHeader(tu) );
 		}
 	}
 
