@@ -2,8 +2,10 @@ package eu.synectique.verveine.extractor.plugin;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.index.IIndex;
@@ -70,7 +72,7 @@ public class VerveineCParser extends VerveineParser {
 	/**
 	 * Temporary variable to gather macros defined from the command line
 	 */
-	private List<String> argDefined;
+	private Map<String,String> argDefined;
 
 	/**
 	 * Eclipse CDT indexer
@@ -90,7 +92,7 @@ public class VerveineCParser extends VerveineParser {
 	public VerveineCParser() {
 		super();
 		this.argIncludes = new ArrayList<String>();
-		this.argDefined = new ArrayList<String>();
+		this.argDefined = new HashMap<String,String>();
 		this .autoinclude = false;
 	}
 
@@ -222,10 +224,9 @@ public class VerveineCParser extends VerveineParser {
 			newEntries[i] = CoreModel.newIncludeEntry(projPath, null, new Path(path), /*isSystemInclude*/false);
 			i++;
 		}
-
 		/* macros  defined */
-		for (String macro : argDefined) {
-			CoreModel.newMacroEntry(projPath, macro, "");
+		for (Map.Entry<String, String> macro : argDefined.entrySet()) {
+			newEntries[i] = CoreModel.newMacroEntry(projPath, macro.getKey(), macro.getValue());
 		}
 
 		try {			
@@ -240,7 +241,7 @@ public class VerveineCParser extends VerveineParser {
 		IIndexManager imanager = CCorePlugin.getIndexManager();
 		imanager.setIndexerId(cproject, "org.eclipse.cdt.core.fastIndexer");
         imanager.reindex(cproject);
-        imanager.joinIndexer(IIndexManager.FOREVER, new NullProgressMonitor() );
+        imanager.joinIndexer(IIndexManager.FOREVER, Constants.NULL_PROGRESS_MONITOR );
 		try {
 			this.index = imanager.getIndex(cproject);
 		} catch (CoreException e) {
@@ -268,7 +269,7 @@ public class VerveineCParser extends VerveineParser {
 				argIncludes.add(arg.substring(2));
 			}
 			else if (arg.startsWith("-D")) {
-				argDefined.add(arg.substring(2));
+				parseMacroDefinition(arg);
 			}
 			else {
 				int j = super.setOption(i - 1, args);
@@ -292,6 +293,23 @@ public class VerveineCParser extends VerveineParser {
 				}
 			}
 		}
+	}
+
+	private void parseMacroDefinition(String arg) {
+		int i;
+		String macro;
+		String value;
+
+		i = arg.indexOf('=');
+		if (i < 0) {
+			macro=arg.substring(2);  // remove '-D' at the beginning
+			value = "";
+		}
+		else {
+			macro = arg.substring(2, i);
+			value = arg.substring(i+1);
+		}
+		argDefined.put(macro, value);
 	}
 
 	protected void usage() {
