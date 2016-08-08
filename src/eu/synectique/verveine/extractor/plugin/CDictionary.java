@@ -6,6 +6,7 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
+import eu.synectique.verveine.core.gen.famix.AbstractFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
@@ -13,9 +14,11 @@ import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
+import eu.synectique.verveine.core.gen.famix.FileAnchor;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Method;
+import eu.synectique.verveine.core.gen.famix.MultipleFileAnchor;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Package;
@@ -76,26 +79,73 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * @return the Famix SourceAnchor added to fmx. May be null in case of incorrect/null parameter
 	 */
 	public SourceAnchor addSourceAnchor(SourcedEntity fmx, String filename, IASTFileLocation anchor) {
+			IndexedFileAnchor fa = null;
+
+			if ( (fmx == null) || (anchor == null) ) {
+				return null;
+			}
+
+			// position in source file
+			int beg = anchor.getNodeOffset();
+			int end = beg + anchor.getNodeLength();
+
+			// create the Famix SourceAnchor
+			fa = new IndexedFileAnchor();
+			fa.setStartPos(beg);
+			fa.setEndPos(end);
+			fa.setFileName(filename);
+
+			fmx.setSourceAnchor(fa);
+			famixRepo.add(fa);
+
+			return fa;
+		}
+	
+	/**
+	 * Adds location information to a Famix Entity that may be defined/declared in various files.
+	 * Currently only used for BehaviouralEntities (functions, methods).
+	 * Location informations are: <b>name</b> of the source file and <b>position</b> in this file.
+	 * @param fmx -- Famix Entity to add the anchor to
+	 * @param filename -- name of the file being visited
+	 * @param ast -- ASTNode, where the information are extracted
+	 * @return the Famix SourceAnchor added to fmx. May be null in case of incorrect/null parameter
+	 */
+	public SourceAnchor addSourceAnchorMulti(SourcedEntity fmx, String filename, IASTFileLocation anchor) {
+		MultipleFileAnchor mfa;
 		IndexedFileAnchor fa = null;
 
 		if ( (fmx == null) || (anchor == null) ) {
 			return null;
 		}
 
-		// position in source file
-		int beg = anchor.getNodeOffset();
-		int end = beg + anchor.getNodeLength();
+		mfa = (MultipleFileAnchor) fmx.getSourceAnchor();
+		if (mfa == null) {
+			mfa = new MultipleFileAnchor();
+			fmx.setSourceAnchor(mfa);
+			famixRepo.add(mfa);
+		}
+
+		// check if we already have this filename in the MultipleFileAnchor
+		for (AbstractFileAnchor f : mfa.getAllFiles()) {
+			if (f.getFileName().equals(filename)) {
+				// note: Could check also the position in the file ...
+				return mfa;
+			}
+		}
+
+		// not found add the filename to the MultipleFileAnchor
 
 		// create the Famix SourceAnchor
 		fa = new IndexedFileAnchor();
-		fa.setStartPos(beg);
-		fa.setEndPos(end);
+		int beg = anchor.getNodeOffset();
+		int end = beg + anchor.getNodeLength();
+		fa.setStartPos( beg );
+		fa.setEndPos( end );
 		fa.setFileName(filename);
-
-		fmx.setSourceAnchor(fa);
 		famixRepo.add(fa);
+		mfa.addAllFiles(fa);
 
-		return fa;
+		return mfa;
 	}
 
 	public DereferencedInvocation addFamixDereferencedInvocation(BehaviouralEntity sender, StructuralEntity referencer, String signature, Association prev) {

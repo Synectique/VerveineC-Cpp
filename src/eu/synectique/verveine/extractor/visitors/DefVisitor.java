@@ -271,6 +271,12 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			fmx = recoverBehaviouralManually(node, bnd);
 		}
 
+		if (fmx != null) {
+			// parent node is a SimpleDeclaration or a FunctionDefinition
+			IASTFileLocation defLoc = node.getParent().getFileLocation();
+			dico.addSourceAnchorMulti(fmx, defLoc.getFileName(), defLoc);
+		}
+
 		if (isDestructorBinding(bnd)) {
 			((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
 		}
@@ -301,11 +307,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator());
 		fmx = (BehaviouralEntity) returnedEntity;
-
-		if (fmx != null) {
-			IASTFileLocation defLoc = node.getFileLocation();
-			dico.addSourceAnchor(fmx, defLoc.getFileName(), defLoc);
-		}
 
 		// using pushBehaviouralEntity()/pushMethod() introduces a difference in the handling of the stack (for metrics CYCLO/NOS)
 		// this behaviour was inherited from VerveineJ and would need to be refactored
@@ -341,7 +342,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	}
 
 	/**
-	 * Visiting an attribute or function declaration.
+	 * Visiting an attribute declaration.
 	 * In the AST it could also be a function parameter, but this is treated in {@link #visit(IASTParameterDeclaration)}}
 	 */
 	@Override
@@ -358,7 +359,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			fmx.setIsStub(false);
 
 			/*
-			 * For ICPPASTDeclarator, the location must be that of the parent, i.e. the declaration
+			 * For ICPPASTDeclarator, the location must be that of the parent AST node, i.e. the declaration
 			 * For example, in "int a,b;" the declaration starts at "int" whereas there are 2 declarators: a and b
 			 */
 			dico.addSourceAnchor(fmx, filename, node.getParent().getFileLocation());
