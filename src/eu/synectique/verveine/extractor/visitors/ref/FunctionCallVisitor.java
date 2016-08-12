@@ -111,10 +111,10 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	protected int visit(ICPPASTConstructorChainInitializer node) {
 		IASTName memberName = node.getMemberInitializerId();
 		returnedEntity = null;
-		bnd = getBinding(memberName);
-		if ( bnd instanceof ICPPField ) {
+		nodeBnd = getBinding(memberName);
+		if ( nodeBnd instanceof ICPPField ) {
 			// "field initialization", modeled as a write-Access to the field + invocation of the field's type constructor (done in visit(ICPPASTConstructorInitializer))
-			Attribute fldFmx = (Attribute) dico.getEntityByKey(bnd);
+			Attribute fldFmx = (Attribute) dico.getEntityByKey(nodeBnd);
 			returnedEntity = fldFmx;
 			if (fldFmx != null) {
 				accessToVar(fldFmx).setIsWrite(true);

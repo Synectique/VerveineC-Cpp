@@ -162,7 +162,7 @@ public class CDictionary extends Dictionary<IBinding> {
 		return invok;
 	}
 
-	public BehaviouralReference addFamixBehaviouralReference(BehaviouralEntity ref, BehaviouralEntity fmx) {
+	public BehaviouralReference addFamixBehaviouralPointer(BehaviouralEntity ref, BehaviouralEntity fmx) {
 		BehaviouralReference pointer = new BehaviouralReference();
 		pointer.setPointed(fmx);
 		pointer.setReferer(ref);

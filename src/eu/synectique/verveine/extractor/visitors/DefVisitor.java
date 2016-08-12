@@ -130,10 +130,10 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		tracer.up("ICPPASTNamespaceDefinition: "+node.getName());
 		Namespace fmx;
 		nodeName = node.getName();
-		bnd = null;
+		nodeBnd = null;
 
-		bnd = getBinding(nodeName);
-		fmx = dico.ensureFamixNamespace(bnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
+		nodeBnd = getBinding(nodeName);
+		fmx = dico.ensureFamixNamespace(nodeBnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
 		fmx.setIsStub(false);
 
 		this.context.push(fmx);
@@ -157,7 +157,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			return PROCESS_SKIP;
 		}
 
-		fmx = dico.ensureFamixParameter(bnd, nodeName.toString(), context.topBehaviouralEntity());
+		fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), context.topBehaviouralEntity());
 		fmx.setIsStub(false);
 		// no sourceAnchor for parameter, they sometimes only appear in the .C file
 		// whereas it would seem more natural to store the anchor referent to the .H file ...
@@ -170,12 +170,12 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		if (node instanceof ICPPASTSimpleTypeTemplateParameter) {
 			nodeName = ((ICPPASTSimpleTypeTemplateParameter)node).getName();
 			try {
-				bnd = index.findBinding(nodeName);
+				nodeBnd = index.findBinding(nodeName);
 			} catch (CoreException e) {
 				e.printStackTrace();
 			}
-			if (bnd != null) {
-				returnedEntity = dico.ensureFamixParameterType(bnd, nodeName.toString(), (ContainerEntity) context.top(), /*persistIt*/true);
+			if (nodeBnd != null) {
+				returnedEntity = dico.ensureFamixParameterType(nodeBnd, nodeName.toString(), (ContainerEntity) context.top(), /*persistIt*/true);
 			}
 		}
 		return PROCESS_SKIP;
@@ -239,11 +239,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		isTemplate = (node.getParent().getParent() instanceof ICPPASTTemplateDeclaration);
 
 		if (isTemplate) {
-			fmx = dico.ensureFamixParameterizableClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
+			fmx = dico.ensureFamixParameterizableClass(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
 		}
 		else {
 			// if node is a stub with a fully qualified name, its parent is not context.top() :-(
-			fmx = dico.ensureFamixClass(bnd, nodeName.toString(), (ContainerEntity)context.top());
+			fmx = dico.ensureFamixClass(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 		fmx.setParentPackage(currentPackage);
@@ -281,10 +281,10 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		super.visit(node);
 
 		// just in case this is a definition and we already processed the declaration
-		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
+		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
 
 		if (fmx == null) {
-			fmx = recoverBehaviouralManually(node, bnd);
+			fmx = recoverBehaviouralManually(node, nodeBnd);
 		}
 
 		if (fmx != null) {
@@ -293,10 +293,10 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 			dico.addSourceAnchorMulti(fmx, defLoc.getFileName(), defLoc);
 		}
 
-		if (isDestructorBinding(bnd)) {
+		if (isDestructorBinding(nodeBnd)) {
 			((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
 		}
-		if (isConstructorBinding(bnd)) {
+		if (isConstructorBinding(nodeBnd)) {
 			((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
@@ -366,11 +366,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		Attribute fmx = null;
 
 		// compute nodeName and binding
-		bnd = null;
+		nodeBnd = null;
 		super.visit(node);
 
-		if (bnd != null) {
-			fmx = dico.ensureFamixAttribute(bnd, nodeName.toString(), context.topType());
+		if (nodeBnd != null) {
+			fmx = dico.ensureFamixAttribute(nodeBnd, nodeName.toString(), context.topType());
 
 			fmx.setIsStub(false);
 
@@ -421,7 +421,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	protected void handleTypedef(IASTSimpleDeclaration node) {
 		TypeAlias fmx;
 
-		fmx = dico.ensureFamixTypeAlias(bnd, nodeName.toString(), (ContainerEntity)context.top());
+		fmx = dico.ensureFamixTypeAlias(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
 
 		fmx.setIsStub(false);
 

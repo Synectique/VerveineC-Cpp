@@ -96,17 +96,17 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		Namespace fmx;
 	
 		nodeName = node.getName();
-		bnd = null;
+		nodeBnd = null;
 
 		nodeName = node.getName();
 
-		bnd = getBinding(nodeName);
+		nodeBnd = getBinding(nodeName);
 
-		if (bnd == null) {
+		if (nodeBnd == null) {
 			return PROCESS_SKIP;
 		}
 
-		fmx = (Namespace) dico.getEntityByKey(bnd);
+		fmx = (Namespace) dico.getEntityByKey(nodeBnd);
 
 		if (fmx != null) {
 			this.context.push(fmx);
@@ -132,7 +132,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		if (super.visit(node) == PROCESS_SKIP) {
 			return PROCESS_SKIP;
 		}
-		fmx = (Parameter) dico.getEntityByKey(bnd);
+		fmx = (Parameter) dico.getEntityByKey(nodeBnd);
 
 		if (fmx == null) {
 			/* get param name and parent */
@@ -145,7 +145,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		if (fmx == null) {
 			// should really really not happen
-			fmx = dico.ensureFamixParameter(bnd, paramName, parent);
+			fmx = dico.ensureFamixParameter(nodeBnd, paramName, parent);
 		}
 
 		// now get the declared type
@@ -175,20 +175,20 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		// compute nodeName and binding
 		super.visit(node);
 
-		fmx = (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey(bnd);
+		fmx = (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey(nodeBnd);
 
-		if ( (fmx == null) && (bnd.getClass() != StubBinding.class) ) {
-			fmx = dico.ensureFamixClass(bnd, nodeName.toString(), recursiveEnsureParentNamespace(nodeName));
+		if ( (fmx == null) && (nodeBnd.getClass() != StubBinding.class) ) {
+			fmx = dico.ensureFamixClass(nodeBnd, nodeName.toString(), recursiveEnsureParentNamespace(nodeName));
 		}
 		if (fmx == null) {
 			return PROCESS_SKIP;
 		}
 		
 		// now looking for superclasses
-		if (bnd instanceof ICPPClassType) {   // would not be the case if we had to create a StubBinding
+		if (nodeBnd instanceof ICPPClassType) {   // would not be the case if we had to create a StubBinding
 			Inheritance lastInheritance = null;
 			int i = 0;
-			for (ICPPBase baseClass : ((ICPPClassType)bnd).getBases()) {
+			for (ICPPBase baseClass : ((ICPPClassType)nodeBnd).getBases()) {
 				Type supFmx = null;
 				IType supBnd = baseClass.getBaseClassType();
 
@@ -255,11 +255,15 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	@Override
 	protected int visit(ICPPASTDeclarator node) {
 		// compute nodeName and binding
-		bnd = null;
+		nodeBnd = null;
 		super.visit(node);
+		if (node.getInitializer() != null ) {
+			node.getInitializer().accept(this);
+		}
 
-		if (bnd != null) {
-			returnedEntity = (Attribute) dico.getEntityByKey(bnd);
+
+		if (nodeBnd != null) {
+			returnedEntity = (Attribute) dico.getEntityByKey(nodeBnd);
 		}
 
 		return PROCESS_SKIP;
@@ -275,10 +279,10 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		// compute nodeName and binding
 		super.visit(node);
 
-		fmx = (BehaviouralEntity) dico.getEntityByKey(bnd);
+		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
 
 		if (fmx == null) {
-			fmx = recoverBehaviouralManually(node, bnd);
+			fmx = recoverBehaviouralManually(node, nodeBnd);
 		}
 
 		this.context.push(fmx);
@@ -383,7 +387,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	@Override
 	protected int visit(IASTUnaryExpression node) {
 		node.getOperand().accept(this);
-		return PROCESS_CONTINUE;
+		return PROCESS_SKIP;
 	}
 
 	public int visit(IASTBinaryExpression node) {
@@ -424,7 +428,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	protected void handleTypedef(IASTSimpleDeclaration node) {
 		TypeAlias fmx;
 
-		fmx = (TypeAlias) dico.getEntityByKey(bnd);
+		fmx = (TypeAlias) dico.getEntityByKey(nodeBnd);
 
 		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
 

@@ -18,6 +18,7 @@ import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
@@ -101,7 +102,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	/**
 	 * A variable used in many visit methods to store the binding of the current node
 	 */
-	protected IBinding bnd;
+	protected IBinding nodeBnd;
 
 	/**
 	 * FamixSourcedEntity created as a result of a visitor.
@@ -364,19 +365,19 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	// ADDITIONAL VISITING METODS ON AST =======================================================================================================
 
 	protected int visit(IASTSimpleDeclaration node) {
-		if (node.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef) {
-			// this is a typedef, so the declarator(s) should be a FAMIXType
+		if (declarationIsTypedef(node)) {
 			for (IASTDeclarator declarator : node.getDeclarators()) {
+			// this is a typedef, so the declarator(s) should be FAMIXType(s)
 
 				nodeName = declarator.getName();
 
 				tracer.msg("IASTSimpleDeclaration (typedef):"+nodeName.toString());
 
-				bnd = getBinding(nodeName);
+				nodeBnd = getBinding(nodeName);
 
-				if (bnd == null) {
+				if (nodeBnd == null) {
 					// create one anyway, assume this is a Type
-					bnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+					nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
 				}
 
 				/* Call back method.
@@ -411,13 +412,13 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int visit(ICPPASTFunctionDeclarator node) {
-		bnd = null;
+		nodeBnd = null;
 		nodeName = node.getName();
 		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
 
-		bnd = getBinding(nodeName);
+		nodeBnd = getBinding(nodeName);
 
-		if (bnd == null) {
+		if (nodeBnd == null) {
 			NamedEntity parent = null;
 			String behavName;
 			// create one anyway, function or method?
@@ -435,10 +436,10 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			behavName = sigVisitor.getFullSignature(node);
 
 			if (parent instanceof eu.synectique.verveine.core.gen.famix.Class) {
-				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)parent, behavName ));
+				nodeBnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)parent, behavName ));
 			}
 			else {
-				bnd = StubBinding.getInstance(Function.class, dico.mooseName((ContainerEntity) parent, behavName));
+				nodeBnd = StubBinding.getInstance(Function.class, dico.mooseName((ContainerEntity) parent, behavName));
 			}
 		}
 
@@ -466,22 +467,21 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int visit(ICPPASTDeclarator node) {
-		bnd = null;
+		nodeBnd = null;
 		nodeName = null;
 
-		if ( (node.getParent() instanceof IASTSimpleDeclaration) &&
-			 (node.getParent().getParent() instanceof IASTCompositeTypeSpecifier) &&
-			 ( ((IASTSimpleDeclaration)node.getParent()).getDeclSpecifier().getStorageClass() != IASTDeclSpecifier.sc_typedef)  ) {
-			// this is an Attribute declaration, get it back
-			nodeName = node.getName();
+		if (node.getParent() instanceof IASTSimpleDeclaration) {
+			if ( nodeParentIsClass(node.getParent()) && ! declarationIsTypedef((IASTSimpleDeclaration)node.getParent()) ) {
+				// this is an Attribute declaration, get it back
+				nodeName = node.getName();
 
-			bnd = getBinding(nodeName);
+				nodeBnd = getBinding(nodeName);
 
-			if (bnd == null) {
-				bnd = StubBinding.getInstance(Attribute.class, dico.mooseName(context.topType(), nodeName.toString()));
+				if (nodeBnd == null) {
+					nodeBnd = StubBinding.getInstance(Attribute.class, dico.mooseName(context.topType(), nodeName.toString()));
+				}
 			}
 		}
-
 		return PROCESS_CONTINUE;
 	}
 
@@ -498,23 +498,23 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		bnd = null;
+		nodeBnd = null;
 		nodeName = node.getName();
 
 		tracer.msg("ICPPASTCompositeTypeSpecifier without name");
 
 		tracer.up("ICPPASTCompositeTypeSpecifier:"+nodeName.toString());
 
-		bnd = getBinding(nodeName);
+		nodeBnd = getBinding(nodeName);
 
-		if (bnd == null) {
+		if (nodeBnd == null) {
 			// create one anyway
 			if (isFullyQualified(nodeName)) {
 				Namespace parent = recursiveEnsureParentNamespace(nodeName);
-				bnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, simpleName(nodeName)));
+				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, simpleName(nodeName)));
 			}
 			else {
-				bnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
 			}
 		}
 
@@ -558,7 +558,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	public int visit(IASTParameterDeclaration node) {
-		bnd = null;
+		nodeBnd = null;
 		nodeName = node.getDeclarator().getName();
 
 		if (nodeName.toString().equals("")) {
@@ -569,11 +569,11 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			return PROCESS_SKIP;
 		}
 
-		bnd = getBinding(nodeName);
+		nodeBnd = getBinding(nodeName);
 
-		if (bnd == null) {
+		if (nodeBnd == null) {
 			// create one anyway
-			bnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+			nodeBnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
 		}
 		return PROCESS_CONTINUE;
 	}
@@ -824,9 +824,9 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			namespaceName = name;
 		}
 
-		bnd = StubBinding.getInstance(Namespace.class, dico.mooseName(parent, namespaceName));
+		nodeBnd = StubBinding.getInstance(Namespace.class, dico.mooseName(parent, namespaceName));
 		
-		return dico.ensureFamixNamespace(bnd, namespaceName, parent);
+		return dico.ensureFamixNamespace(nodeBnd, namespaceName, parent);
 	}
 
 	/**
@@ -842,8 +842,8 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 			if (tmp == null) {
 				// create as a stub
-				bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity)null, name));
-				tmp = dico.ensureFamixNamespace(bnd, name, /*parent*/null);
+				nodeBnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity)null, name));
+				tmp = dico.ensureFamixNamespace(nodeBnd, name, /*parent*/null);
 			}
 			return tmp;
 		}
@@ -886,8 +886,8 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 
 		// create last components (not found) as namespaces
 		while (i > 0) {
-			bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str.substring(0, i)));
-			parent = dico.ensureFamixNamespace(bnd, str.substring(0, i), (ScopingEntity) parent);
+			nodeBnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str.substring(0, i)));
+			parent = dico.ensureFamixNamespace(nodeBnd, str.substring(0, i), (ScopingEntity) parent);
 
 			str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
 			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
@@ -897,12 +897,12 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		// first compute the type of this composant
 		// rule of the thumb: if parent is not a namespace (class or method), then we create a Class
 		if ( (parent == null) || (parent instanceof Namespace) ) {
-			bnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
-			tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
+			nodeBnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
+			tmp = dico.ensureFamixNamespace(nodeBnd, str, (ScopingEntity) parent);
 		}
 		else {
-			bnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName((ContainerEntity) parent, str));
-			tmp = dico.ensureFamixClass(bnd, str, (ContainerEntity) parent);
+			nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName((ContainerEntity) parent, str));
+			tmp = dico.ensureFamixClass(nodeBnd, str, (ContainerEntity) parent);
 		}
 
 		return tmp;
@@ -970,6 +970,14 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 	}
 
 	// UTILITIES ======================================================================================================
+
+	protected boolean declarationIsTypedef(IASTSimpleDeclaration node) {
+		return (node.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef);
+	}
+
+	protected boolean nodeParentIsClass(IASTNode node) {
+		return node.getParent() instanceof IASTCompositeTypeSpecifier;
+	}
 
 	private void visitChildren(IParent elt) {
 		try {
@@ -1084,8 +1092,6 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			return (! FileUtil.isHeader(tu) );
 		}
 	}
-
-
 
 	protected BehaviouralEntity recoverBehaviouralManually(ICPPASTFunctionDeclarator node, IBinding bnd) {
 		String mthSig;

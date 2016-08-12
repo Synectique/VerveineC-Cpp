@@ -162,7 +162,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 */
 	protected BehaviouralReference behaviouralPointer(BehaviouralEntity fmx) {
 		BehaviouralEntity referer = this.context.topBehaviouralEntity();
-		BehaviouralReference ref = dico.addFamixBehaviouralReference(referer, fmx);
+		BehaviouralReference ref = dico.addFamixBehaviouralPointer(referer, fmx);
 		return ref;
 	}
 
@@ -205,13 +205,13 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			else if (node instanceof IASTNamedTypeSpecifier) {
 				nodeName = ((IASTNamedTypeSpecifier) node).getName();
 			}
-			bnd = getBinding( nodeName);
+			nodeBnd = getBinding( nodeName);
 
-			if (bnd == null) {
-				bnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+			if (nodeBnd == null) {
+				nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
 			}
 
-			fmx = (Type) dico.getEntityByKey(bnd);
+			fmx = (Type) dico.getEntityByKey(nodeBnd);
 
 			if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
 				fmx = (Type) findInParent(nodeName.toString(), context.top(), /*recursive*/true);
@@ -222,7 +222,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 					fmx = referedParameterTypeInstance(nodeName.toString());
 				}
 				else {
-					fmx = dico.ensureFamixType(bnd, simpleName(nodeName), /*owner*/recursiveEnsureParentNamespace(nodeName));
+					fmx = dico.ensureFamixType(nodeBnd, simpleName(nodeName), /*owner*/recursiveEnsureParentNamespace(nodeName));
 				}
 			}
 
@@ -239,11 +239,11 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		ParameterizedType fmx = null;
 		try {
 			ParameterizableClass generic = (ParameterizableClass) findInParent(tname, context.top(), /*recursive*/true);
-			fmx = dico.ensureFamixParameterizedType(bnd, tname, generic, recursiveEnsureParentNamespace(nodeName));
+			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, generic, recursiveEnsureParentNamespace(nodeName));
 		}
 		catch (ClassCastException e) {
 			// create a ParameterizedType for an unknown generic
-			fmx = dico.ensureFamixParameterizedType(bnd, tname, /*generic*/null, recursiveEnsureParentNamespace(nodeName));
+			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, /*generic*/null, recursiveEnsureParentNamespace(nodeName));
 		}
 
 		for (String targ : name.substring(i+1, name.length()-1).split(",")) {
