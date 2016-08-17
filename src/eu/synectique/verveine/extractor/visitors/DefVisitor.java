@@ -18,6 +18,7 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTTranslationUnit;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
@@ -28,6 +29,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleTypeTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplatedTypeTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
@@ -50,9 +52,12 @@ import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
+import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
+import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Tracer;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
@@ -66,6 +71,12 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 * A set of all unresolved includes so that we report them only once
 	 */
 	protected Set<String> unresolvedIncludes;
+
+	/**
+	 * used between {@link #visit(ICPPASTTemplateDeclaration)} and {@link #visit(ICPPASTCompositeTypeSpecifier)}
+	 * to mark class definitions that are FAMIXParameterizableClass
+	 */
+	protected boolean definitionOfATemplate = false;
 
 	// CONSTRUCTOR ==========================================================================================================================
 
@@ -231,12 +242,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
 		Class fmx;
-		boolean isTemplate;
+		boolean isTemplate = definitionOfATemplate;
+		definitionOfATemplate = false;   // Immediately put it to false because it could pollute visiting the children
 
 		// compute nodeName and binding
 		super.visit(node);
-
-		isTemplate = (node.getParent().getParent() instanceof ICPPASTTemplateDeclaration);
 
 		if (isTemplate) {
 			fmx = dico.ensureFamixParameterizableClass(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
@@ -277,6 +287,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		BehaviouralEntity fmx = null;
 
+		if (definitionOfATemplate) {
+			// functions/methods can also be templates, but we are not interested in that
+			definitionOfATemplate = false;
+		}
+	
 		// compute nodeName and binding
 		super.visit(node);
 
@@ -306,6 +321,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 		this.context.push(fmx);
 		returnedEntity = fmx;
+
 		for (ICPPASTParameterDeclaration param : node.getParameters()) {
 			param.accept(this);
 		}
@@ -388,26 +404,72 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	protected int visit(ICPPASTTemplateDeclaration node) {
 		NamedEntity fmx = null;
 
+		definitionOfATemplate = true;
 		node.getDeclaration().accept(this);
 		fmx = (NamedEntity) returnedEntity;
- 
+		definitionOfATemplate = false;       // as a security in case we forgot to turn it off in a child node
+
 		// template parameters are local to the entity defined in the template declaration
 		context.push(fmx);
         for (ICPPASTTemplateParameter param : node.getTemplateParameters()) {
         	if (param instanceof ICPPASTParameterDeclaration ) {
         		// i.e. a variable parameter to the template
-        		// ignore for now
+        		// not sure exactly what it is, ignore for now
         	}
-        	else {
-        		// should be a ICPPASTTemplateParameter (i.e. a type parameter to the template)
-        		param.accept(this);
+        	else if (param instanceof ICPPASTSimpleTypeTemplateParameter ) {
+        		// a variable for a parameter type
+ 				createParameterTypeInCurrentContext( (ICPPASTSimpleTypeTemplateParameter)param);
         	}
+        	else if (param instanceof ICPPASTTemplatedTypeTemplateParameter ) {
+        		// a variable for a parameter type that is itself a template
+         		createParameterTypeInCurrentContext( (ICPPASTSimpleTypeTemplateParameter) param);
+        	}
+        	// else should not happen
         }
         context.pop();
 
 		return PROCESS_SKIP;
 	}
 
+	/** 
+	 * Creating a "parameter type" depends on the context
+	 * <ul>
+	 * <li> If it is a ParameterizableClass (e.g. "<code>template &lt;class T&gt; class C</code> ...", we create a ParameterType
+	 * <li> If it is a Method (e.g. "<code>template &lt;class T&gt; void fct(T)</code> ..."), we create a Type
+	 * </ul>
+	 */
+	protected eu.synectique.verveine.core.gen.famix.Type createParameterTypeInCurrentContext(ICPPASTSimpleTypeTemplateParameter paramTyp) {
+		ContainerEntity owner = (ContainerEntity) context.top();
+    	IBinding bnd = getBinding(paramTyp.getName());
+    	if (bnd == null) {
+    		bnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), paramTyp.getName().toString()));
+    	}
+		if (owner instanceof ParameterizableClass) {
+			return dico.ensureFamixParameterType(bnd, paramTyp.getName().toString(), owner);
+		}
+		else {
+			return dico.ensureFamixType(bnd, paramTyp.getName().toString(), owner);
+		}
+	}
+
+	/** 
+	 * Exactly the same as {@link #createParameterTypeInCurrentContext(ICPPASTSimpleTypeTemplateParameter)}, put the parameter is not the same type !
+	 */
+	protected eu.synectique.verveine.core.gen.famix.Type createParameterTypeInCurrentContext(ICPPASTTemplatedTypeTemplateParameter paramTyp) {
+		ContainerEntity owner = (ContainerEntity) context.top();
+    	IBinding bnd = getBinding(paramTyp.getName());
+    	if (bnd == null) {
+    		bnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), paramTyp.getName().toString()));
+    	}
+		if (owner instanceof ParameterizableClass) {
+			return dico.ensureFamixParameterType(bnd, paramTyp.getName().toString(), owner);
+		}
+		else {
+			return dico.ensureFamixType(bnd, paramTyp.getName().toString(), owner);
+		}
+	}
+	
+	
 	// UTILITIES ==============================================================================================================================
 
 	/**

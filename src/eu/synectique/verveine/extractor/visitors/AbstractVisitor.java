@@ -566,6 +566,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 			// Additionally (to be on the safe side) could check that:
 			//   node.getDeclSpecifier() instanceof  IASTSimpleDeclSpecifier
 			//   ((IASTSimpleDeclSpecifier) node.getDeclSpecifier()).getType() == IASTSimpleDeclSpecifier.t_void
+			// also happens for fct/method declaration as in: "mth(int,char*)"
 			return PROCESS_SKIP;
 		}
 

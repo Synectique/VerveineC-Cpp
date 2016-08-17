@@ -14,7 +14,6 @@ import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
-import eu.synectique.verveine.core.gen.famix.FileAnchor;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Method;
@@ -23,6 +22,7 @@ import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.Parameter;
+import eu.synectique.verveine.core.gen.famix.ParameterType;
 import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
 import eu.synectique.verveine.core.gen.famix.ParameterizedType;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
@@ -240,7 +240,16 @@ public class CDictionary extends Dictionary<IBinding> {
 		return fmx;
 	}
 
-	public ParameterizedType ensureFamixParameterizedType(IBinding key, String name, ParameterizableClass generic, ContainerEntity owner) {
+	public ParameterType ensureFamixParameterType(IBinding key, String name, ContainerEntity owner) {
+		ParameterType fmx;
+		fmx = (ParameterType) getEntityIfNotNull(key);
+		if (fmx == null) {
+			fmx = super.ensureFamixParameterType(key, name, owner, /*persistIt*/true);
+		}
+		return fmx;
+	}
+
+ 	public ParameterizedType ensureFamixParameterizedType(IBinding key, String name, ParameterizableClass generic, ContainerEntity owner) {
 		ParameterizedType fmx;
 		fmx = (ParameterizedType) getEntityIfNotNull(key);
 		if (fmx == null) {
