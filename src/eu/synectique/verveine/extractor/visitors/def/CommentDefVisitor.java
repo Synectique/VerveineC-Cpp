@@ -9,16 +9,17 @@ import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.gen.famix.Comment;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.utils.NullTracer;
-import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
+import eu.synectique.verveine.extractor.visitors.AbstractDispatcherVisitor;
 
-public class CommentDefVisitor extends AbstractVisitor {
+public class CommentDefVisitor extends AbstractDispatcherVisitor {
 
 	public CommentDefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
-		tracer = new NullTracer("CMT>");
 	}
 
+	/*
+	 * Redefined because no need to visit the children, only the AST
+	 */
 	public void visit(ITranslationUnit elt) {
 		try {
 			elt.getAST(index, ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT | ITranslationUnit.AST_SKIP_INDEXED_HEADERS).accept(this);
@@ -29,8 +30,7 @@ public class CommentDefVisitor extends AbstractVisitor {
 
 	@Override
 	public int visit(IASTTranslationUnit node) {
-		tracer.msg(node.getContainingFilename()+" ("+node.getComments().length+ ")");
-		// Handles all comments
+		// Handle all comments in this file
 		for (IASTComment cmt : node.getComments()) {
 			Comment fmx = dico.createFamixComment(cmt.toString());
 			IASTFileLocation defLoc = node.getFileLocation();

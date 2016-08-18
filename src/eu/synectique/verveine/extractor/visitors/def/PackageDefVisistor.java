@@ -5,9 +5,9 @@ import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
+import eu.synectique.verveine.extractor.visitors.AbstractDispatcherVisitor;
 
-public class PackageDefVisistor extends AbstractVisitor {
+public class PackageDefVisistor extends AbstractDispatcherVisitor {
 
 	/**
 	 * The file directory being visited at any given time
@@ -33,7 +33,7 @@ public class PackageDefVisistor extends AbstractVisitor {
 	}
 
 	public void visit(ITranslationUnit elt) {
-		// stop visiting on files
+		// prune AST visit on files
 	}
 
 }

@@ -16,7 +16,7 @@ public class NamespaceDefVisitor extends AbstractVisitor {
 
 	@Override
 	public int visit(IASTDeclaration node) {
-		/* optimisation: pruning AST visit on any declaration
+		/* Pruning AST visit on any declaration
 		 * (Namespace declarations have their own visit method in CDT's ASTVisitor)
 		 */
 		return PROCESS_SKIP;
