@@ -43,8 +43,10 @@ import eu.synectique.verveine.extractor.utils.Constants;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.visitors.def.AttributeDefVisistor;
 import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.DefVisitor;
+import eu.synectique.verveine.extractor.visitors.def.IncludeVisitor;
 import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.PackageDefVisistor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
@@ -100,6 +102,11 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	private boolean autoinclude;
 
+	/**
+	 * used to report number of unresolved includes at the end of the program
+	 */
+	private IncludeVisitor incVisitor;
+
 	public VerveineCParser() {
 		super();
 		this.argIncludes = new ArrayList<String>();
@@ -117,13 +124,16 @@ public class VerveineCParser extends VerveineParser {
 
         configIndexer(cproject);
 		computeIndex(cproject);
-
+		
+		incVisitor = new IncludeVisitor(dico, index);
         try {
     		runAllDefVisitors(dico, cproject);
 	        runAllRefVisitors(dico, cproject);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
+        
+        incVisitor.reportUnresolvedIncludes();
 	}
 
 	private void runAllDefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
@@ -131,15 +141,15 @@ public class VerveineCParser extends VerveineParser {
 		cproject.accept(new CommentDefVisitor(dico, index));
 		cproject.accept(new PackageDefVisistor(dico, index));
 		cproject.accept(new NamespaceDefVisitor(dico, index));
+		cproject.accept(incVisitor);
 
 		DefVisitor step2 = new DefVisitor(dico, index);
 		step2.setVisitHeaders(true);
 		cproject.accept(step2);
 		step2.setVisitHeaders(false);
 		cproject.accept(step2);
-		if (step2.nbUnresolvedIncludes() > 0) {
-			tracer.msg("There were "+step2.nbUnresolvedIncludes()+" unresolved includes");
-		}
+
+		cproject.accept(new AttributeDefVisistor(dico, index));
 	}
 
 	private void runAllRefVisitors(CDictionary dico, ICProject cproject) throws CoreException {

@@ -29,6 +29,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
@@ -106,26 +107,34 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 	@Override
 	public void visit(ITranslationUnit elt) {
-		if (checkHeader(elt)) {
-			this.tracer.up("ITranslationUnit: "+elt.getElementName());
-			context = new EntityStack();    // "reseting" context
-			try {
-				visitChildren(elt);
-	
-				this.filename = elt.getFile().getRawLocation().toString();
-				elt.getAST(index, ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT | ITranslationUnit.AST_SKIP_INDEXED_HEADERS).accept(this);
-				this.filename = null;
-			} catch (CoreException e) {
-				System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ elt.getElementName() );
-			}
-		}
-	
-		this.tracer.down();
+		context = new EntityStack();
+		this.filename = elt.getFile().getRawLocation().toString();
+		super.visit(elt);
 	}
 
-	
 
 	// ADDITIONAL VISITING METODS ON AST =======================================================================================================
+
+	@Override
+	public int visit(ICPPASTNamespaceDefinition node) {
+		Namespace fmx;
+
+		nodeBnd = getBinding(node.getName());
+		if (nodeBnd != null) {
+			fmx = (Namespace) dico.getEntityByKey(nodeBnd);
+			if (fmx != null) {
+				this.context.push(fmx);
+			}
+		}
+
+		return super.visit(node);
+	}
+
+	@Override
+	public int leave(ICPPASTNamespaceDefinition node) {
+		this.context.pop();
+		return super.leave(node);
+	}
 
 	protected int visit(IASTSimpleDeclaration node) {
 		if (declarationIsTypedef(node)) {
@@ -147,7 +156,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 				 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
 				 * thus several nodeName and bnd
 				 */
-				handleTypedef(node);
+				visitSimpleTypeDeclaration(node);
 			}
 			
 			return PROCESS_SKIP;  // typedef already handled
@@ -160,7 +169,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
 	 * thus several nodeName and bnd.
 	 */
-	protected void handleTypedef(IASTSimpleDeclaration node) { }
+	protected void visitSimpleTypeDeclaration(IASTSimpleDeclaration node) { }
 
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		nodeBnd = null;
@@ -207,7 +216,6 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 				nodeName = node.getName();
 
 				nodeBnd = getBinding(nodeName);
-
 				if (nodeBnd == null) {
 					nodeBnd = StubBinding.getInstance(Attribute.class, dico.mooseName(context.topType(), nodeName.toString()));
 				}
@@ -217,19 +225,13 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	}
 
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		nodeBnd = null;
 		nodeName = node.getName();
-
-		tracer.msg("ICPPASTCompositeTypeSpecifier without name");
-
-		tracer.up("ICPPASTCompositeTypeSpecifier:"+nodeName.toString());
-
 		nodeBnd = getBinding(nodeName);
 
 		if (nodeBnd == null) {
 			// create one anyway
 			if (isFullyQualified(nodeName)) {
-				Namespace parent = recursiveEnsureParentNamespace(nodeName);
+				ContainerEntity parent = getParentOfFullyQualifiedName(nodeName);
 				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, simpleName(nodeName)));
 			}
 			else {
@@ -433,7 +435,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	 * Creates recursively namespaces from a fully qualified name.
 	 * The last member of the name is not considered (i.e. a::b::c will yield Namespaces a and a::b)
 	 */
-	protected Namespace recursiveEnsureParentNamespace(IASTName name) {
+	protected Namespace getParentOfFullyQualifiedName(IASTName name) {
 		return recursiveEnsureParentNamespace(name.toString());
 	}
 

@@ -31,6 +31,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.index.IIndexBinding;
 import org.eclipse.cdt.core.model.ICElementVisitor;
+import org.eclipse.cdt.core.model.ITranslationUnit;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Access;
@@ -88,35 +89,17 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
 
+	/*
+	 * redefining to check for header files (or not)
+	 */
+	@Override
+	public void visit(ITranslationUnit elt) {
+		if (checkHeader(elt)) {
+			super.visit(elt);
+		}
+	}
+
 	// CDT VISITING METODS ON AST ==========================================================================================================
-
-	@Override
-	public int visit(ICPPASTNamespaceDefinition node) {
-		tracer.up("ICPPASTNamespaceDefinition: "+node.getName());
-		Namespace fmx;
-	
-		nodeName = node.getName();
-		nodeBnd = getBinding(nodeName);
-
-		if (nodeBnd == null) {
-			return PROCESS_SKIP;
-		}
-
-		fmx = (Namespace) dico.getEntityByKey(nodeBnd);
-
-		if (fmx != null) {
-			this.context.push(fmx);
-		}
-
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(ICPPASTNamespaceDefinition node) {
-		returnedEntity = this.context.pop();
-		tracer.down();
-		return super.leave(node);
-	}
 
 	@Override
 	public int visit(IASTParameterDeclaration node) {
@@ -174,7 +157,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		fmx = (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey(nodeBnd);
 
 		if ( (fmx == null) && (nodeBnd.getClass() != StubBinding.class) ) {
-			fmx = dico.ensureFamixClass(nodeBnd, nodeName.toString(), recursiveEnsureParentNamespace(nodeName));
+			fmx = dico.ensureFamixClass(nodeBnd, nodeName.toString(), getParentOfFullyQualifiedName(nodeName));
 		}
 		if (fmx == null) {
 			return PROCESS_SKIP;
@@ -421,7 +404,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 * thus several nodeName and bnd.
 	 */
 	@Override
-	protected void handleTypedef(IASTSimpleDeclaration node) {
+	protected void visitSimpleTypeDeclaration(IASTSimpleDeclaration node) {
 		TypeAlias fmx;
 
 		fmx = (TypeAlias) dico.getEntityByKey(nodeBnd);

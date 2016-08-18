@@ -36,9 +36,11 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.IInclude;
+import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
+import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
@@ -66,11 +68,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	protected Package currentPackage = null;
 
 	/**
-	 * A set of all unresolved includes so that we report them only once
-	 */
-	protected Set<String> unresolvedIncludes;
-
-	/**
 	 * used between {@link #visit(ICPPASTTemplateDeclaration)} and {@link #visit(ICPPASTCompositeTypeSpecifier)}
 	 * to mark class definitions that are FAMIXParameterizableClass
 	 */
@@ -85,9 +82,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	public DefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
-
-		unresolvedIncludes = new HashSet<String>();
-		tracer = new NullTracer("DEF>");
 	}
 
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
@@ -97,64 +91,26 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	@Override
 	public void visit(ICContainer elt) {
-		tracer.up("ICContainer: "+elt.getElementName());
-
 		IBinding key = StubBinding.getInstance(Package.class, dico.mooseName(currentPackage, elt.getElementName()));
-		Package fmx = (Package) dico.getEntityByKey(key);
-		if (fmx != null) {
-			currentPackage = fmx;
-		}
+
+		currentPackage = (Package) dico.getEntityByKey(key);
 
 		super.visit(elt);                                // visit children
 
-		if (fmx != null) {
-			currentPackage = fmx.getParentPackage();    // back to parent package
-		}
-		tracer.down();
+		currentPackage = currentPackage.getParentPackage();    // back to parent package
 	}
 
-	public void visit(IInclude elt) {
-		if (! elt.isResolved()) {
-			String includeStr;
-			includeStr = elt.isLocal() ? "\"" : "<";
-			includeStr += elt.getIncludeName();
-			includeStr += elt.isLocal() ? "\"" : ">";
-			if (! unresolvedIncludes.contains(includeStr)) {
-				unresolvedIncludes.add(includeStr);
-				System.err.println("Include not resolved: "+ includeStr);
-			}
+	/*
+	 * redefining to check for header files (or not)
+	 */
+	@Override
+	public void visit(ITranslationUnit elt) {
+		if (checkHeader(elt)) {
+			super.visit(elt);
 		}
 	}
 
 	// CDT VISITING METODS ON AST ==========================================================================================================
-
-	@Override
-	public int visit(ICPPASTNamespaceDefinition node) {
-		tracer.up("ICPPASTNamespaceDefinition: "+node.getName());
-		Namespace fmx;
-	
-		nodeName = node.getName();
-		nodeBnd = getBinding(nodeName);
-
-		if (nodeBnd == null) {
-			return PROCESS_SKIP;
-		}
-
-		fmx = (Namespace) dico.getEntityByKey(nodeBnd);
-
-		if (fmx != null) {
-			this.context.push(fmx);
-		}
-
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(ICPPASTNamespaceDefinition node) {
-		this.context.pop();
-		tracer.down();
-		return super.leave(node);
-	}
 
 	@Override
 	public int visit(IASTParameterDeclaration node) {
@@ -369,33 +325,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		return super.leave(node);
 	}
 
-	/**
-	 * Visiting an attribute declaration.
-	 * In the AST it could also be a function parameter, but this is treated in {@link #visit(IASTParameterDeclaration)}}
-	 */
-	@Override
-	protected int visit(ICPPASTDeclarator node) {
-		Attribute fmx = null;
-
-		// compute nodeName and binding
-		nodeBnd = null;
-		super.visit(node);
-
-		if (nodeBnd != null) {
-			fmx = dico.ensureFamixAttribute(nodeBnd, nodeName.toString(), context.topType());
-
-			fmx.setIsStub(false);
-
-			/*
-			 * For ICPPASTDeclarator, the location must be that of the parent AST node, i.e. the declaration
-			 * For example, in "int a,b;" the declaration starts at "int" whereas there are 2 declarators: a and b
-			 */
-			dico.addSourceAnchor(fmx, filename, node.getParent().getFileLocation());
-		}
-
-		return PROCESS_CONTINUE;
-	}
-
 	@Override
 	protected int visit(ICPPASTTemplateDeclaration node) {
 		NamedEntity fmx = null;
@@ -478,7 +407,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 * @param node not used in DefVisitor
 	 */
 	@Override
-	protected void handleTypedef(IASTSimpleDeclaration node) {
+	protected void visitSimpleTypeDeclaration(IASTSimpleDeclaration node) {
 		TypeAlias fmx;
 
 		fmx = dico.ensureFamixTypeAlias(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
@@ -486,10 +415,6 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		fmx.setIsStub(false);
 
 		fmx.setParentPackage(currentPackage);
-	}
-
-	public int nbUnresolvedIncludes() {
-		return unresolvedIncludes.size();
 	}
 
 }

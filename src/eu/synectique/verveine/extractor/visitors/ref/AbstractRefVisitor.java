@@ -222,7 +222,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 					fmx = referedParameterTypeInstance(nodeName.toString());
 				}
 				else {
-					fmx = dico.ensureFamixType(nodeBnd, simpleName(nodeName), /*owner*/recursiveEnsureParentNamespace(nodeName));
+					fmx = dico.ensureFamixType(nodeBnd, simpleName(nodeName), /*owner*/getParentOfFullyQualifiedName(nodeName));
 				}
 			}
 
@@ -239,11 +239,11 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		ParameterizedType fmx = null;
 		try {
 			ParameterizableClass generic = (ParameterizableClass) findInParent(tname, context.top(), /*recursive*/true);
-			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, generic, recursiveEnsureParentNamespace(nodeName));
+			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, generic, getParentOfFullyQualifiedName(nodeName));
 		}
 		catch (ClassCastException e) {
 			// create a ParameterizedType for an unknown generic
-			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, /*generic*/null, recursiveEnsureParentNamespace(nodeName));
+			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, /*generic*/null, getParentOfFullyQualifiedName(nodeName));
 		}
 
 		for (String targ : name.substring(i+1, name.length()-1).split(",")) {

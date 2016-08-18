@@ -11,6 +11,7 @@ import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
@@ -27,8 +28,11 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElement;
@@ -67,6 +71,7 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 
 	public AbstractDispatcherVisitor(CDictionary dico, IIndex index) {
 		super(/*visitNodes*/true);
+		shouldVisitTemplateParameters = true;
 	    /* fine-tuning if visitNodes=false
 	    shouldVisitDeclarations = true;
 	    shouldVisitEnumerators = true;
@@ -131,11 +136,18 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 
 	@Override
 	public int visit(IASTDeclaration node) {
+		/* ********************************************************************************************
+		 * BE CAREFULL: The order of the tests is important because choices are not mutually exclusive
+		 * ex: ICPPASTFunctionDefinition is a sub-interface of IASTFunctionDefinition
+		 * ******************************************************************************************** */
 		if (node instanceof IASTSimpleDeclaration) {
 			return visit((IASTSimpleDeclaration)node);
 		}
 		else if (node instanceof ICPPASTFunctionDefinition) {
 			return visit((ICPPASTFunctionDefinition)node);
+		}
+		else if (node instanceof IASTFunctionDefinition) {
+			return visit((IASTFunctionDefinition)node);
 		}
 		else if (node instanceof ICPPASTTemplateDeclaration) {
 			return visit((ICPPASTTemplateDeclaration)node);
@@ -150,11 +162,18 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 
 	@Override
 	public int leave(IASTDeclaration node) {
+		/* ********************************************************************************************
+		 * BE CAREFULL: The order of the tests is important because choices are not mutually exclusive
+		 * ex: ICPPASTFunctionDefinition is a sub-interface of IASTFunctionDefinition
+		 * ******************************************************************************************** */
 		if (node instanceof IASTSimpleDeclaration) {
 			return leave((IASTSimpleDeclaration)node);
 		}
 		else if (node instanceof ICPPASTFunctionDefinition) {
 			return leave((ICPPASTFunctionDefinition)node);
+		}
+		else if (node instanceof IASTFunctionDefinition) {
+			return leave((IASTFunctionDefinition)node);
 		}
 		else if (node instanceof ICPPASTTemplateDeclaration) {
 			return leave((ICPPASTTemplateDeclaration)node);
@@ -170,9 +189,8 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	@Override
 	public int visit(IASTDeclarator node) {
 		/* ********************************************************************************************
-		 * BE CAREFULL: The order of the tests is important because:
-		 * ICPPASTFunctionDeclarator is a sub-interface of IASTFunctionDeclarator
-		 * IASTFunctionDeclarator is a sub-interface of ICPPASTDeclarator
+		 * BE CAREFULL: The order of the tests is important because choices are not mutually exclusive
+		 * ex: ICPPASTFunctionDeclarator is a sub-interface of IASTFunctionDeclarator
 		 * ******************************************************************************************** */
 		if (node instanceof ICPPASTFunctionDeclarator) {
 			return this.visit((ICPPASTFunctionDeclarator)node);
@@ -190,9 +208,8 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	@Override
 	public int leave(IASTDeclarator node) {
 		/* ********************************************************************************************
-		 * BE CAREFULL: The order of the tests is important because:
-		 * ICPPASTFunctionDeclarator is a sub-interface of IASTFunctionDeclarator
-		 * IASTFunctionDeclarator is a sub-interface of ICPPASTDeclarator
+		 * BE CAREFULL: The order of the tests is important because choices are not mutually exclusive
+		 * ex: ICPPASTFunctionDeclarator is a sub-interface of IASTFunctionDeclarator
 		 * ******************************************************************************************** */
 		if (node instanceof ICPPASTFunctionDeclarator) {
 			return this.leave((ICPPASTFunctionDeclarator)node);
@@ -301,6 +318,36 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return super.visit(node);
 	}
 
+	@Override
+	public int visit(ICPPASTTemplateParameter node) {
+		return super.visit(node);
+	}
+
+	@Override
+	public int leave(ICPPASTTemplateParameter node) {
+		return super.visit(node);
+	}
+
+	@Override
+	public int visit(IASTParameterDeclaration node) {
+		if (node instanceof ICPPASTParameterDeclaration) {
+			// not sure this can actually occur
+			return visit((ICPPASTParameterDeclaration)node);
+		}
+		// else is a valid choice (presumably for C language)
+		return super.visit(node);
+	}
+
+	@Override
+	public int leave(IASTParameterDeclaration node) {
+		return super.visit(node);
+	}
+
+	@Override
+	public int visit(ICPPASTBaseSpecifier node) {
+		return super.visit(node);
+	}
+
 
 	// ADDITIONAL VISITING METODS ON AST ===================================================================================================
 
@@ -325,6 +372,14 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	protected int leave(ICPPASTFunctionDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTFunctionDefinition node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(IASTFunctionDefinition node) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -400,11 +455,11 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	public int visit(IASTParameterDeclaration node) {
+	protected int visit(ICPPASTParameterDeclaration node) {
 		return PROCESS_CONTINUE;
 	}
 
-	public int leave(IASTParameterDeclaration node) {
+	protected int leave(ICPPASTParameterDeclaration node) {
 		return PROCESS_CONTINUE;
 	}
 
