@@ -43,7 +43,10 @@ import eu.synectique.verveine.extractor.utils.Constants;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
-import eu.synectique.verveine.extractor.visitors.DefVisitor;
+import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
+import eu.synectique.verveine.extractor.visitors.def.DefVisitor;
+import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
+import eu.synectique.verveine.extractor.visitors.def.PackageDefVisistor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class VerveineCParser extends VerveineParser {
@@ -116,25 +119,36 @@ public class VerveineCParser extends VerveineParser {
 		computeIndex(cproject);
 
         try {
-    		tracer.msg("step 2 / 3: creating structural entities");
-            DefVisitor step2 = new DefVisitor(dico, index);
-            step2.setVisitHeaders(true);
-			cproject.accept(step2);
-	        step2.setVisitHeaders(false);
-	        cproject.accept(step2);
-	        if (step2.nbUnresolvedIncludes() > 0) {
-	        	tracer.msg("There were "+step2.nbUnresolvedIncludes()+" unresolved includes");
-	        }
-
-	        tracer.msg("step 3 / 3: creating references");
-	        RefVisitor step3 = new RefVisitor(dico, index);
-            step3.setVisitHeaders(true);
-			cproject.accept(step3);
-            step3.setVisitHeaders(false);
-			cproject.accept(step3);
+    		runAllDefVisitors(dico, cproject);
+	        runAllRefVisitors(dico, cproject);
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void runAllDefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
+		tracer.msg("step 2 / 3: creating structural entities");
+		cproject.accept(new CommentDefVisitor(dico, index));
+		cproject.accept(new PackageDefVisistor(dico, index));
+		cproject.accept(new NamespaceDefVisitor(dico, index));
+
+		DefVisitor step2 = new DefVisitor(dico, index);
+		step2.setVisitHeaders(true);
+		cproject.accept(step2);
+		step2.setVisitHeaders(false);
+		cproject.accept(step2);
+		if (step2.nbUnresolvedIncludes() > 0) {
+			tracer.msg("There were "+step2.nbUnresolvedIncludes()+" unresolved includes");
+		}
+	}
+
+	private void runAllRefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
+		tracer.msg("step 3 / 3: creating references");
+		RefVisitor step3 = new RefVisitor(dico, index);
+		step3.setVisitHeaders(true);
+		cproject.accept(step3);
+		step3.setVisitHeaders(false);
+		cproject.accept(step3);
 	}
 
 	private void configWorkspace(IWorkspace workspace) {

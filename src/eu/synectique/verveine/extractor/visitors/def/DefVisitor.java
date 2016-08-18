@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.visitors;
+package eu.synectique.verveine.extractor.visitors.def;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -32,17 +32,13 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplatedTypeTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPClassType;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ICElementVisitor;
 import org.eclipse.cdt.core.model.IInclude;
-import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.Dictionary;
-import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
@@ -51,21 +47,23 @@ import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
+import eu.synectique.verveine.core.gen.moose.MooseModel;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
-import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
 public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 
 	/**
 	 * The file directory being visited at any given time
 	 */
-	protected eu.synectique.verveine.core.gen.famix.Package currentPackage = null;
+	protected Package currentPackage = null;
 
 	/**
 	 * A set of all unresolved includes so that we report them only once
@@ -95,18 +93,23 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
 
 	/**
-	 * Visit a file directory. They are treated as Package
+	 * get Package associated to file directory
 	 */
 	@Override
 	public void visit(ICContainer elt) {
 		tracer.up("ICContainer: "+elt.getElementName());
-		eu.synectique.verveine.core.gen.famix.Package fmx;
-		fmx = dico.ensureFamixPackage(elt.getElementName(), currentPackage);
-		fmx.setIsStub(false);
 
-		currentPackage = fmx;                        // kind of pushing new package on a virtual package stack
-		super.visit(elt);                            // visit container children
-		currentPackage = fmx.getParentPackage();    // kind of popping out the new package from the package stack
+		IBinding key = StubBinding.getInstance(Package.class, dico.mooseName(currentPackage, elt.getElementName()));
+		Package fmx = (Package) dico.getEntityByKey(key);
+		if (fmx != null) {
+			currentPackage = fmx;
+		}
+
+		super.visit(elt);                                // visit children
+
+		if (fmx != null) {
+			currentPackage = fmx.getParentPackage();    // back to parent package
+		}
 		tracer.down();
 	}
 
@@ -126,28 +129,22 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	// CDT VISITING METODS ON AST ==========================================================================================================
 
 	@Override
-	public int visit(IASTTranslationUnit node) {
-		// Handles all comments
-		for (IASTComment cmt : node.getComments()) {
-			Comment fmx = dico.createFamixComment(cmt.toString());
-			IASTFileLocation defLoc = node.getFileLocation();
-			dico.addSourceAnchor(fmx, defLoc.getFileName(), defLoc);
-		}
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
 	public int visit(ICPPASTNamespaceDefinition node) {
 		tracer.up("ICPPASTNamespaceDefinition: "+node.getName());
 		Namespace fmx;
+	
 		nodeName = node.getName();
-		nodeBnd = null;
-
 		nodeBnd = getBinding(nodeName);
-		fmx = dico.ensureFamixNamespace(nodeBnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
-		fmx.setIsStub(false);
 
-		this.context.push(fmx);
+		if (nodeBnd == null) {
+			return PROCESS_SKIP;
+		}
+
+		fmx = (Namespace) dico.getEntityByKey(nodeBnd);
+
+		if (fmx != null) {
+			this.context.push(fmx);
+		}
 
 		return super.visit(node);
 	}

@@ -96,10 +96,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		Namespace fmx;
 	
 		nodeName = node.getName();
-		nodeBnd = null;
-
-		nodeName = node.getName();
-
 		nodeBnd = getBinding(nodeName);
 
 		if (nodeBnd == null) {

@@ -980,7 +980,7 @@ public abstract class AbstractVisitor extends ASTVisitor implements ICElementVis
 		return node.getParent() instanceof IASTCompositeTypeSpecifier;
 	}
 
-	private void visitChildren(IParent elt) {
+	protected void visitChildren(IParent elt) {
 		try {
 			for (ICElement child : elt.getChildren()) {
 				child.accept(this);

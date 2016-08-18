@@ -191,8 +191,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public Package ensureFamixPackage(String name, Package parent) {
-		String fullname = mooseName(parent, name);
-		IBinding key = StubBinding.getInstance(Package.class, fullname);
+		IBinding key = StubBinding.getInstance(Package.class, mooseName(parent, name));
 		Package fmx = super.ensureFamixEntity(Package.class, key, name, /*persitIt*/true);
 		fmx.setIsStub(false);
 		if (parent != null) {
