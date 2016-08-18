@@ -320,12 +320,11 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
 
 		this.context.push(fmx);
-		returnedEntity = fmx;
 
 		for (ICPPASTParameterDeclaration param : node.getParameters()) {
 			param.accept(this);
 		}
-		this.context.pop();
+		returnedEntity = this.context.pop();
 
 		return PROCESS_SKIP;
 	}
@@ -407,7 +406,7 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 		definitionOfATemplate = true;
 		node.getDeclaration().accept(this);
 		fmx = (NamedEntity) returnedEntity;
-		definitionOfATemplate = false;       // as a security in case we forgot to turn it off in a child node
+		definitionOfATemplate = false;       // as a security, in case we forgot to turn it off in a child node
 
 		// template parameters are local to the entity defined in the template declaration
 		context.push(fmx);
@@ -440,10 +439,12 @@ public class DefVisitor extends AbstractVisitor implements ICElementVisitor {
 	 */
 	protected eu.synectique.verveine.core.gen.famix.Type createParameterTypeInCurrentContext(ICPPASTSimpleTypeTemplateParameter paramTyp) {
 		ContainerEntity owner = (ContainerEntity) context.top();
-    	IBinding bnd = getBinding(paramTyp.getName());
-    	if (bnd == null) {
+		// apparently CDT gives a binding to the parameterType at its declaration ("template <class T> ...")
+		// but not when used ("... mth(T)") so we ignore CDT binding and always use our custom build one
+    	IBinding bnd; // = getBinding(paramTyp.getName());
+    	//if (bnd == null) {
     		bnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), paramTyp.getName().toString()));
-    	}
+    	//}
 		if (owner instanceof ParameterizableClass) {
 			return dico.ensureFamixParameterType(bnd, paramTyp.getName().toString(), owner);
 		}
