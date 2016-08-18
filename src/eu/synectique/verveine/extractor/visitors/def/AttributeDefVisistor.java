@@ -3,51 +3,21 @@ package eu.synectique.verveine.extractor.visitors.def;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.core.model.ITranslationUnit;
 
-import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Attribute;
-import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.StubBinding;
-import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
-public class AttributeDefVisistor extends AbstractVisitor {
+public class AttributeDefVisistor extends ClassMemberDefVisitor {
 
 	public AttributeDefVisistor(CDictionary dico, IIndex index) {
 		super(dico, index);
-	}
-
-	/*
-	 * Visiting a class definition, need to put it on the context stack to create its attributes
-	 */
-	@Override
-	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		Class fmx;
-
-		// compute nodeName and binding
-		super.visit(node);
-
-		fmx = (Class) dico.getEntityByKey(nodeBnd);
-		
-		this.context.push(fmx);
-
-		return PROCESS_CONTINUE;
-	}
-
-	@Override
-	protected int leave(ICPPASTCompositeTypeSpecifier node) {
-		context.pop();
-		return PROCESS_CONTINUE;		
 	}
 
 	/*
