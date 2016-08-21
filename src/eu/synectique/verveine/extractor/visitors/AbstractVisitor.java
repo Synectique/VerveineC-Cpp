@@ -1,47 +1,27 @@
 package eu.synectique.verveine.extractor.visitors;
 
-import java.util.Stack;
-
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
-import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
-import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
-import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
-import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
-import eu.synectique.verveine.core.EntityStack;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Method;
@@ -53,6 +33,7 @@ import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.CppEntityStack;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NullTracer;
@@ -63,7 +44,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	/**
 	 * A stack that keeps the current definition context (package/class/method)
 	 */
-	protected EntityStack context;
+	protected CppEntityStack context;
 
 	protected ITracer tracer = new NullTracer();  // no tracing by default
 
@@ -107,7 +88,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 	@Override
 	public void visit(ITranslationUnit elt) {
-		context = new EntityStack();
+		context = new CppEntityStack();
 		this.filename = elt.getFile().getRawLocation().toString();
 		super.visit(elt);
 	}
@@ -149,7 +130,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 				if (nodeBnd == null) {
 					// create one anyway, assume this is a Type
-					nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+					nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), nodeName.toString()));
 				}
 
 				/* Call back method.
@@ -170,6 +151,28 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	 * thus several nodeName and bnd.
 	 */
 	protected void visitSimpleTypeDeclaration(IASTSimpleDeclaration node) { }
+
+	/*
+	 * Visiting a class definition to get its key (IBinding) associated with the famix type entity
+	 */
+	@Override
+	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		nodeName = node.getName();
+		nodeBnd = getBinding(nodeName);
+
+		if (nodeBnd == null) {
+			// create one anyway
+			if (isFullyQualified(nodeName)) {
+				ContainerEntity parent = getParentOfFullyQualifiedName(nodeName);
+				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, simpleName(nodeName)));
+			}
+			else {
+				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(context.getTopCppNamespace(), nodeName.toString()));
+			}
+		}
+
+		return PROCESS_CONTINUE;
+	}
 
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		nodeBnd = null;
@@ -224,43 +227,21 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return PROCESS_CONTINUE;
 	}
 
-	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		nodeName = node.getName();
-		nodeBnd = getBinding(nodeName);
-
-		if (nodeBnd == null) {
-			// create one anyway
-			if (isFullyQualified(nodeName)) {
-				ContainerEntity parent = getParentOfFullyQualifiedName(nodeName);
-				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, simpleName(nodeName)));
-			}
-			else {
-				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
-			}
-		}
-
-		return PROCESS_CONTINUE;
-	}
-
 	public int visit(IASTParameterDeclaration node) {
 		nodeBnd = null;
 		nodeName = node.getDeclarator().getName();
 
 		if (nodeName.toString().equals("")) {
 			// case of a "mth(void)" declaration, seen as a parameter with no name
-			// Additionally (to be on the safe side) could check that:
-			//   node.getDeclSpecifier() instanceof  IASTSimpleDeclSpecifier
-			//   ((IASTSimpleDeclSpecifier) node.getDeclSpecifier()).getType() == IASTSimpleDeclSpecifier.t_void
-			// also happens for fct/method declaration as in: "mth(int,char*)"
+			// also happens for fct/method declaration (as opposed to definition) as in: "mth(int,char*)" (no parameter name)
 			return PROCESS_SKIP;
 		}
 
 		nodeBnd = getBinding(nodeName);
-
 		if (nodeBnd == null) {
-			// create one anyway
 			nodeBnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
 		}
+
 		return PROCESS_CONTINUE;
 	}
 
@@ -403,32 +384,6 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		else {
 			return null;
 		}
-	}
-
-	/**
-	 * Returns the higher-most namespace in the C++ sense on the EntityStack
-	 * C++ namespaces we are interested in are: methods, classes, namespaces
-	 * @return null if could not find a C++ namespace
-	 */
-	protected ContainerEntity getTopCppNamespace() {
-		Stack<NamedEntity> tmp = new Stack<NamedEntity>();
-		NamedEntity top;
-		
-		top = context.pop();
-		tmp.push(top);
-		while ( ! ((top == null) ||
-				   (top instanceof Method) ||
-				   (top instanceof eu.synectique.verveine.core.gen.famix.Class) ||
-				   (top instanceof Namespace) )) {
-			top = context.pop();
-			tmp.push(top);
-		}
-		
-		while (! tmp.empty()) {
-			context.push( tmp.pop());
-		}
-
-		return (ContainerEntity) top;
 	}
 
 	/**
@@ -729,7 +684,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		}
 	}
 
-	protected BehaviouralEntity recoverBehaviouralManually(ICPPASTFunctionDeclarator node, IBinding bnd) {
+	protected BehaviouralEntity resolveBehaviouralFromName(ICPPASTFunctionDeclarator node, IBinding bnd) {
 		String mthSig;
 		Type parent;
 		BehaviouralEntity fmx;
@@ -782,6 +737,44 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		fullname = fullname.substring(0, i);
 		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		return fullname.substring(0, i);
+	}
+
+
+
+	/**
+	 * Dictionary getter.<BR>
+	 * Only intended for subRef visitors to get the same dictionary as their parent visitor
+	 */
+	public CDictionary getDico() {
+		return dico;
+	}
+
+	/**
+	 * context setter.<BR>
+	 * Only intended for subRef visitors to have the same context as their parent visitor
+	 */
+	public void setContext(CppEntityStack context) {
+		this.context = context;
+	}
+
+
+
+
+
+	/**
+	 * context getter.<BR>
+	 * Only intended for subRef visitors to get the same context as their parent visitor
+	 */
+	public CppEntityStack getContext() {
+		return context;
+	}
+
+	/**
+	 * Index getter.<BR>
+	 * Only intended for subRef visitors to get the same index as their parent visitor
+	 */
+	public IIndex getIndex() {
+		return index;
 	}
 
 }

@@ -33,8 +33,6 @@ import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 /**
  * Abstract superclass for Reference visitors.<BR>
  * It defines some utility methods to create references to names.
- * It also adds a constructor accepting another RefVisitor
- * to create sub-visitors (e.g. {@link FunctionCallVisitor}).
  * @author anquetil
  */
 public abstract class AbstractRefVisitor extends AbstractVisitor {
@@ -55,40 +53,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		super(dico, index);
 	}
 
-	/**
-	 * Constructor for sub RefVisitors.
-	 * A sub visitor starts in the same state as its parent visitor
-	 */
-	public AbstractRefVisitor(AbstractRefVisitor parentVisitor) {
-		super(parentVisitor.getDico(), parentVisitor.getIndex());
-		context = parentVisitor.getContext(); 
-	}
-
 	// UTILITIES ==============================================================================================================================
-
-	/**
-	 * Dictionary getter.<BR>
-	 * Only intended for subRef visitors to get the same dictionary as their parent visitor
-	 */
-	protected CDictionary getDico() {
-		return dico;
-	}
-
-	/**
-	 * context getter.<BR>
-	 * Only intended for subRef visitors to get the same context as their parent visitor
-	 */
-	protected EntityStack getContext() {
-		return context;
-	}
-
-	/**
-	 * Index getter.<BR>
-	 * Only intended for subRef visitors to get the same index as their parent visitor
-	 */
-	protected IIndex getIndex() {
-		return index;
-	}
 
 	/**
 	 * Records a reference to a name which can be a variable or behavioral name.
@@ -208,7 +173,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			nodeBnd = getBinding( nodeName);
 
 			if (nodeBnd == null) {
-				nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(getTopCppNamespace(), nodeName.toString()));
+				nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), nodeName.toString()));
 			}
 
 			fmx = (Type) dico.getEntityByKey(nodeBnd);

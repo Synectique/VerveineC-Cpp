@@ -15,6 +15,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
+import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Association;
@@ -26,8 +27,9 @@ import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
-import eu.synectique.verveine.extractor.utils.NullTracer;
+import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.StubBinding;
+import eu.synectique.verveine.extractor.utils.SubVisitorFactory;
 
 public class FunctionCallVisitor extends AbstractRefVisitor {
 
@@ -40,10 +42,8 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 
 	// CONSTRUCTOR ==========================================================================================================================
 
-	public FunctionCallVisitor(AbstractRefVisitor parentVisitor) {
-		super(parentVisitor);
-
-		tracer = new NullTracer("FCV>");
+	public FunctionCallVisitor(CDictionary dico, IIndex index) {
+		super(dico, index);
 	}
 
 	// VISITING METODS ON AST ===============================================================================================================
@@ -217,7 +217,7 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 
 	private void visitArguments(IASTInitializerClause[] args) {
 		for (IASTInitializerClause icl : args) {
-			RefVisitor subVisitor = new RefVisitor(this);
+			RefVisitor subVisitor = SubVisitorFactory.createSubVisitorRV(this);
 
 			icl.accept(subVisitor);
 

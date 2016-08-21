@@ -29,7 +29,7 @@ public class AttributeDefVisistor extends ClassMemberDefVisitor {
 	}
 
 	/*
-	 * Inheritance declaration can lead to ICPPASTDeclarator
+	 * Inheritance declaration can lead to ICPPASTDeclarator (but it is not an attribute)
 	 */
 	@Override
 	public int visit(ICPPASTBaseSpecifier node) {

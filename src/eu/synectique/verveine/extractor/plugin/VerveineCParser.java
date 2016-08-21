@@ -44,6 +44,7 @@ import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.def.AttributeDefVisistor;
+import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.DefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.IncludeVisitor;
@@ -138,6 +139,9 @@ public class VerveineCParser extends VerveineParser {
 
 	private void runAllDefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
 		tracer.msg("step 2 / 3: creating structural entities");
+		/*Having very specialized visitors helps becaue each one is dead simple
+		 * so it is worth the impact on execution time
+		 */
 		cproject.accept(new CommentDefVisitor(dico, index));
 		cproject.accept(new PackageDefVisistor(dico, index));
 		cproject.accept(new NamespaceDefVisitor(dico, index));
@@ -146,6 +150,9 @@ public class VerveineCParser extends VerveineParser {
 		DefVisitor step2 = new DefVisitor(dico, index);
 		step2.setVisitHeaders(true);
 		cproject.accept(step2);
+		cproject.accept(new BehaviouralDefVisitor(dico, index));
+
+		
 		step2.setVisitHeaders(false);
 		cproject.accept(step2);
 

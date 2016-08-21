@@ -3,6 +3,7 @@ package eu.synectique.verveine.extractor.plugin;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleTypeTemplateParameter;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
@@ -256,6 +257,27 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 		
 		return fmx;
+	}
+
+	/** 
+	 * Creating a "parameter type" depends on the context
+	 * <ul>
+	 * <li> If it is a ParameterizableClass (e.g. "<code>template &lt;class T&gt; class C</code> ...", we create a ParameterType
+	 * <li> If it is a Method (e.g. "<code>template &lt;class T&gt; void fct(T)</code> ..."), we create a Type
+	 * </ul>
+	 */
+	public eu.synectique.verveine.core.gen.famix.Type createParameterType(String name, ContainerEntity directOwner, ContainerEntity namespaceOwner) {
+		// apparently CDT gives a binding to the parameterType at its declaration ("template <class T> ...")
+		// but not when used ("... mth(T)") so we ignore CDT binding and always use our custom build one
+    	IBinding bnd;
+    	bnd = StubBinding.getInstance(Type.class, mooseName(namespaceOwner, name));
+
+		if (directOwner instanceof ParameterizableClass) {
+			return ensureFamixParameterType(bnd, name, directOwner);
+		}
+		else {
+			return ensureFamixType(bnd, name, directOwner);
+		}
 	}
 
 	public Type ensureFamixPrimitiveType(int type) {

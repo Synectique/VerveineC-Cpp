@@ -331,7 +331,6 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	@Override
 	public int visit(IASTParameterDeclaration node) {
 		if (node instanceof ICPPASTParameterDeclaration) {
-			// not sure this can actually occur
 			return visit((ICPPASTParameterDeclaration)node);
 		}
 		// else is a valid choice (presumably for C language)

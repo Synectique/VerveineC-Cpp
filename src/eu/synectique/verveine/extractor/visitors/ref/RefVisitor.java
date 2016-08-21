@@ -48,6 +48,7 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.NullTracer;
 //import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
+import eu.synectique.verveine.extractor.utils.SubVisitorFactory;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 import eu.synectique.verveine.extractor.visitors.SignatureBuilderVisitor;
 
@@ -74,15 +75,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 */
 	public RefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
-
-		tracer = new NullTracer("REF>");
-	}
-
-	/**
-	 * Constructor when used as sub-visitor
-	 */
-	public RefVisitor(AbstractRefVisitor parent) {
-		super(parent);
 
 		tracer = new NullTracer("REF>");
 	}
@@ -261,7 +253,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
 
 		if (fmx == null) {
-			fmx = recoverBehaviouralManually(node, nodeBnd);
+			fmx = resolveBehaviouralFromName(node, nodeBnd);
 		}
 
 		this.context.push(fmx);
@@ -307,7 +299,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	@Override
 	protected int visit(ICPPASTConstructorChainInitializer node) {
-		FunctionCallVisitor subVisitor = new FunctionCallVisitor(this);
+		FunctionCallVisitor subVisitor = SubVisitorFactory.createSubVisitorFCV(this);
 		int retVal = subVisitor.visit(node);
 		returnedEntity = subVisitor.returnedEntity();
 		return retVal;
@@ -315,7 +307,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	@Override
 	protected int visit(ICPPASTConstructorInitializer node) {
-		FunctionCallVisitor subVisitor = new FunctionCallVisitor(this);
+		FunctionCallVisitor subVisitor = SubVisitorFactory.createSubVisitorFCV(this);
 		int retVal = subVisitor.visit(node);
 		returnedEntity = subVisitor.returnedEntity();
 		return retVal;
@@ -323,7 +315,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	@Override
 	protected int visit(IASTFunctionCallExpression node) {
-		FunctionCallVisitor subVisitor = new FunctionCallVisitor(this);
+		FunctionCallVisitor subVisitor = SubVisitorFactory.createSubVisitorFCV(this);
 		int retVal = subVisitor.visit(node);
 		returnedEntity = subVisitor.returnedEntity();
 		return retVal;

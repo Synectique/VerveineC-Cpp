@@ -17,6 +17,15 @@ public class ClassMemberDefVisitor extends AbstractVisitor {
 		super(dico, index);
 	}
 
+	protected int visit(ICPPASTVisibilityLabel node) {
+		switch (node.getVisibility()) {
+		case ICPPASTVisibilityLabel.v_private :   currentVisibility = Visibility.PRIVATE;   break;
+		case ICPPASTVisibilityLabel.v_protected : currentVisibility = Visibility.PROTECTED; break;
+		case ICPPASTVisibilityLabel.v_public :    currentVisibility = Visibility.PUBLIC;    break;
+		}
+		return PROCESS_CONTINUE;
+	}
+
 	/*
 	 * Visiting a class definition, need to put it on the context stack to create its members
 	 */
@@ -24,22 +33,13 @@ public class ClassMemberDefVisitor extends AbstractVisitor {
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
 		Class fmx;
 
-		// compute nodeName and binding
+		/* Gets the key (IBinding) of the node to recover the famix type entity */
 		super.visit(node);
 
 		fmx = (Class) dico.getEntityByKey(nodeBnd);
 		
 		this.context.push(fmx);
 
-		return PROCESS_CONTINUE;
-	}
-
-	protected int visit(ICPPASTVisibilityLabel node) {
-		switch (node.getVisibility()) {
-		case ICPPASTVisibilityLabel.v_private :   currentVisibility = Visibility.PRIVATE;   break;
-		case ICPPASTVisibilityLabel.v_protected : currentVisibility = Visibility.PROTECTED; break;
-		case ICPPASTVisibilityLabel.v_public :    currentVisibility = Visibility.PUBLIC;    break;
-		}
 		return PROCESS_CONTINUE;
 	}
 
