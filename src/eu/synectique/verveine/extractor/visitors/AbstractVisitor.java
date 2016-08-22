@@ -591,6 +591,26 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return false;
 	}
 
+	protected boolean isConstructor(BehaviouralEntity fmx) {
+		if ( ! (fmx instanceof Method) ) {
+			return false;
+		}
+		if ( ((Method)fmx).getKind() == null ) {
+			return false;
+		}
+		return ((Method)fmx).getKind().equals(CDictionary.CONSTRUCTOR_KIND_MARKER);
+	}
+
+	protected boolean isDestructor(BehaviouralEntity fmx) {
+		if ( ! (fmx instanceof Method) ) {
+			return false;
+		}
+		if ( ((Method)fmx).getKind() == null ) {
+			return false;
+		}
+		return ((Method)fmx).getKind().equals(CDictionary.DESTRUCTOR_KIND_MARKER);
+	}
+
 	protected boolean isConstructorBinding(IBinding bnd) {
 		if (bnd instanceof ICPPConstructor) {
 			return true;

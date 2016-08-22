@@ -35,6 +35,7 @@ import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
  * It defines some utility methods to create references to names.
  * @author anquetil
  */
+@SuppressWarnings("unused")
 public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 	/**
@@ -46,9 +47,6 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 	// CONSTRUCTORS ==========================================================================================================================
 
-	/**
-	 * Constructor for the "main" RefVisitor
-	 */
 	public AbstractRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
 	}
@@ -144,92 +142,6 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		Access acc = dico.addFamixAccess(accessor, fmx, /*isWrite*/false, context.getLastAccess());
 		context.setLastAccess(acc);
 		return acc;
-	}
-
-	/**
-	 * From a declSpecifier, looks for a corresponding FamixType, creating it if needed (as a stub)
-	 */
-	protected Type referedType(IASTDeclSpecifier node) {
-		Type fmx = null;
-		if (node instanceof IASTSimpleDeclSpecifier) {
-			return dico.ensureFamixPrimitiveType( ((IASTSimpleDeclSpecifier) node).getType());
-		}
-		else if (node instanceof IASTNameOwner) {
-			IASTName nodeName = null;
-
-			// all these tests only to call the right getName() methods in the end :-(
-			if  (node instanceof IASTCompositeTypeSpecifier) {
-				nodeName = ((IASTCompositeTypeSpecifier) node).getName();
-			}
-			else if (node instanceof IASTElaboratedTypeSpecifier) {
-				nodeName = ((IASTElaboratedTypeSpecifier) node).getName();
-			}
-			else if (node instanceof IASTEnumerationSpecifier) {
-				nodeName = ((IASTEnumerationSpecifier) node).getName();
-			}
-			else if (node instanceof IASTNamedTypeSpecifier) {
-				nodeName = ((IASTNamedTypeSpecifier) node).getName();
-			}
-			nodeBnd = getBinding( nodeName);
-
-			if (nodeBnd == null) {
-				nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), nodeName.toString()));
-			}
-
-			fmx = (Type) dico.getEntityByKey(nodeBnd);
-
-			if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
-				fmx = (Type) findInParent(nodeName.toString(), context.top(), /*recursive*/true);
-			}
-
-			if (fmx == null) {  // still not found, create it
-				if (isParameterTypeInstanceName(nodeName.toString())) {
-					fmx = referedParameterTypeInstance(nodeName.toString());
-				}
-				else {
-					fmx = dico.ensureFamixType(nodeBnd, simpleName(nodeName), /*owner*/getParentOfFullyQualifiedName(nodeName));
-				}
-			}
-
-			return fmx;
-		}
-
-		// should not happen
-		return null;
-	}
-
-	private Type referedParameterTypeInstance(String name) {
-		int i = name.indexOf('<');
-		String tname = simpleName(name.substring(0, i));
-		ParameterizedType fmx = null;
-		try {
-			ParameterizableClass generic = (ParameterizableClass) findInParent(tname, context.top(), /*recursive*/true);
-			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, generic, getParentOfFullyQualifiedName(nodeName));
-		}
-		catch (ClassCastException e) {
-			// create a ParameterizedType for an unknown generic
-			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, /*generic*/null, getParentOfFullyQualifiedName(nodeName));
-		}
-
-		for (String targ : name.substring(i+1, name.length()-1).split(",")) {
-			targ = targ.trim();
-			try {
-				Type arg = (Type) findInParent(targ, context.top(), /*recursive*/true);
-				if (arg != null) {
-					fmx.addArguments(arg);
-				}
-			}
-			catch (ClassCastException e) {
-				// for some reason, findInParent seems to have found an entity with this name but not a Type
-				// just ignore it
-			}
-		}
-		
-		return fmx;
-	}
-
-	private boolean isParameterTypeInstanceName(String name) {
-		return (name.indexOf('<') > 0) && (name.endsWith(">"));
 	}
 
 }

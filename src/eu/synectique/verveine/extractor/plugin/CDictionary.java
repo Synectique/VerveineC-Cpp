@@ -53,6 +53,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	/*
 	 * names for primitive types
 	 */
+	private static final String PRIM_T_UNSPECIFIED = "unspecified";   // default to "int" but might also be for constructors (no return type)
 	private static final String PRIM_T_BOOLEAN = "boolean";
 	private static final String PRIM_T_INT = "int";
 	private static final String PRIM_T_REAL = "real";
@@ -280,9 +281,12 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 	}
 
+	/**
+	 * May return null
+	 */
 	public Type ensureFamixPrimitiveType(int type) {
 		StubBinding bnd = StubBinding.getInstance(Type.class, "_primitive_/"+type);
-		 return ensureFamixPrimitiveType(bnd, primitiveTypeName(type));
+		return ensureFamixPrimitiveType(bnd, primitiveTypeName(type));
 	}
 
 	public Function ensureFamixFunction(IBinding key, String name, String sig, ContainerEntity parent) {
@@ -348,7 +352,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	// UTILITIES =========================================================================================================================================
 
 	public String primitiveTypeName(int type) {
-		String name = PRIM_T_UNKNOWN+"_"+type;
+		String name;
 		switch (type) {
 		case IASTSimpleDeclSpecifier.t_void:
 			// for type void, we return null as in: "void f()"
@@ -375,6 +379,11 @@ public class CDictionary extends Dictionary<IBinding> {
 		case IASTSimpleDeclSpecifier.t_double:
 			name = PRIM_T_REAL;
 			break;
+		case IASTSimpleDeclSpecifier.t_unspecified:
+			name = PRIM_T_UNSPECIFIED;
+			break;
+		default:
+			name = PRIM_T_UNKNOWN+"_"+type;
 		}
 		return name;
 	}

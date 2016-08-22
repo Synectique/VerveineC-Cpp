@@ -3,18 +3,26 @@ package eu.synectique.verveine.extractor.visitors.ref;
 import java.io.RandomAccessFile;
 
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
+import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
+import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
+import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IType;
+import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
@@ -22,6 +30,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
@@ -39,9 +48,13 @@ import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.Inheritance;
+import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
+import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
+import eu.synectique.verveine.core.gen.famix.ParameterizedType;
+import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
@@ -127,7 +140,8 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 				// ignore for now
 			}
 			else {
-				fmx.setDeclaredType( referedType( node.getDeclSpecifier() ) );
+				node.getDeclSpecifier().accept(this);
+				fmx.setDeclaredType( (Type) returnedEntity );
 			}
 		}
 		returnedEntity = fmx;
@@ -172,14 +186,22 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		if (node.getDeclarators().length > 0) {
 			for (IASTDeclarator declarator : node.getDeclarators()) {
+				SourcedEntity fmx;
+				Type refType;
 				returnedEntity = null;
 				this.visit( declarator );
+				fmx = returnedEntity;
+				
+				node.getDeclSpecifier().accept(this);
+				refType = (Type) returnedEntity;
 
-				if (returnedEntity instanceof BehaviouralEntity) {
-					((BehaviouralEntity)returnedEntity).setDeclaredType( referedType( node.getDeclSpecifier() ) );
+				if (fmx instanceof BehaviouralEntity) {
+					if ( (! isConstructor((BehaviouralEntity) fmx)) && (! isDestructor((BehaviouralEntity) fmx)) ) {
+						((BehaviouralEntity)fmx).setDeclaredType(refType);
+					}
 				}
-				else if (returnedEntity instanceof StructuralEntity) {
-					((StructuralEntity)returnedEntity).setDeclaredType( referedType( node.getDeclSpecifier() ) );
+				else if (fmx instanceof StructuralEntity) {
+					((StructuralEntity)fmx).setDeclaredType(refType);
 				}
 			}
 			return PROCESS_SKIP;
@@ -222,7 +244,8 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		fmx = (TypeAlias) dico.getEntityByKey(nodeBnd);
 
-		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
+		node.getDeclSpecifier().accept(this);
+		fmx.setAliasedType( (Type) returnedEntity );
 
 		returnedEntity = fmx;
 	}
@@ -262,9 +285,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return PROCESS_SKIP;
 	}
 
-	/**
-	 * Visiting a method or function declaration
-	 */
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		BehaviouralEntity fmx = null;
@@ -287,9 +307,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return PROCESS_SKIP;  // already visited all we needed
 	}
 
-	/**
-	 * Visiting a method or function definition
-	 */
 	@Override
 	protected int visit(ICPPASTFunctionDefinition node) {
 		BehaviouralEntity fmx = null;
@@ -307,8 +324,12 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 				init.accept(this);
 			}
 
-			// return type of the Behavioural
-			fmx.setDeclaredType( referedType( node.getDeclSpecifier() ) );
+			// return type of the Behavioral
+			// could be null, e.g when it is default int type in C
+			if ( (! isConstructor(fmx)) && (! isDestructor(fmx)) ) {
+				node.getDeclSpecifier().accept(this);
+				fmx.setDeclaredType( (Type) returnedEntity );
+			}
 
 			// body to compute some metrics
 			node.getBody().accept(this);
@@ -362,11 +383,11 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		// can also be a method invocation
 		boolean reference;
 
-		((IASTFieldReference)node).getFieldOwner().accept(this);
+		node.getFieldOwner().accept(this); // TODO check this why doesn't it create an infinite recursion ?
 		
 		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
 					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
-		returnedEntity = referenceToName(((IASTFieldReference) node).getFieldName(), reference);
+		returnedEntity = referenceToName(node.getFieldName(), reference);
 
 		return PROCESS_SKIP;
 	}
@@ -386,6 +407,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return PROCESS_SKIP;
 	}
 
+	@Override
 	public int visit(IASTBinaryExpression node) {
 		node.getOperand1().accept(this);
 
@@ -410,6 +432,97 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return PROCESS_SKIP;
 	}
 
+	@Override
+	protected int visit(ICASTCompositeTypeSpecifier node) {
+		returnedEntity = referedType(node.getName());
+		return PROCESS_SKIP;
+	}
 
-	
+	@Override
+	public int visit(IASTElaboratedTypeSpecifier node) {
+		returnedEntity = referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	public int visit(IASTSimpleDeclSpecifier node) {
+		returnedEntity = dico.ensureFamixPrimitiveType( ((IASTSimpleDeclSpecifier) node).getType());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTEnumerationSpecifier node) {
+		returnedEntity = referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(ICPPASTNamedTypeSpecifier node) {
+		returnedEntity = referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+
+	protected Type referedType(IASTName name) {
+		Type fmx = null;
+		IBinding bnd = getBinding( name);
+
+		if (bnd == null) {
+			bnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), name.toString()));
+		}
+
+		fmx = (Type) dico.getEntityByKey(bnd);
+
+		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
+			fmx = (Type) findInParent(name.toString(), context.top(), /*recursive*/true);
+		}
+
+		if (fmx == null) {  // still not found, create it
+			if (isParameterTypeInstanceName(name.toString())) {
+				fmx = referedParameterTypeInstance(name.toString());
+			}
+			else {
+				fmx = dico.ensureFamixType(bnd, simpleName(name), /*owner*/getParentOfFullyQualifiedName(name));
+			}
+		}
+
+		return fmx;
+	}
+
+	private Type referedParameterTypeInstance(String name) {
+		int i = name.indexOf('<');
+		String tname = simpleName(name.substring(0, i));
+		ParameterizedType fmx = null;
+		try {
+			ParameterizableClass generic = (ParameterizableClass) findInParent(tname, context.top(), /*recursive*/true);
+			// FIXME should not reference nodeBnd and nodeName here
+			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, generic, getParentOfFullyQualifiedName(nodeName));
+		}
+		catch (ClassCastException e) {
+			// create a ParameterizedType for an unknown generic
+			// FIXME same bug
+			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, /*generic*/null, getParentOfFullyQualifiedName(nodeName));
+		}
+
+		for (String targ : name.substring(i+1, name.length()-1).split(",")) {
+			targ = targ.trim();
+			try {
+				Type arg = (Type) findInParent(targ, context.top(), /*recursive*/true);
+				if (arg != null) {
+					fmx.addArguments(arg);
+				}
+			}
+			catch (ClassCastException e) {
+				// for some reason, findInParent seems to have found an entity with this name but not a Type
+				// just ignore it
+			}
+		}
+		
+		return fmx;
+	}
+
+	private boolean isParameterTypeInstanceName(String name) {
+		return (name.indexOf('<') > 0) && (name.endsWith(">"));
+	}
+
 }
