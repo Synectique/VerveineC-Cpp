@@ -137,59 +137,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
 
-	/** Visiting a class definition
-	 */
-	@Override
-	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		eu.synectique.verveine.core.gen.famix.Class fmx;
-
-		// compute nodeName and binding
-		super.visit(node);
-
-		fmx = (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey(nodeBnd);
-
-		if ( (fmx == null) && (nodeBnd.getClass() != StubBinding.class) ) {
-			fmx = dico.ensureFamixClass(nodeBnd, nodeName.toString(), getParentOfFullyQualifiedName(nodeName));
-		}
-		if (fmx == null) {
-			return PROCESS_SKIP;
-		}
-		
-		// now looking for superclasses
-		if (nodeBnd instanceof ICPPClassType) {   // would not be the case if we had to create a StubBinding
-			Inheritance lastInheritance = null;
-			int i = 0;
-			for (ICPPBase baseClass : ((ICPPClassType)nodeBnd).getBases()) {
-				Type supFmx = null;
-				IType supBnd = baseClass.getBaseClassType();
-
-				if(supBnd instanceof IBinding) {
-					String supName = ((IBinding)supBnd).getName();
-					supFmx =  ensureStubSuperClassInNamespace((IBinding)supBnd, supName);
-				}
-				if (supFmx == null) {  // possibly as a consequence of (subBnd == null)
-					// could be just a type instead of a class, but there is no way to know for sure
-					supFmx = ensureStubSuperClassInNamespace((IBinding)null, /*name*/node.getBaseSpecifiers()[i].getNameSpecifier().toString());
-				}
-				if (supFmx != null) {
-					lastInheritance = dico.ensureFamixInheritance(supFmx, fmx, lastInheritance);
-				}
-				i++;
-			}
-		}
-
-		this.context.push(fmx);
-
-		for (IASTDeclaration child : node.getMembers()) {
-			child.accept(this);
-		}
-
-		returnedEntity = this.context.pop();
-		tracer.down();
-
-		return PROCESS_SKIP;
-	}
-
 	@Override
 	protected int visit(IASTSimpleDeclaration node) {
 		// compute nodeName and binding
@@ -263,9 +210,23 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTDeclarator node) {
-		// compute nodeName and binding
+
 		nodeBnd = null;
-		super.visit(node);
+		nodeName = null;
+
+		if (node.getParent() instanceof IASTSimpleDeclaration) {
+			if ( nodeParentIsClass(node.getParent()) && ! declarationIsTypedef((IASTSimpleDeclaration)node.getParent()) ) {
+				// this is an Attribute declaration, get it back
+				nodeName = node.getName();
+
+				nodeBnd = getBinding(nodeName);
+				if (nodeBnd == null) {
+					nodeBnd = StubBinding.getInstance(Attribute.class, dico.mooseName(context.topType(), nodeName.toString()));
+				}
+			}
+		}
+
+
 		if (node.getInitializer() != null ) {
 			node.getInitializer().accept(this);
 		}

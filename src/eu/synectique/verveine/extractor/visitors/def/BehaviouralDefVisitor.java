@@ -103,22 +103,16 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		// now visiting the children of the node
 		node.getDeclSpecifier().accept(this);
 
-		context.setLastAccess(null);
+		context.setLastAccess(null);		// TODO remove these 3 lines
 		context.setLastInvocation(null);
 		context.setLastReference(null);
 		context.setTopMethodCyclo(1);
 		context.setTopMethodNOS(0);
+
 		node.getBody().accept(this);
 
-		if (fmx != null) {
-			// don't remember exactly why it has to be that way
-			// this was inherited from VerveineJ and requires some refactoring ...
-			int nos = context.getTopMethodNOS();
-			int cyclo = context.getTopMethodCyclo();
-			fmx.setNumberOfStatements(nos);
-			fmx.setCyclomaticComplexity(cyclo);
-		}
-
+		fmx.setNumberOfStatements(context.getTopMethodNOS());
+		fmx.setCyclomaticComplexity(context.getTopMethodCyclo());
 		this.context.pop();
 
 		return PROCESS_SKIP;  // we already visited the children

@@ -28,12 +28,12 @@ public class NamespaceDefVisitor extends AbstractVisitor {
 		nodeName = node.getName();
 		nodeBnd = getBinding(nodeName);
 
-		fmx = dico.ensureFamixNamespace(nodeBnd, nodeName.getLastName().toString(), (Namespace) this.context.top());
+		fmx = dico.ensureFamixNamespace(nodeBnd, nodeName.toString(), (Namespace) this.context.top());
 		fmx.setIsStub(false);
 
 		this.context.push(fmx);
 
-		return super.visit(node);
+		return PROCESS_CONTINUE;
 	}
 
 	@Override

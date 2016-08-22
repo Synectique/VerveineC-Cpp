@@ -101,14 +101,12 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		Namespace fmx;
 
 		nodeBnd = getBinding(node.getName());
-		if (nodeBnd != null) {
-			fmx = (Namespace) dico.getEntityByKey(nodeBnd);
-			if (fmx != null) {
-				this.context.push(fmx);
-			}
-		}
 
-		return super.visit(node);
+		fmx = (Namespace) dico.getEntityByKey(nodeBnd);
+
+		this.context.push(fmx);
+
+		return PROCESS_CONTINUE;
 	}
 
 	@Override
@@ -126,19 +124,28 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		nodeBnd = getBinding(nodeName);
 
 		if (nodeBnd == null) {
-			// create one anyway
-			if (isFullyQualified(nodeName)) {
-				ContainerEntity parent = getParentOfFullyQualifiedName(nodeName);
-				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, simpleName(nodeName)));
-			}
-			else {
-				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(context.getTopCppNamespace(), nodeName.toString()));
-			}
+			nodeBnd = mkStubKey(nodeName, Class.class);
 		}
 
 		return PROCESS_CONTINUE;
 	}
 
+
+	protected <T extends NamedEntity> IBinding mkStubKey(IASTName name, java.lang.Class<T> entityType) {
+		ContainerEntity parent = null;
+		String simpleName = null;
+		if (isFullyQualified(name)) {
+			parent = getParentOfFullyQualifiedName(name);
+			simpleName = simpleName(name);
+		}
+		else {
+			parent = context.getTopCppNamespace();
+			simpleName = name.toString();
+		}
+		return StubBinding.getInstance(entityType, dico.mooseName(parent, simpleName));
+	}
+
+	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		nodeBnd = null;
 		nodeName = node.getName();
@@ -158,7 +165,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 			else {
 				parent = context.top();
 			}
-			// for behavioural, we put the full signature in the key to have better chance of recovering it
+			// for behavioral, we put the full signature in the key to have better chance of recovering it
 			SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
 			node.accept(sigVisitor);
 			behavName = sigVisitor.getFullSignature(node);
@@ -174,24 +181,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return PROCESS_CONTINUE;
 	}
 
-	protected int visit(ICPPASTDeclarator node) {
-		nodeBnd = null;
-		nodeName = null;
-
-		if (node.getParent() instanceof IASTSimpleDeclaration) {
-			if ( nodeParentIsClass(node.getParent()) && ! declarationIsTypedef((IASTSimpleDeclaration)node.getParent()) ) {
-				// this is an Attribute declaration, get it back
-				nodeName = node.getName();
-
-				nodeBnd = getBinding(nodeName);
-				if (nodeBnd == null) {
-					nodeBnd = StubBinding.getInstance(Attribute.class, dico.mooseName(context.topType(), nodeName.toString()));
-				}
-			}
-		}
-		return PROCESS_CONTINUE;
-	}
-
+	@Override
 	public int visit(IASTParameterDeclaration node) {
 		nodeBnd = null;
 		nodeName = node.getDeclarator().getName();
@@ -475,12 +465,10 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	}
 
 	/**
-	 * Ensures a stub type/class and its parent (a namespace).
-	 * Deals with fully qualified class name and not qualified class name (puts class in toplevel namespace (i.e. null) in this case).
-	 * @param classBnd class binding or null (in which case creates a StubBinding)
-	 * @param name of the stub class to create
+	 * Ensures a (stub) type/class and its parent (a namespace).
+	 * Deals with fully qualified class name and not qualified class name
 	 */
-	protected Type ensureStubSuperClassInNamespace(IBinding classBnd, String name) {
+	protected Type resolveOrClass(String name) {
 		ContainerEntity parent = null;
 		Type typ;
 
@@ -488,15 +476,12 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 			parent = recursiveEnsureParentNamespace(name);
 			name = simpleName(name);
 		}
-
 		
 		// sometimes the "class" happens to have been created as a type before ...
 		typ = (Type) findInParent(name, parent, /*recursive*/false);
 		
 		if (typ == null) {
-			if (classBnd == null) {
-				classBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, name));
-			}
+			IBinding classBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Class.class, dico.mooseName(parent, name));
 			typ = dico.ensureFamixClass(classBnd, name, parent);
 		}
 		return typ;
@@ -592,11 +577,15 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		}
 	}
 
+	protected boolean isStubBinding(IBinding bnd) {
+		return (bnd instanceof StubBinding);
+	}
+
 	protected boolean isMethodBinding(IBinding bnd) {
 		if (bnd instanceof ICPPMethod) {
 			return true;
 		}
-		if ( (bnd instanceof StubBinding) && ( ((StubBinding)bnd).getEntityClass().equals(Method.class.getName()) ) ) {
+		if ( isStubBinding(bnd) && ( ((StubBinding)bnd).getEntityClass().equals(Method.class.getName()) ) ) {
 			return true;
 		}
 		return false;
@@ -606,7 +595,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		if (bnd instanceof ICPPConstructor) {
 			return true;
 		}
-		if (bnd instanceof StubBinding) {
+		if (isStubBinding(bnd)) {
 			String fullName = ((StubBinding)bnd).getEntityName();
 			int i;
 			// remove parameters from the name
@@ -629,7 +618,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		if ( (bnd instanceof ICPPMethod) && (((ICPPMethod)bnd).isDestructor()) ) {
 			return true;
 		}
-		if (bnd instanceof StubBinding) {
+		if (isStubBinding(bnd)) {
 			// simplified test. Could look at the name of the class as in isConstructorBinding(bnd)
 			return simpleName(((StubBinding)bnd).getEntityName()).charAt(0) == '~';
 		}

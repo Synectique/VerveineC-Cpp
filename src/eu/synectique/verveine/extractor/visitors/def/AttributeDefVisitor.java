@@ -14,9 +14,9 @@ import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 
-public class AttributeDefVisistor extends ClassMemberDefVisitor {
+public class AttributeDefVisitor extends ClassMemberDefVisitor {
 
-	public AttributeDefVisistor(CDictionary dico, IIndex index) {
+	public AttributeDefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
 	}
 
@@ -84,7 +84,7 @@ public class AttributeDefVisistor extends ClassMemberDefVisitor {
 		nodeName = node.getName();
 		nodeBnd = getBinding(nodeName);
 		if (nodeBnd == null) {
-			nodeBnd = StubBinding.getInstance(Attribute.class, dico.mooseName(context.topType(), nodeName.toString()));
+			nodeBnd = mkStubKey(nodeName, Attribute.class);
 		}
 
 		fmx = dico.ensureFamixAttribute(nodeBnd, nodeName.toString(), context.topType());

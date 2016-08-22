@@ -34,13 +34,14 @@ import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.IncludeVisitor;
-import eu.synectique.verveine.extractor.visitors.def.AttributeDefVisistor;
+import eu.synectique.verveine.extractor.visitors.def.AttributeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.PackageDefVisistor;
 import eu.synectique.verveine.extractor.visitors.def.TemplateParameterDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
+import eu.synectique.verveine.extractor.visitors.ref.InheritanceRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class VerveineCParser extends VerveineParser {
@@ -134,24 +135,43 @@ public class VerveineCParser extends VerveineParser {
 	private void runAllDefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
 		tracer.msg("step 2 / 3: creating structural entities");
 		/*Having very specialized visitors helps because each one is dead simple
-		 * so it is worth the impact on execution time */
+		 * so it is worth the impact on execution time
+		 * Note that the order is important, the visitors are not independent */
 		cproject.accept(new CommentDefVisitor(dico, index));
 		cproject.accept(new PackageDefVisistor(dico, index));
 		cproject.accept(new NamespaceDefVisitor(dico, index));
 		cproject.accept(new TypeDefVisitor(dico, index));
-		cproject.accept(new BehaviouralDefVisitor(dico, index));
-		cproject.accept(new TemplateParameterDefVisitor(dico, index));
-		cproject.accept(new AttributeDefVisistor(dico, index));
+		cproject.accept(new BehaviouralDefVisitor(dico, index));		// must be after class definitions
+		cproject.accept(new TemplateParameterDefVisitor(dico, index));	// must be after method definitions (possible template)
+		cproject.accept(new AttributeDefVisitor(dico, index));			// must be after all class definitions
+		/*
+		 * Types def
+		 *   attribute def
+		 *   mth def
+		 *   template param def
+		 *     var type (attribute, parameter, global/local var)
+		 *     mth/fct return type
+		 *     inheritance
+		 *     reference
+		 * Attribute def
+		 *   accesses
+		 *   dereferenced invocation
+		 * Method def
+		 *   invocation
+		 */
 	}
 
 	private void runAllRefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
 		tracer.msg("step 3 / 3: creating references");
+		cproject.accept(new InheritanceRefVisitor(dico, index));
+
 		RefVisitor step3 = new RefVisitor(dico, index);
 		step3.setVisitHeaders(true);
 		cproject.accept(step3);
 		step3.setVisitHeaders(false);
 		cproject.accept(step3);
 	}
+
 
 	private void configWorkspace(IWorkspace workspace) {
 		IWorkspaceDescription workspaceDesc = workspace.getDescription();
