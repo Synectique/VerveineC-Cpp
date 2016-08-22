@@ -43,11 +43,11 @@ import eu.synectique.verveine.extractor.utils.Constants;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
+import eu.synectique.verveine.extractor.visitors.IncludeVisitor;
 import eu.synectique.verveine.extractor.visitors.def.AttributeDefVisistor;
 import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
-import eu.synectique.verveine.extractor.visitors.def.DefVisitor;
-import eu.synectique.verveine.extractor.visitors.def.IncludeVisitor;
+import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.PackageDefVisistor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
@@ -126,36 +126,29 @@ public class VerveineCParser extends VerveineParser {
         configIndexer(cproject);
 		computeIndex(cproject);
 		
-		incVisitor = new IncludeVisitor(dico, index);
         try {
     		runAllDefVisitors(dico, cproject);
 	        runAllRefVisitors(dico, cproject);
+
+	        // statistics on unresolved includes
+			incVisitor = new IncludeVisitor(dico, index);
+    		cproject.accept(incVisitor);
+	        incVisitor.reportUnresolvedIncludes();
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
         
-        incVisitor.reportUnresolvedIncludes();
 	}
 
 	private void runAllDefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
 		tracer.msg("step 2 / 3: creating structural entities");
-		/*Having very specialized visitors helps becaue each one is dead simple
-		 * so it is worth the impact on execution time
-		 */
+		/*Having very specialized visitors helps because each one is dead simple
+		 * so it is worth the impact on execution time */
 		cproject.accept(new CommentDefVisitor(dico, index));
 		cproject.accept(new PackageDefVisistor(dico, index));
 		cproject.accept(new NamespaceDefVisitor(dico, index));
-		cproject.accept(incVisitor);
-
-		DefVisitor step2 = new DefVisitor(dico, index);
-		step2.setVisitHeaders(true);
-		cproject.accept(step2);
+		cproject.accept(new TypeDefVisitor(dico, index));
 		cproject.accept(new BehaviouralDefVisitor(dico, index));
-
-		
-		step2.setVisitHeaders(false);
-		cproject.accept(step2);
-
 		cproject.accept(new AttributeDefVisistor(dico, index));
 	}
 

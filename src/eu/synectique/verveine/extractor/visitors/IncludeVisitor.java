@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.visitors.def;
+package eu.synectique.verveine.extractor.visitors;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -7,7 +7,6 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.IInclude;
 
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.visitors.AbstractDispatcherVisitor;
 
 public class IncludeVisitor extends AbstractDispatcherVisitor {
 

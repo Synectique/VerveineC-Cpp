@@ -117,41 +117,6 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return super.leave(node);
 	}
 
-	protected int visit(IASTSimpleDeclaration node) {
-		if (declarationIsTypedef(node)) {
-			for (IASTDeclarator declarator : node.getDeclarators()) {
-			// this is a typedef, so the declarator(s) should be FAMIXType(s)
-
-				nodeName = declarator.getName();
-
-				tracer.msg("IASTSimpleDeclaration (typedef):"+nodeName.toString());
-
-				nodeBnd = getBinding(nodeName);
-
-				if (nodeBnd == null) {
-					// create one anyway, assume this is a Type
-					nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), nodeName.toString()));
-				}
-
-				/* Call back method.
-				 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
-				 * thus several nodeName and bnd
-				 */
-				visitSimpleTypeDeclaration(node);
-			}
-			
-			return PROCESS_SKIP;  // typedef already handled
-		}
-		return PROCESS_CONTINUE;
-	}
-
-	/**
-	 * Call back method from {@link visit(IASTSimpleDeclaration)}
-	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
-	 * thus several nodeName and bnd.
-	 */
-	protected void visitSimpleTypeDeclaration(IASTSimpleDeclaration node) { }
-
 	/*
 	 * Visiting a class definition to get its key (IBinding) associated with the famix type entity
 	 */

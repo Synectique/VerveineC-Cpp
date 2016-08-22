@@ -196,9 +196,30 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		// also handles typedefs (see handleTypedef)
 		// here we are interested in functions/methods declarations
 		// to get the return type of the function
-		if (super.visit(node) == PROCESS_SKIP) {
-			// this was a typedef and it was handled. Can stop processing of this node
-			return PROCESS_SKIP;
+
+		if (declarationIsTypedef(node)) {
+			for (IASTDeclarator declarator : node.getDeclarators()) {
+			// this is a typedef, so the declarator(s) should be FAMIXType(s)
+
+				nodeName = declarator.getName();
+
+				tracer.msg("IASTSimpleDeclaration (typedef):"+nodeName.toString());
+
+				nodeBnd = getBinding(nodeName);
+
+				if (nodeBnd == null) {
+					// create one anyway, assume this is a Type
+					nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), nodeName.toString()));
+				}
+
+				/* Call back method.
+				 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
+				 * thus several nodeName and bnd
+				 */
+				visitSimpleTypeDeclaration(node);
+			}
+			
+			return PROCESS_SKIP;  // typedef already handled
 		}
 
 		if (node.getDeclarators().length > 0) {
@@ -217,6 +238,23 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 
 		return PROCESS_CONTINUE;
+	}
+
+
+	/**
+	 * Call back method from {@link #visit(IASTSimpleDeclaration)}
+	 * sets the referedType for the AliasType of the typedef.
+	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
+	 * thus several nodeName and bnd.
+	 */
+	protected void visitSimpleTypeDeclaration(IASTSimpleDeclaration node) {
+		TypeAlias fmx;
+
+		fmx = (TypeAlias) dico.getEntityByKey(nodeBnd);
+
+		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
+
+		returnedEntity = fmx;
 	}
 
 	/**
@@ -386,24 +424,5 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	}
 
 
-	// UTILITIES ==============================================================================================================================
 	
-
-	/**
-	 * Call back method from {@link AbstractVisitor#visit(IASTSimpleDeclaration)}
-	 * sets the referedType for the AliasType of the typedef.
-	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
-	 * thus several nodeName and bnd.
-	 */
-	@Override
-	protected void visitSimpleTypeDeclaration(IASTSimpleDeclaration node) {
-		TypeAlias fmx;
-
-		fmx = (TypeAlias) dico.getEntityByKey(nodeBnd);
-
-		fmx.setAliasedType( referedType( node.getDeclSpecifier() ) );
-
-		returnedEntity = fmx;
-	}
-
 }

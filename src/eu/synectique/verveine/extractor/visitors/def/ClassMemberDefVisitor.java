@@ -1,5 +1,7 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
+import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.index.IIndex;
@@ -37,16 +39,25 @@ public class ClassMemberDefVisitor extends AbstractVisitor {
 		super.visit(node);
 
 		fmx = (Class) dico.getEntityByKey(nodeBnd);
-		
-		this.context.push(fmx);
 
-		return PROCESS_CONTINUE;
+		this.context.push(fmx);
+		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
+			decl.accept(this);
+		}
+		returnedEntity = context.pop();
+
+		return PROCESS_SKIP;
 	}
 
+	/*
+	 * To avoid getting ICPPASTDeclarator of types passed as possible attributes or methods
+	 */
 	@Override
-	protected int leave(ICPPASTCompositeTypeSpecifier node) {
-		context.pop();
-		return PROCESS_CONTINUE;		
+	protected int visit(IASTSimpleDeclaration node) {
+		if (declarationIsTypedef(node)) {
+			return PROCESS_SKIP;
+		}
+		return PROCESS_CONTINUE;
 	}
 
 }
