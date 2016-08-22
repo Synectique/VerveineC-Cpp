@@ -289,7 +289,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		super.visit(node);
 
 		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
-
+		// try harder
 		if (fmx == null) {
 			fmx = resolveBehaviouralFromName(node, nodeBnd);
 		}

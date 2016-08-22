@@ -117,7 +117,7 @@ public class TypeDefVisitor extends AbstractVisitor {
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
 		Class fmx;
 		boolean isTemplate = definitionOfATemplate;
-		definitionOfATemplate = false;   // Immediately put it to false because it could pollute visiting the children
+		definitionOfATemplate = false;   // Immediately turn it off because it could pollute visiting the children
 
 		// compute nodeName and binding
 		super.visit(node);
@@ -149,50 +149,10 @@ public class TypeDefVisitor extends AbstractVisitor {
 		return PROCESS_SKIP;
 	}
 
-
-	@Override
-	public int visit(ICPPASTTemplateParameter node) {
-		if (node instanceof ICPPASTSimpleTypeTemplateParameter) {
-			nodeName = ((ICPPASTSimpleTypeTemplateParameter)node).getName();
-			try {
-				nodeBnd = index.findBinding(nodeName);
-			} catch (CoreException e) {
-				e.printStackTrace();
-			}
-			if (nodeBnd != null) {
-				returnedEntity = dico.ensureFamixParameterType(nodeBnd, nodeName.toString(), (ContainerEntity) context.top(), /*persistIt*/true);
-			}
-		}
-		return PROCESS_SKIP;
-	}
-
 	@Override
 	protected int visit(ICPPASTTemplateDeclaration node) {
 		definitionOfATemplate = true;
-		returnedEntity = null;
 		node.getDeclaration().accept(this);
-
-		if (returnedEntity != null) {
-			// we were visiting a template class (not a template method)
-
-			// template parameters are local to the parameterizable class defined in the template declaration
-			context.push((Type)returnedEntity);
-			for (ICPPASTTemplateParameter param : node.getTemplateParameters()) {
-				if (param instanceof ICPPASTSimpleTypeTemplateParameter ) {
-					// a variable for a parameter type
-					dico.createParameterType( ((ICPPASTSimpleTypeTemplateParameter)param).getName().toString(), (ContainerEntity)context.top(), context.getTopCppNamespace());
-				}
-				else if (param instanceof ICPPASTTemplatedTypeTemplateParameter ) {
-					// a variable for a parameter type that is itself a template
-					dico.createParameterType( ((ICPPASTSimpleTypeTemplateParameter)param).getName().toString(), (ContainerEntity)context.top(), context.getTopCppNamespace());
-				}
-				else {
-					// ICPPASTParameterDeclaration not sure exactly what it means
-					throw new IllegalStateException("Unrecognized type for ICPPASTTemplateParameter "+param.getRawSignature()+"in file "+node.getContainingFilename());
-				}
-			}
-			context.pop();
-		}
 
 		return PROCESS_SKIP;
 	}
@@ -202,8 +162,8 @@ public class TypeDefVisitor extends AbstractVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
-		definitionOfATemplate = false;   // Immediately put it to false because it could pollute visiting the children
-		returnedEntity = null;
+		definitionOfATemplate = false;
+
 		return PROCESS_SKIP;
 	}
 

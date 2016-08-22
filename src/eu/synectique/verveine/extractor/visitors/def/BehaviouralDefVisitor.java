@@ -55,7 +55,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 		// just in case this is a definition and we already processed the declaration
 		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
-
+		// try harder
 		if (fmx == null) {
 			fmx = resolveBehaviouralFromName(node, nodeBnd);
 		}
@@ -124,37 +124,6 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		return PROCESS_SKIP;  // we already visited the children
 	}
 
-	@Override
-	protected int visit(ICPPASTTemplateDeclaration node) {
-		NamedEntity fmx = null;
-
-		node.getDeclaration().accept(this);
-		fmx = (NamedEntity) returnedEntity;
-
-		// template parameters are local to the entity defined in the template declaration
-		context.push(fmx);
-        for (ICPPASTTemplateParameter param : node.getTemplateParameters()) {
-        	if (param instanceof ICPPASTParameterDeclaration ) {
-        		// i.e. a variable parameter to the template
-        		// not sure exactly what it is, ignore for now
-        	}
-        	else if (param instanceof ICPPASTSimpleTypeTemplateParameter ) {
-        		// a variable for a parameter type
- 				dico.createParameterType( ((ICPPASTSimpleTypeTemplateParameter)param).getName().toString(), (ContainerEntity)context.top(), context.getTopCppNamespace());
-        	}
-        	else if (param instanceof ICPPASTTemplatedTypeTemplateParameter ) {
-        		// a variable for a parameter type that is itself a template
-        		dico.createParameterType( ((ICPPASTSimpleTypeTemplateParameter)param).getName().toString(), (ContainerEntity)context.top(), context.getTopCppNamespace());
-        	}
-        	// else should not happen
-        }
-        context.pop();
-
-		return PROCESS_SKIP;
-	}
-
-	
-
 	/*
 	 * We treat parameters in this visitor. could have used a specialized sub-visitor ...
 	 * 
@@ -178,6 +147,12 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		return PROCESS_SKIP;
 	}
 
+	@Override
+	protected int visit(ICPPASTTemplateDeclaration node) {
+		node.getDeclaration().accept(this);
+		// redefined to not visit template parameters (see visit(IASTParameterDeclaration node))
+		return PROCESS_SKIP;
+	}
 
 
 	/**

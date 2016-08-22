@@ -211,8 +211,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public Type ensureFamixType(IBinding key, String name, ContainerEntity owner) {
-		Type fmx;
-		fmx = (Type) getEntityIfNotNull(key);
+		Type fmx = (Type) getEntityIfNotNull(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixType(key, name, owner, /*persistIt*/true);
 		}
@@ -266,17 +265,17 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * <li> If it is a Method (e.g. "<code>template &lt;class T&gt; void fct(T)</code> ..."), we create a Type
 	 * </ul>
 	 */
-	public eu.synectique.verveine.core.gen.famix.Type createParameterType(String name, ContainerEntity directOwner, ContainerEntity namespaceOwner) {
+	public eu.synectique.verveine.core.gen.famix.Type createParameterType(String name, ContainerEntity owner) {
 		// apparently CDT gives a binding to the parameterType at its declaration ("template <class T> ...")
 		// but not when used ("... mth(T)") so we ignore CDT binding and always use our custom build one
     	IBinding bnd;
-    	bnd = StubBinding.getInstance(Type.class, mooseName(namespaceOwner, name));
+    	bnd = StubBinding.getInstance(Type.class, mooseName(owner, name));
 
-		if (directOwner instanceof ParameterizableClass) {
-			return ensureFamixParameterType(bnd, name, directOwner);
+		if (owner instanceof ParameterizableClass) {
+			return ensureFamixParameterType(bnd, name, owner);
 		}
 		else {
-			return ensureFamixType(bnd, name, directOwner);
+			return ensureFamixType(bnd, name, owner);
 		}
 	}
 
