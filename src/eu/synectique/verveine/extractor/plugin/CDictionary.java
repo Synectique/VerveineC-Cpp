@@ -16,6 +16,7 @@ import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Function;
+import eu.synectique.verveine.core.gen.famix.ImplicitVariable;
 import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.MultipleFileAnchor;
@@ -338,6 +339,10 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 
 		return fmx;
+	}
+
+	public ImplicitVariable ensureFamixImplicitVariable(String name, Type type, BehaviouralEntity owner) {
+		return super.ensureFamixImplicitVariable( name, type, owner, /*persistIt*/true);
 	}
 
 	// UTILITIES =========================================================================================================================================

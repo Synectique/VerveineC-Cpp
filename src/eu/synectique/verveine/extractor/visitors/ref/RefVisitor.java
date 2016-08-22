@@ -37,6 +37,7 @@ import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.Inheritance;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
@@ -187,6 +188,28 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return PROCESS_CONTINUE;
 	}
 
+	/*
+	 * Visiting a class definition, need to put it on the context stack to create its members
+	 */
+	@Override
+	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		eu.synectique.verveine.core.gen.famix.Class fmx;
+
+		// compute nodeName and binding
+		super.visit(node);
+
+		fmx = (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey(nodeBnd);
+
+		this.context.push(fmx);
+
+		for (IASTDeclaration child : node.getDeclarations(/*includeInactive*/false)) {
+			child.accept(this);
+		}
+
+		returnedEntity = this.context.pop();
+
+		return PROCESS_SKIP;
+	}
 
 	/**
 	 * Call back method from {@link #visit(IASTSimpleDeclaration)}
@@ -325,7 +348,10 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		returnedEntity = null;
 		if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
 			if (context.topType() != null) {
-				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity(), /*persistIt*/true));
+				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity()));
+			}
+			else if (context.topMethod() != null) {
+				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topMethod().getParentType(), /*owner*/context.topBehaviouralEntity()));
 			}
 		}
 		return PROCESS_SKIP;
