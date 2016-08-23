@@ -21,6 +21,10 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 		super(dico, index);
 	}
 
+	protected String msgTrace() {
+		return "recording inheritance relationships";
+	}
+
 	/*
 	 * Recovering the sub-class
 	 */

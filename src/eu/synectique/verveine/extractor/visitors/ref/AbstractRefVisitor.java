@@ -9,6 +9,8 @@ import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.internal.core.pdom.dom.cpp.IPDOMCPPClassType;
@@ -51,7 +53,107 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		super(dico, index);
 	}
 
-	// UTILITIES ==============================================================================================================================
+
+	@Override
+	protected int visit(ICASTCompositeTypeSpecifier node) {
+		returnedEntity = referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	public int visit(IASTElaboratedTypeSpecifier node) {
+		returnedEntity = referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	public int visit(IASTSimpleDeclSpecifier node) {
+		returnedEntity = dico.ensureFamixPrimitiveType( ((IASTSimpleDeclSpecifier) node).getType());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTEnumerationSpecifier node) {
+		returnedEntity = referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(ICPPASTNamedTypeSpecifier node) {
+		returnedEntity = referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+	/**
+	 * Find a referenced type from its name
+	 * May have to create it if it is not found
+	 */
+	protected Type referedType(IASTName name) {
+		Type fmx = null;
+		IBinding bnd = getBinding( name);
+
+		if (bnd == null) {
+			bnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), name.toString()));
+		}
+
+		fmx = (Type) dico.getEntityByKey(bnd);
+
+		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
+			fmx = (Type) findInParent(name.toString(), context.top(), /*recursive*/true);
+		}
+
+		if (fmx == null) {  // still not found, create it
+			if (isParameterTypeInstanceName(name.toString())) {
+				fmx = referedParameterTypeInstance(bnd, name);
+			}
+			else {
+				fmx = dico.ensureFamixType(bnd, simpleName(name), /*owner*/getParentOfFullyQualifiedName(name));
+			}
+		}
+
+		return fmx;
+	}
+
+	/**
+	 * Creates a ParameterizedType, if possible in link with its ParameterizableClass
+	 * Puts parameterTypes argument into the ParameterizedType when possible
+	 */
+	private Type referedParameterTypeInstance(IBinding bnd, IASTName name) {
+		String strName = name.toString();
+		int i = strName.indexOf('<');
+		String typName = simpleName(strName.substring(0, i));
+
+		ParameterizedType fmx = null;
+		ParameterizableClass generic = null;
+		try {
+			generic = (ParameterizableClass) findInParent(typName, context.top(), /*recursive*/true);
+		}
+		catch (ClassCastException e) {
+			// create a ParameterizedType for an unknown generic
+			// 'generic' var. remains null
+		}
+		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, getParentOfFullyQualifiedName(name));
+
+		for (String typArg : strName.substring(i+1, strName.length()-1).split(",")) {
+			typArg = typArg.trim();
+			try {
+				Type arg = (Type) findInParent(typArg, context.top(), /*recursive*/true);
+				if (arg != null) {
+					fmx.addArguments(arg);
+				}
+			}
+			catch (ClassCastException e) {
+				// for some reason, findInParent seems to have found an entity with this name but not a Type
+				// just forget about it
+			}
+		}
+		
+		return fmx;
+	}
+
+	private boolean isParameterTypeInstanceName(String name) {
+		return (name.indexOf('<') > 0) && (name.endsWith(">"));
+	}
 
 	/**
 	 * Records a reference to a name which can be a variable or behavioral name.

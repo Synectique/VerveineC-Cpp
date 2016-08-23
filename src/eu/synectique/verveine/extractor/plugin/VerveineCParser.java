@@ -41,6 +41,7 @@ import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.PackageDefVisistor;
 import eu.synectique.verveine.extractor.visitors.def.TemplateParameterDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
+import eu.synectique.verveine.extractor.visitors.ref.DeclaredTypeRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InheritanceRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
@@ -111,7 +112,7 @@ public class VerveineCParser extends VerveineParser {
 		CDictionary dico = new CDictionary(getFamixRepo());
 
 		tracer = new Tracer();
-		tracer.msg("step 1 / 3: indexing");
+		tracer.msg("Indexing source files");
 
         ICProject cproject = createEclipseProject(DEFAULT_PROJECT_NAME, userProjectDir);
 
@@ -133,7 +134,6 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	private void runAllDefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
-		tracer.msg("step 2 / 3: creating structural entities");
 		/*Having very specialized visitors helps because each one is dead simple
 		 * so it is worth the impact on execution time
 		 * Note that the order is important, the visitors are not independent */
@@ -164,6 +164,7 @@ public class VerveineCParser extends VerveineParser {
 	private void runAllRefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
 		tracer.msg("step 3 / 3: creating references");
 		cproject.accept(new InheritanceRefVisitor(dico, index));
+		cproject.accept(new DeclaredTypeRefVisitor(dico, index));
 
 		RefVisitor step3 = new RefVisitor(dico, index);
 		step3.setVisitHeaders(true);

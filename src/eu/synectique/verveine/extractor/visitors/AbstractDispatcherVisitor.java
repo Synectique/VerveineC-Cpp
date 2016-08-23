@@ -80,8 +80,13 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	    shouldVisit... */
 		this.index = index;
 		this.dico = dico;
+
+		if (msgTrace() != null ) {
+			System.err.println(msgTrace());
+		}
 	}
 
+	abstract protected String msgTrace();
 
 	// VISITING METODS ON ICELEMENT HIERARCHY (ICElementVisitor) ===========================================================================
 

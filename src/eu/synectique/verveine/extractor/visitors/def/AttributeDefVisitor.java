@@ -20,6 +20,10 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 		super(dico, index);
 	}
 
+	protected String msgTrace() {
+		return "creating attributes and struct members";
+	}
+
 	/*
 	 * To avoid type name with "parameter" as in: aType<aParam>
 	 */

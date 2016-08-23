@@ -46,6 +46,10 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 		super(dico, index);
 	}
 
+	protected String msgTrace() {
+		return "recording methods and functions invocations";
+	}
+
 	// VISITING METODS ON AST ===============================================================================================================
 
 	/**

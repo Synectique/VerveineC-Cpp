@@ -51,6 +51,10 @@ public class TypeDefVisitor extends AbstractVisitor {
 		super(dico, index);
 	}
 
+	protected String msgTrace() {
+		return "creating classes and types";
+	}
+
 	/**
 	 * get Package associated to file directory
 	 */

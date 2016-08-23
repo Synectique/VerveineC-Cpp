@@ -25,8 +25,12 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 		super(dico, index);
 	}
 
+	protected String msgTrace() {
+		return "dealing with templates (generics)";
+	}
+
 	/*
-	 * Visiting a class definition, need to put it on the context stack to create local type parameter
+	 * Putting class definition on the context stack
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {

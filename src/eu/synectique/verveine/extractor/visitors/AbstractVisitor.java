@@ -130,21 +130,6 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return PROCESS_CONTINUE;
 	}
 
-
-	protected <T extends NamedEntity> IBinding mkStubKey(IASTName name, java.lang.Class<T> entityType) {
-		ContainerEntity parent = null;
-		String simpleName = null;
-		if (isFullyQualified(name)) {
-			parent = getParentOfFullyQualifiedName(name);
-			simpleName = simpleName(name);
-		}
-		else {
-			parent = context.getTopCppNamespace();
-			simpleName = name.toString();
-		}
-		return StubBinding.getInstance(entityType, dico.mooseName(parent, simpleName));
-	}
-
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		nodeBnd = null;
@@ -201,6 +186,20 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	}
 
 	// NAME RESOLUTION UTILITIES & STUB CREATION ===========================================================================
+
+	protected <T extends NamedEntity> IBinding mkStubKey(IASTName name, java.lang.Class<T> entityType) {
+		ContainerEntity parent = null;
+		String simpleName = null;
+		if (isFullyQualified(name)) {
+			parent = getParentOfFullyQualifiedName(name);
+			simpleName = simpleName(name);
+		}
+		else {
+			parent = context.getTopCppNamespace();
+			simpleName = name.toString();
+		}
+		return StubBinding.getInstance(entityType, dico.mooseName(parent, simpleName));
+	}
 
 	/**
 	 * Search for a Namespace or Class at top level
@@ -714,7 +713,6 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	}
 
 
-
 	/**
 	 * Dictionary getter.<BR>
 	 * Only intended for subRef visitors to get the same dictionary as their parent visitor
@@ -730,10 +728,6 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	public void setContext(CppEntityStack context) {
 		this.context = context;
 	}
-
-
-
-
 
 	/**
 	 * context getter.<BR>

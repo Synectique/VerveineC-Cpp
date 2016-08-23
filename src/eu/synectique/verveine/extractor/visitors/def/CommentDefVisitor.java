@@ -16,6 +16,10 @@ public class CommentDefVisitor extends AbstractDispatcherVisitor {
 	public CommentDefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
 	}
+	
+	protected String msgTrace() {
+		return "extracting comments";
+	}
 
 	/*
 	 * Redefined because no need to visit the children, only the AST

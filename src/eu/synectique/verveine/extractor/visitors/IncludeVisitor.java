@@ -20,6 +20,10 @@ public class IncludeVisitor extends AbstractDispatcherVisitor {
 		unresolvedIncludes = new HashSet<String>();
 	}
 
+	protected String msgTrace() {
+		return "checking unresolved includes";
+	}
+
 	public void visit(IInclude elt) {
 		if (! elt.isResolved()) {
 			String includeStr;

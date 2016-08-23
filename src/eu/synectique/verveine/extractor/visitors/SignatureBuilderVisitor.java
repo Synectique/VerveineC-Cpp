@@ -32,6 +32,10 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 		super(dico, null);
 	}
 
+	protected String msgTrace() {
+		return null;
+	}
+
 	public String getFullSignature(ICPPASTFunctionDeclarator node) {
 		String fullSignature;
 

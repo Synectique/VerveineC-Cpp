@@ -18,6 +18,10 @@ public class PackageDefVisistor extends AbstractDispatcherVisitor {
 		super(dico, index);
 	}
 
+	protected String msgTrace() {
+		return "creating packages";
+	}
+
 	/**
 	 * File directories are treated as Package
 	 */

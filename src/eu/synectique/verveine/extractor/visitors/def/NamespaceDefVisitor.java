@@ -22,6 +22,10 @@ public class NamespaceDefVisitor extends AbstractVisitor {
 		return PROCESS_SKIP;
 	}
 
+	protected String msgTrace() {
+		return "creating namespaces";
+	}
+
 	@Override
 	public int visit(ICPPASTNamespaceDefinition node) {
 		Namespace fmx;

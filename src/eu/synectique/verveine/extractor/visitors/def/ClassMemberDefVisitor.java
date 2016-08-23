@@ -11,7 +11,7 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.Visibility;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
-public class ClassMemberDefVisitor extends AbstractVisitor {
+public abstract class ClassMemberDefVisitor extends AbstractVisitor {
 
 	protected Visibility currentVisibility;
 
@@ -29,15 +29,13 @@ public class ClassMemberDefVisitor extends AbstractVisitor {
 	}
 
 	/*
-	 * Visiting a class definition, need to put it on the context stack to create its members
+	 * Putting class definition on the context stack
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
 		Class fmx;
 
-		/* Gets the key (IBinding) of the node to recover the famix type entity */
 		super.visit(node);
-
 		fmx = (Class) dico.getEntityByKey(nodeBnd);
 
 		this.context.push(fmx);

@@ -42,11 +42,14 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		super(dico, index);
 	}
 
+	protected String msgTrace() {
+		return "creating methods and functions";
+	}
 
-	/**
-	 * Visiting a method or function declaration (i.e. "header" aka signature)
-	 */
-	@Override
+
+	/*
+	 * Declaration
+	 */	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		BehaviouralEntity fmx = null;
 
@@ -87,9 +90,10 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		return PROCESS_SKIP;
 	}
 
-	/**
-	 * Visiting a method or function definition
+	/*
+	 * Definition
 	 */
+	 @Override
 	protected int visit(ICPPASTFunctionDefinition node) {
 		BehaviouralEntity fmx = null;
 
@@ -119,7 +123,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	}
 
 	/*
-	 * We treat parameters in this visitor. could have used a specialized sub-visitor ...
+	 * We treat parameters in this visitor. could have used a separate visitor ...
 	 * 
 	 * Could use parameter node of type: ICPPASTParameterDeclaration as we re-dispatch to this in the  AbstractDispatcherVisitor
 	 * But this way we get C and C++ parameters

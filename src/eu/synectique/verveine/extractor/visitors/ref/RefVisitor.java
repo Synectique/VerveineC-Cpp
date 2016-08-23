@@ -93,7 +93,10 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		tracer = new NullTracer("REF>");
 	}
 
-	// VISITING METODS ON ICELEMENT HIERARCHY ==============================================================================================
+	protected String msgTrace() {
+		return null;
+	}
+
 
 	/*
 	 * redefining to check for header files (or not)
@@ -103,50 +106,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		if (checkHeader(elt)) {
 			super.visit(elt);
 		}
-	}
-
-	// CDT VISITING METODS ON AST ==========================================================================================================
-
-	@Override
-	public int visit(IASTParameterDeclaration node) {
-		Parameter fmx = null;
-		String paramName = null;
-		BehaviouralEntity parent = null;
-
-		 // get node name and bnd
-		if (super.visit(node) == PROCESS_SKIP) {
-			return PROCESS_SKIP;
-		}
-		fmx = (Parameter) dico.getEntityByKey(nodeBnd);
-
-		if (fmx == null) {
-			/* get param name and parent */
-			parent = context.topBehaviouralEntity();
-			paramName = nodeName.toString();
-
-			/* last try to recover parameter */
-			fmx = (Parameter) findInParent(paramName, parent, false);
-		}
-
-		if (fmx == null) {
-			// should really really not happen
-			fmx = dico.ensureFamixParameter(nodeBnd, paramName, parent);
-		}
-
-		// now get the declared type
-		if (fmx != null) {
-			if (node.getParent() instanceof ICPPASTTemplateDeclaration) {
-				// parameterType in a template
-				// ignore for now
-			}
-			else {
-				node.getDeclSpecifier().accept(this);
-				fmx.setDeclaredType( (Type) returnedEntity );
-			}
-		}
-		returnedEntity = fmx;
-
-		return PROCESS_SKIP;
 	}
 
 
@@ -430,104 +389,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		node.getOperand2().accept(this);
 		
 		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(ICASTCompositeTypeSpecifier node) {
-		returnedEntity = referedType(node.getName());
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	public int visit(IASTElaboratedTypeSpecifier node) {
-		returnedEntity = referedType(node.getName());
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	public int visit(IASTSimpleDeclSpecifier node) {
-		returnedEntity = dico.ensureFamixPrimitiveType( ((IASTSimpleDeclSpecifier) node).getType());
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTEnumerationSpecifier node) {
-		returnedEntity = referedType(node.getName());
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(ICPPASTNamedTypeSpecifier node) {
-		returnedEntity = referedType(node.getName());
-		return PROCESS_SKIP;
-	}
-
-
-	protected Type referedType(IASTName name) {
-		Type fmx = null;
-		IBinding bnd = getBinding( name);
-
-		if (bnd == null) {
-			bnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), name.toString()));
-		}
-
-		fmx = (Type) dico.getEntityByKey(bnd);
-
-		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
-			fmx = (Type) findInParent(name.toString(), context.top(), /*recursive*/true);
-		}
-
-		if (fmx == null) {  // still not found, create it
-			if (isParameterTypeInstanceName(name.toString())) {
-				fmx = referedParameterTypeInstance(bnd, name);
-			}
-			else {
-				fmx = dico.ensureFamixType(bnd, simpleName(name), /*owner*/getParentOfFullyQualifiedName(name));
-			}
-		}
-
-		return fmx;
-	}
-
-	/**
-	 * Creates a ParameterizedType, if possible in link with its ParameterizableClass
-	 * Puts parameterTypes argument into the ParameterizedType when possible
-	 */
-	private Type referedParameterTypeInstance(IBinding bnd, IASTName name) {
-		String strName = name.toString();
-		int i = strName.indexOf('<');
-		String typName = simpleName(strName.substring(0, i));
-
-		ParameterizedType fmx = null;
-		ParameterizableClass generic = null;
-		try {
-			generic = (ParameterizableClass) findInParent(typName, context.top(), /*recursive*/true);
-		}
-		catch (ClassCastException e) {
-			// create a ParameterizedType for an unknown generic
-			// 'generic' var. remains null
-		}
-		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, getParentOfFullyQualifiedName(name));
-
-		for (String typArg : strName.substring(i+1, strName.length()-1).split(",")) {
-			typArg = typArg.trim();
-			try {
-				Type arg = (Type) findInParent(typArg, context.top(), /*recursive*/true);
-				if (arg != null) {
-					fmx.addArguments(arg);
-				}
-			}
-			catch (ClassCastException e) {
-				// for some reason, findInParent seems to have found an entity with this name but not a Type
-				// just forget about it
-			}
-		}
-		
-		return fmx;
-	}
-
-	private boolean isParameterTypeInstanceName(String name) {
-		return (name.indexOf('<') > 0) && (name.endsWith(">"));
 	}
 
 }
