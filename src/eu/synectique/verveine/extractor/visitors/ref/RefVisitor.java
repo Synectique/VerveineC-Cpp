@@ -479,7 +479,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 
 		if (fmx == null) {  // still not found, create it
 			if (isParameterTypeInstanceName(name.toString())) {
-				fmx = referedParameterTypeInstance(name.toString());
+				fmx = referedParameterTypeInstance(bnd, name);
 			}
 			else {
 				fmx = dico.ensureFamixType(bnd, simpleName(name), /*owner*/getParentOfFullyQualifiedName(name));
@@ -489,32 +489,37 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return fmx;
 	}
 
-	private Type referedParameterTypeInstance(String name) {
-		int i = name.indexOf('<');
-		String tname = simpleName(name.substring(0, i));
+	/**
+	 * Creates a ParameterizedType, if possible in link with its ParameterizableClass
+	 * Puts parameterTypes argument into the ParameterizedType when possible
+	 */
+	private Type referedParameterTypeInstance(IBinding bnd, IASTName name) {
+		String strName = name.toString();
+		int i = strName.indexOf('<');
+		String typName = simpleName(strName.substring(0, i));
+
 		ParameterizedType fmx = null;
+		ParameterizableClass generic = null;
 		try {
-			ParameterizableClass generic = (ParameterizableClass) findInParent(tname, context.top(), /*recursive*/true);
-			// FIXME should not reference nodeBnd and nodeName here
-			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, generic, getParentOfFullyQualifiedName(nodeName));
+			generic = (ParameterizableClass) findInParent(typName, context.top(), /*recursive*/true);
 		}
 		catch (ClassCastException e) {
 			// create a ParameterizedType for an unknown generic
-			// FIXME same bug
-			fmx = dico.ensureFamixParameterizedType(nodeBnd, tname, /*generic*/null, getParentOfFullyQualifiedName(nodeName));
+			// 'generic' var. remains null
 		}
+		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, getParentOfFullyQualifiedName(name));
 
-		for (String targ : name.substring(i+1, name.length()-1).split(",")) {
-			targ = targ.trim();
+		for (String typArg : strName.substring(i+1, strName.length()-1).split(",")) {
+			typArg = typArg.trim();
 			try {
-				Type arg = (Type) findInParent(targ, context.top(), /*recursive*/true);
+				Type arg = (Type) findInParent(typArg, context.top(), /*recursive*/true);
 				if (arg != null) {
 					fmx.addArguments(arg);
 				}
 			}
 			catch (ClassCastException e) {
 				// for some reason, findInParent seems to have found an entity with this name but not a Type
-				// just ignore it
+				// just forget about it
 			}
 		}
 		
