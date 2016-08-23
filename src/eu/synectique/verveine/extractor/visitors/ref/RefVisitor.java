@@ -79,8 +79,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 */
 	protected boolean inAssignmentLHS = false;
 
-	// CONSTRUCTOR ==========================================================================================================================
-
 	/**
 	 * Constructor for "main" visitor, dicoDef contains entities created during def pass
 	 * @param dicoDef contains entities created during def pass
@@ -109,8 +107,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	}
 
 
-	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
-
 	@Override
 	protected int visit(IASTSimpleDeclaration node) {
 		// compute nodeName and binding
@@ -123,8 +119,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 			// this is a typedef, so the declarator(s) should be FAMIXType(s)
 
 				nodeName = declarator.getName();
-
-				tracer.msg("IASTSimpleDeclaration (typedef):"+nodeName.toString());
 
 				nodeBnd = getBinding(nodeName);
 
@@ -141,29 +135,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 			}
 			
 			return PROCESS_SKIP;  // typedef already handled
-		}
-
-		if (node.getDeclarators().length > 0) {
-			for (IASTDeclarator declarator : node.getDeclarators()) {
-				SourcedEntity fmx;
-				Type refType;
-				returnedEntity = null;
-				this.visit( declarator );
-				fmx = returnedEntity;
-				
-				node.getDeclSpecifier().accept(this);
-				refType = (Type) returnedEntity;
-
-				if (fmx instanceof BehaviouralEntity) {
-					if ( (! isConstructor((BehaviouralEntity) fmx)) && (! isDestructor((BehaviouralEntity) fmx)) ) {
-						((BehaviouralEntity)fmx).setDeclaredType(refType);
-					}
-				}
-				else if (fmx instanceof StructuralEntity) {
-					((StructuralEntity)fmx).setDeclaredType(refType);
-				}
-			}
-			return PROCESS_SKIP;
 		}
 
 		return PROCESS_CONTINUE;
@@ -258,6 +229,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		}
 
 		this.context.push(fmx);
+		// TODO remove not needed here anymore
 		for (ICPPASTParameterDeclaration param : node.getParameters()) {
 			param.accept(this);
 		}
@@ -283,14 +255,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 				init.accept(this);
 			}
 
-			// return type of the Behavioral
-			// could be null, e.g when it is default int type in C
-			if ( (! isConstructor(fmx)) && (! isDestructor(fmx)) ) {
-				node.getDeclSpecifier().accept(this);
-				fmx.setDeclaredType( (Type) returnedEntity );
-			}
-
-			// body to compute some metrics
+			// to find out all accesses, references, invocations
 			node.getBody().accept(this);
 			
 			returnedEntity = context.pop();

@@ -12,7 +12,6 @@ import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public class AttributeDefVisitor extends ClassMemberDefVisitor {
 
@@ -33,7 +32,7 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 	}
 
 	/*
-	 * Inheritance declaration can lead to ICPPASTDeclarator (but it is not an attribute)
+	 * Prune inheritance declaration
 	 */
 	@Override
 	public int visit(ICPPASTBaseSpecifier node) {
@@ -74,7 +73,7 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 
 	@Override
 	public int visit(IASTParameterDeclaration parameterDeclaration) {
-		// prunes parameter types in templates (they are also ICPPASTDeclarator)
+		// prunes parameter types in templates
 		return PROCESS_SKIP;
 	}
 

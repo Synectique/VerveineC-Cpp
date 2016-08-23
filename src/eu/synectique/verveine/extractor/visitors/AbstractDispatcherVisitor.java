@@ -8,6 +8,7 @@ import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTExpression;
+import org.eclipse.cdt.core.dom.ast.IASTFieldDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
@@ -203,6 +204,9 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		else if (node instanceof IASTFunctionDeclarator) {
 			return this.visit((IASTFunctionDeclarator)node);
 		}
+		else if (node instanceof IASTFieldDeclarator) {  // actually seems to never occur ???
+			return this.visit((IASTFieldDeclarator)node);
+		}
 		else if (node instanceof ICPPASTDeclarator) {
 			return this.visit((ICPPASTDeclarator)node);
 		}
@@ -384,6 +388,14 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	protected int leave(IASTFunctionDefinition node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTFieldDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(IASTFieldDeclarator node) {
 		return PROCESS_CONTINUE;
 	}
 

@@ -77,14 +77,11 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	 */
 	protected boolean visitHeaders;
 
-	// CONSTRUCTOR ==========================================================================================================================
 
 	public AbstractVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
 	}
 
-
-	// CDT VISITING METODS ON AST ==========================================================================================================
 
 	@Override
 	public void visit(ITranslationUnit elt) {
@@ -93,8 +90,6 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		super.visit(elt);
 	}
 
-
-	// ADDITIONAL VISITING METODS ON AST =======================================================================================================
 
 	@Override
 	public int visit(ICPPASTNamespaceDefinition node) {
