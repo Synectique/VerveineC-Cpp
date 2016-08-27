@@ -1,26 +1,27 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
-import org.eclipse.cdt.core.dom.ast.ASTVisitor;
+import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitName;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
-import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPField;
 import org.eclipse.cdt.core.index.IIndex;
 
-import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
@@ -29,9 +30,8 @@ import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.StubBinding;
-import eu.synectique.verveine.extractor.utils.SubVisitorFactory;
 
-public class FunctionCallVisitor extends AbstractRefVisitor {
+public class InvocationRefVisitor extends AbstractRefVisitor {
 
 	protected static final String EMPTY_ARGUMENT_NAME = "__Empty_Argument__";
 	/**
@@ -40,43 +40,95 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 	 */
 	protected Type priorType;
 
-	// CONSTRUCTOR ==========================================================================================================================
-
-	public FunctionCallVisitor(CDictionary dico, IIndex index) {
+	public InvocationRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
 	}
 
+	@Override
 	protected String msgTrace() {
 		return "recording methods and functions invocations";
 	}
 
-	// VISITING METODS ON AST ===============================================================================================================
-
-	/**
-	 * This is one of entry points for this visitor
+	/*
+	 * putting class definition on the context stack
 	 */
+	@Override
+	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		Class fmx;
+
+		/* Gets the key (IBinding) of the node to recover the famix type entity */
+		super.visit(node);
+
+		fmx = (Class) dico.getEntityByKey(nodeBnd);
+
+		this.context.push(fmx);
+		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
+			decl.accept(this);
+		}
+		returnedEntity = context.pop();
+
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(ICPPASTFunctionDeclarator node) {
+		 returnedEntity = null;
+
+		// compute nodeName and binding
+		super.visit(node);
+
+		// just in case this is a definition and we already processed the declaration
+		returnedEntity = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
+		// try harder
+		if (returnedEntity == null) {
+			returnedEntity = resolveBehaviouralFromName(node, nodeBnd);
+		}
+
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(ICPPASTFunctionDefinition node) {
+		returnedEntity = null;
+
+		((ICPPASTFunctionDeclarator)node.getDeclarator()).accept(this);
+
+		this.context.push((BehaviouralEntity)returnedEntity);
+
+		for (ICPPASTConstructorChainInitializer init : node.getMemberInitializers()) {
+			init.accept(this);
+		}
+
+		node.getBody().accept(this);
+
+		this.context.pop();
+
+		return PROCESS_SKIP;
+	}
+
+	@Override
 	public int visit(IASTFunctionCallExpression node) {
 		NamedEntity fmx = null;
-		IBinding bnd = null;
-		IASTName nodeName = null;
+		nodeBnd = null;
+		nodeName = null;
 		returnedEntity = null;
-		
+
 		priorType = context.topType();
 		IASTNode[] children = node.getFunctionNameExpression().getChildren();
 		for (int i=0; i < children.length - 1; i++) {   // for all children save the last one (presumably the called function's name)
 			children[i].accept(this);
 		}
-		
+
 		// try to identify (or create if a stub) the Behavioural being invoked
 		IASTNode lastChild = children[children.length - 1];
 		if (lastChild instanceof IASTName) {
 			nodeName = (IASTName)lastChild;
-			bnd = getBinding( nodeName );
+			nodeBnd = getBinding( nodeName );
 
-			if (bnd != null) {
-				fmx = dico.getEntityByKey(bnd);
+			if (nodeBnd != null) {
+				fmx = dico.getEntityByKey(nodeBnd);
 			}
-			
+
 			if (fmx == null) {
 				// could not find it. Try to create a stub from the name (if we have one)
 				if (nodeName != null) {
@@ -101,39 +153,49 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 				}
 			}
 		}
+		
 
-		if (returnedEntity != null) {
-			visitArguments(node.getArguments());
+		for (IASTInitializerClause icl : node.getArguments()) {
+			icl.accept(this);
 		}
 
 		return PROCESS_SKIP;
+	}
+
+	private void visitArguments(IASTInitializerClause[] args) {
+		for (IASTInitializerClause icl : args) {
+			icl.accept(this);
+
+			/*if (returnedEntity == null) {
+				System.err.println("bug");
+			}*/
+			if (returnedEntity instanceof Association) {
+				((Invocation)returnedEntity).addArguments((Association) returnedEntity);
+			}
+			else {
+				// so that the order of arguments match exactly their corresponding parameters
+				// we create a fake association for argument that we cannot resolve
+				IBinding fakeBnd = StubBinding.getInstance(UnknownVariable.class, EMPTY_ARGUMENT_NAME);
+				UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
+				((Invocation)returnedEntity).addArguments(dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null));
+			}
+		}
 	}
 
 	/**
 	 * Other entry point for this visitor
 	 */
+	@Override
 	protected int visit(ICPPASTConstructorChainInitializer node) {
 		IASTName memberName = node.getMemberInitializerId();
 		returnedEntity = null;
 		nodeBnd = getBinding(memberName);
-		if ( nodeBnd instanceof ICPPField ) {
-			// "field initialization", modeled as a write-Access to the field + invocation of the field's type constructor (done in visit(ICPPASTConstructorInitializer))
-			Attribute fldFmx = (Attribute) dico.getEntityByKey(nodeBnd);
-			returnedEntity = fldFmx;
-			if (fldFmx != null) {
-				accessToVar(fldFmx).setIsWrite(true);
-			}
-		}
 		node.getInitializer().accept(this);
 
 		return PROCESS_SKIP;
 	}
 
-	/**
-	 * Other entry point for this visitor.
-	 * This is the node for superConstructor calls and implicit constructor calls (e.g. done through an attribute initialization).
-	 * Might be called by visit(ICPPASTConstructorChainInitializer). In this case, returnedEntity might be set to something interesting.
-	 */
+	@Override
 	protected int visit(ICPPASTConstructorInitializer node) {
 		IASTImplicitNameOwner parent = (IASTImplicitNameOwner)node.getParent() ;
 		NamedEntity fmx = null;
@@ -176,69 +238,51 @@ public class FunctionCallVisitor extends AbstractRefVisitor {
 
 		if (fmx != null) {
 			returnedEntity = invocationOfBehavioural((BehaviouralEntity) fmx);
-			visitArguments(node.getArguments());
+		}
+
+		for (IASTInitializerClause icl : node.getArguments()) {
+			icl.accept(this);
 		}
 
 		return PROCESS_SKIP;
 	}
-
-	@Override
-	public int visit(IASTName node) {
-		Association assoc = referenceToName(node.getLastName(), /*reference*/false);
-		
-		if (assoc == null) {
-			// assume it should be a variable
-			accessToVar(dico.createFamixUnknownVariable(node.toString(), context.top()));
-			priorType = null;
-		}
-
-		return ASTVisitor.PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTLiteralExpression node) {
-		if (node.getKind() == ICPPASTLiteralExpression.lk_this) {
-			if (context.topType() != null) {
-				accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity(), /*persistIt*/true));
-				priorType = context.topType();
-			}
-		}
-		return PROCESS_SKIP;
-	}
-
-	// ADDITIONAL VISITING METODS ON AST ==================================================================================================
 
 	@Override
 	protected int visit(IASTIdExpression node) {
-		boolean reference;
-		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
-					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
-		returnedEntity = referenceToName(((IASTIdExpression) node).getName(), reference);
+		returnedEntity = nameInSource(((IASTIdExpression) node).getName(), node.getParent());
 		return PROCESS_SKIP;
 	}
 
-	// UTILITIES ====================================================================================================================================
+	@Override
+	protected int visit(IASTFieldReference node) {
+		node.getFieldOwner().accept(this);   // TODO why this?
 
-	private void visitArguments(IASTInitializerClause[] args) {
-		for (IASTInitializerClause icl : args) {
-			RefVisitor subVisitor = SubVisitorFactory.createSubVisitorRV(this);
+		returnedEntity = nameInSource(node.getFieldName(), node.getParent());
 
-			icl.accept(subVisitor);
+		return PROCESS_SKIP;
+	}
 
-			/*if (returnedEntity == null) {
-				System.err.println("bug");
-			}*/
-			if (subVisitor.returnedEntity() instanceof Association) {
-				((Invocation)returnedEntity).addArguments((Association) subVisitor.returnedEntity());
-			}
-			else {
-				// so that the order of arguments match exactly their corresponding parameters
-				// we create a fake association for argument that we cannot resolve
-				StubBinding fakeBnd = StubBinding.getInstance(UnknownVariable.class, EMPTY_ARGUMENT_NAME);
-				UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
-				((Invocation)returnedEntity).addArguments(dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null));
-			}
+	protected Invocation nameInSource(IASTName nodeName, IASTNode nodeParent) {
+		NamedEntity fmx = null;
+		boolean isPointer;
+
+		nodeBnd = getBinding(nodeName);
+
+		if (nodeBnd != null) {
+			fmx = dico.getEntityByKey(nodeBnd);
 		}
+		else {
+			fmx = findInParent(nodeName.toString(), context.top(), /*recursive*/true);
+		}
+		
+		isPointer = ( (nodeParent instanceof ICPPASTUnaryExpression) &&
+				  ( ((ICPPASTUnaryExpression)nodeParent).getOperator() == ICPPASTUnaryExpression.op_amper) );
+
+		if ( (fmx instanceof BehaviouralEntity) && (! isPointer) ) {
+			return invocationOfBehavioural((BehaviouralEntity) fmx);
+		}
+		
+		return null;
 	}
 
 }

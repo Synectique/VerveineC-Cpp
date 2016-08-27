@@ -265,30 +265,6 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	}
 
 	@Override
-	protected int visit(ICPPASTConstructorChainInitializer node) {
-		FunctionCallVisitor subVisitor = SubVisitorFactory.createSubVisitorFCV(this);
-		int retVal = subVisitor.visit(node);
-		returnedEntity = subVisitor.returnedEntity();
-		return retVal;
-	}
-
-	@Override
-	protected int visit(ICPPASTConstructorInitializer node) {
-		FunctionCallVisitor subVisitor = SubVisitorFactory.createSubVisitorFCV(this);
-		int retVal = subVisitor.visit(node);
-		returnedEntity = subVisitor.returnedEntity();
-		return retVal;
-	}
-
-	@Override
-	protected int visit(IASTFunctionCallExpression node) {
-		FunctionCallVisitor subVisitor = SubVisitorFactory.createSubVisitorFCV(this);
-		int retVal = subVisitor.visit(node);
-		returnedEntity = subVisitor.returnedEntity();
-		return retVal;
-	}
-
-	@Override
 	protected int visit(IASTLiteralExpression node) {
 		returnedEntity = null;
 		if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
@@ -307,7 +283,7 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		// can also be a method invocation
 		boolean reference;
 
-		node.getFieldOwner().accept(this); // TODO check this why doesn't it create an infinite recursion ?
+		node.getFieldOwner().accept(this); // TODO check this why doesn't create an infinite recursion ?
 		
 		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
 					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );

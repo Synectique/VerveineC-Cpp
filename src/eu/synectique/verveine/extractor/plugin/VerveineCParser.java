@@ -43,6 +43,7 @@ import eu.synectique.verveine.extractor.visitors.def.TemplateParameterDefVisitor
 import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.DeclaredTypeRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InheritanceRefVisitor;
+import eu.synectique.verveine.extractor.visitors.ref.InvocationRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class VerveineCParser extends VerveineParser {
@@ -165,6 +166,7 @@ public class VerveineCParser extends VerveineParser {
 		tracer.msg("step 3 / 3: creating references");
 		cproject.accept(new InheritanceRefVisitor(dico, index));
 		cproject.accept(new DeclaredTypeRefVisitor(dico, index));
+		cproject.accept(new InvocationRefVisitor(dico, index));
 
 		RefVisitor step3 = new RefVisitor(dico, index);
 		step3.setVisitHeaders(true);
@@ -172,7 +174,6 @@ public class VerveineCParser extends VerveineParser {
 		step3.setVisitHeaders(false);
 		cproject.accept(step3);
 	}
-
 
 	private void configWorkspace(IWorkspace workspace) {
 		IWorkspaceDescription workspaceDesc = workspace.getDescription();

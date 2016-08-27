@@ -2,7 +2,6 @@ package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
-import org.eclipse.cdt.core.dom.ast.IASTFieldDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
@@ -17,25 +16,23 @@ import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.Parameter;
-import eu.synectique.verveine.core.gen.famix.SourcedEntity;
-import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 
 public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 
 	/**
-	 * The referred type set in visit(SimpleDeclaration),
+	 * The referred type set in visit(ICPPASTFunctionDefinition) or visit(IASTSimpleDeclaration)
 	 * used in visit(ICPPASTFunctionDeclarator) for methods or visit(ICPPASTDeclarator) for attribute
 	 */
-	private Type simpleDeclaratorReferredType;
-	
+	private Type referredType;
+
 	public DeclaredTypeRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
 	}
 
 	protected String msgTrace() {
-		return "recording variables declared types and methods/functions return types";
+		return "recording variables declared type and methods/functions return type";
 	}
 
 	/*
@@ -60,65 +57,26 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 	}
 
 	/*
-	 * visit declaration and that's it
+	 * prune to not visit template parameters
+	 */
+	@Override
+	protected int visit(ICPPASTTemplateDeclaration node) {
+		node.getDeclaration().accept(this);
+		return PROCESS_SKIP;
+	}
+
+	/*
+	 * get the function declarator, the return type and pass to visit(ICPPASTFunctionDeclarator)
 	 */
 	@Override
 	protected int visit(ICPPASTFunctionDefinition node) {
 		returnedEntity = null;
 		node.getDeclSpecifier().accept(this);
-		simpleDeclaratorReferredType = (Type)returnedEntity;
+		referredType = (Type)returnedEntity;
 
 		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator());
 
-		simpleDeclaratorReferredType = null;
-
-		return PROCESS_SKIP;
-	}
-
-	 /*
-	  * redefined to not visit template parameters
-	  */
-	 @Override
-	 protected int visit(ICPPASTTemplateDeclaration node) {
-		 node.getDeclaration().accept(this);
-		 return PROCESS_SKIP;
-	 }
-
-	@Override
-	public int visit(IASTParameterDeclaration node) {
-		Parameter fmx = null;
-
-		 // get the parameter
-		if (super.visit(node) == PROCESS_SKIP) {
-			return PROCESS_SKIP;
-		}
-		fmx = (Parameter) dico.getEntityByKey(nodeBnd);
-
-/*
-		if (fmx == null) {
-			String paramName = null;
-			BehaviouralEntity parent = null;
-			// get param name and parent
-			parent = context.topBehaviouralEntity();
-			paramName = nodeName.toString();
-
-			// last try to recover parameter
-			fmx = (Parameter) findInParent(paramName, parent, /*recursive* /false);
-		}
-*/
-
-		// now get the declared type
-		if (fmx != null) {
-			if (node.getParent() instanceof ICPPASTTemplateDeclaration) {
-				// parameterType in a template
-				// ignore for now
-			}
-			else {
-				node.getDeclSpecifier().accept(this);
-				fmx.setDeclaredType( (Type) returnedEntity );
-			}
-		}
-		returnedEntity = fmx;
+		referredType = null;
 
 		return PROCESS_SKIP;
 	}
@@ -134,13 +92,13 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 
 		returnedEntity = null;
 		node.getDeclSpecifier().accept(this);
-		simpleDeclaratorReferredType = (Type)returnedEntity;
+		referredType = (Type)returnedEntity;
 
 		for (IASTDeclarator declarator : node.getDeclarators()) {
 			// gets the entity and sets its simpleDeclaratorReferredType
 			this.visit( declarator );
 		}
-		simpleDeclaratorReferredType = null;
+		referredType = null;
 
 		return PROCESS_SKIP;
 	}
@@ -159,7 +117,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		}
 
 		fmx = (Attribute) dico.getEntityByKey(nodeBnd);
-		fmx.setDeclaredType(simpleDeclaratorReferredType);
+		fmx.setDeclaredType(referredType);
 
 		return PROCESS_SKIP;
 	}
@@ -178,7 +136,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 
 		// set the declared type
 		if ( (! isConstructor((BehaviouralEntity) fmx)) && (! isDestructor((BehaviouralEntity) fmx)) ) {
-			((BehaviouralEntity)fmx).setDeclaredType(simpleDeclaratorReferredType);
+			((BehaviouralEntity)fmx).setDeclaredType(referredType);
 		}
 
 		this.context.push(fmx);
@@ -191,5 +149,44 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 
 		return PROCESS_SKIP;
 	}
-	
+
+	@Override
+	public int visit(IASTParameterDeclaration node) {
+		Parameter fmx = null;
+
+		// get the parameter
+		if (super.visit(node) == PROCESS_SKIP) {
+			return PROCESS_SKIP;
+		}
+		fmx = (Parameter) dico.getEntityByKey(nodeBnd);
+
+		/*
+		if (fmx == null) {
+			String paramName = null;
+			BehaviouralEntity parent = null;
+			// get param name and parent
+			parent = context.topBehaviouralEntity();
+			paramName = nodeName.toString();
+
+			// last try to recover parameter
+			fmx = (Parameter) findInParent(paramName, parent, /*recursive* /false);
+		}
+		 */
+
+		// now get the declared type
+		if (fmx != null) {
+			if (node.getParent() instanceof ICPPASTTemplateDeclaration) {
+				// parameterType in a template
+				// ignore for now
+			}
+			else {
+				node.getDeclSpecifier().accept(this);
+				fmx.setDeclaredType( (Type) returnedEntity );
+			}
+		}
+		returnedEntity = fmx;
+
+		return PROCESS_SKIP;
+	}
+
 }

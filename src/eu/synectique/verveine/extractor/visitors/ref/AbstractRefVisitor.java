@@ -186,7 +186,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 				return behaviouralPointer((BehaviouralEntity) fmx);
 			}
 			else {
-				return invocationOfBehavioural((BehaviouralEntity) fmx);
+//				return invocationOfBehavioural((BehaviouralEntity) fmx);
 			}
 		}
 
