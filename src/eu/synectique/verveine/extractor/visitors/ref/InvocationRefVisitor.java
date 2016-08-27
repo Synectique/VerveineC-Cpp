@@ -109,6 +109,7 @@ public class InvocationRefVisitor extends AbstractRefVisitor {
 	@Override
 	public int visit(IASTFunctionCallExpression node) {
 		NamedEntity fmx = null;
+		Invocation invok = null;
 		nodeBnd = null;
 		nodeName = null;
 		returnedEntity = null;
@@ -143,43 +144,34 @@ public class InvocationRefVisitor extends AbstractRefVisitor {
 			// now create the invocation
 			if (fmx != null) {
 				if (fmx instanceof BehaviouralEntity) {
-					returnedEntity = invocationOfBehavioural((BehaviouralEntity) fmx);
+					invok = invocationOfBehavioural((BehaviouralEntity) fmx);
+					dico.addSourceAnchor(invok, filename, node.getFileLocation());
 				}
 				else if (fmx instanceof StructuralEntity) {
 					// fmx is probably a pointer to a BehavioralEntity
 					String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
-					returnedEntity = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx, stubSig);
-					dico.addSourceAnchor(returnedEntity, filename, node.getFileLocation());
+					invok = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx, stubSig);
+					dico.addSourceAnchor(invok, filename, node.getFileLocation());
 				}
 			}
 		}
 		
-
+		// dealing with arguments
 		for (IASTInitializerClause icl : node.getArguments()) {
 			icl.accept(this);
-		}
 
-		return PROCESS_SKIP;
-	}
-
-	private void visitArguments(IASTInitializerClause[] args) {
-		for (IASTInitializerClause icl : args) {
-			icl.accept(this);
-
-			/*if (returnedEntity == null) {
-				System.err.println("bug");
-			}*/
 			if (returnedEntity instanceof Association) {
-				((Invocation)returnedEntity).addArguments((Association) returnedEntity);
+				invok.addArguments((Association) returnedEntity);  // should be an Invocation
 			}
 			else {
 				// so that the order of arguments match exactly their corresponding parameters
 				// we create a fake association for argument that we cannot resolve
 				IBinding fakeBnd = StubBinding.getInstance(UnknownVariable.class, EMPTY_ARGUMENT_NAME);
 				UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
-				((Invocation)returnedEntity).addArguments(dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null));
-			}
-		}
+				invok.addArguments(dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null));
+			}		}
+
+		return PROCESS_SKIP;
 	}
 
 	/**
