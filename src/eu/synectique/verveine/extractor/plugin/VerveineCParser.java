@@ -44,7 +44,6 @@ import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.DeclaredTypeRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InheritanceRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InvocationAccessRefVisitor;
-import eu.synectique.verveine.extractor.visitors.ref.RefVisitor;
 
 public class VerveineCParser extends VerveineParser {
 	static final public String WORKSPACE_NAME = "tempWS";
@@ -121,8 +120,7 @@ public class VerveineCParser extends VerveineParser {
 		computeIndex(cproject);
 		
         try {
-    		runAllDefVisitors(dico, cproject);
-	        runAllRefVisitors(dico, cproject);
+    		runAllVisitors(dico, cproject);
 
 	        // statistics on unresolved includes
 			incVisitor = new IncludeVisitor(dico, index);
@@ -134,7 +132,7 @@ public class VerveineCParser extends VerveineParser {
         
 	}
 
-	private void runAllDefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
+	private void runAllVisitors(CDictionary dico, ICProject cproject) throws CoreException {
 		/*Having very specialized visitors helps because each one is dead simple
 		 * so it is worth the impact on execution time
 		 * Note that the order is important, the visitors are not independent */
@@ -160,19 +158,9 @@ public class VerveineCParser extends VerveineParser {
 		 * Method def
 		 *   invocation
 		 */
-	}
-
-	private void runAllRefVisitors(CDictionary dico, ICProject cproject) throws CoreException {
-		tracer.msg("step 3 / 3: creating references");
 		cproject.accept(new InheritanceRefVisitor(dico, index));
 		cproject.accept(new DeclaredTypeRefVisitor(dico, index));
 		cproject.accept(new InvocationAccessRefVisitor(dico, index));
-
-		RefVisitor step3 = new RefVisitor(dico, index);
-		step3.setVisitHeaders(true);
-		cproject.accept(step3);
-		step3.setVisitHeaders(false);
-		cproject.accept(step3);
 	}
 
 	private void configWorkspace(IWorkspace workspace) {
