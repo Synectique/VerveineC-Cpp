@@ -145,14 +145,10 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		eu.synectique.verveine.core.gen.famix.Class fmx;
-
 		// compute nodeName and binding
 		super.visit(node);
 
-		fmx = (eu.synectique.verveine.core.gen.famix.Class) dico.getEntityByKey(nodeBnd);
-
-		this.context.push(fmx);
+		this.context.push((NamedEntity) returnedEntity);
 
 		for (IASTDeclaration child : node.getDeclarations(/*includeInactive*/false)) {
 			child.accept(this);
@@ -265,70 +261,8 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 	}
 
 	@Override
-	protected int visit(IASTLiteralExpression node) {
-		returnedEntity = null;
-		if ( ((IASTLiteralExpression)node).getKind() == ICPPASTLiteralExpression.lk_this ) {
-			if (context.topType() != null) {
-				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity()));
-			}
-			else if (context.topMethod() != null) {
-				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topMethod().getParentType(), /*owner*/context.topBehaviouralEntity()));
-			}
-		}
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTFieldReference node) {
-		// can also be a method invocation
-		boolean reference;
-
-		node.getFieldOwner().accept(this); // TODO check this why doesn't create an infinite recursion ?
-		
-		reference = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
-					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
-		returnedEntity = referenceToName(node.getFieldName(), reference);
-
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTIdExpression node) {
-		boolean isPointer;
-		isPointer = ( (node.getParent() instanceof ICPPASTUnaryExpression) &&
-					  ( ((ICPPASTUnaryExpression)node.getParent()).getOperator() == ICPPASTUnaryExpression.op_amper) );
-		returnedEntity = referenceToName(((IASTIdExpression) node).getName(), isPointer);
-		return PROCESS_SKIP;
-	}
-
-	@Override
 	protected int visit(IASTUnaryExpression node) {
 		node.getOperand().accept(this);
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	public int visit(IASTBinaryExpression node) {
-		node.getOperand1().accept(this);
-
-		switch (node.getOperator()) {
-		case IASTBinaryExpression.op_assign:
-		case IASTBinaryExpression.op_binaryAndAssign:
-		case IASTBinaryExpression.op_binaryOrAssign:
-		case IASTBinaryExpression.op_binaryXorAssign:
-		case IASTBinaryExpression.op_divideAssign:
-		case IASTBinaryExpression.op_minusAssign:
-		case IASTBinaryExpression.op_moduloAssign:
-		case IASTBinaryExpression.op_multiplyAssign:
-		case IASTBinaryExpression.op_plusAssign:
-		case IASTBinaryExpression.op_shiftLeftAssign:
-		case IASTBinaryExpression.op_shiftRightAssign:
-			if (this.returnedEntity() instanceof Access) {
-				((Access) this.returnedEntity()).setIsWrite(true);
-			}
-		}
-		node.getOperand2().accept(this);
-		
 		return PROCESS_SKIP;
 	}
 

@@ -36,27 +36,6 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 	}
 
 	/*
-	 * putting class definition on the context stack
-	 */
-	@Override
-	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		Class fmx;
-
-		/* Gets the key (IBinding) of the node to recover the famix type entity */
-		super.visit(node);
-
-		fmx = (Class) dico.getEntityByKey(nodeBnd);
-
-		this.context.push(fmx);
-		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
-			decl.accept(this);
-		}
-		returnedEntity = context.pop();
-
-		return PROCESS_SKIP;
-	}
-
-	/*
 	 * prune to not visit template parameters
 	 */
 	@Override

@@ -1,109 +1,51 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
-import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitName;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
+import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.index.IIndex;
 
+import eu.synectique.verveine.core.Dictionary;
+import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
-import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
-import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 
-public class InvocationRefVisitor extends AbstractRefVisitor {
+public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 	protected static final String EMPTY_ARGUMENT_NAME = "__Empty_Argument__";
 	/**
 	 * In a sequence of identifier, this allows to know what was the type of the previous identifier
 	 * so that we can know where to look for the current identifier (or where to create a stub one)
 	 */
-	protected Type priorType;
 
-	public InvocationRefVisitor(CDictionary dico, IIndex index) {
+
+	public InvocationAccessRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
 	}
 
 	@Override
 	protected String msgTrace() {
 		return "recording methods and functions invocations";
-	}
-
-	/*
-	 * putting class definition on the context stack
-	 */
-	@Override
-	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		Class fmx;
-
-		/* Gets the key (IBinding) of the node to recover the famix type entity */
-		super.visit(node);
-
-		fmx = (Class) dico.getEntityByKey(nodeBnd);
-
-		this.context.push(fmx);
-		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
-			decl.accept(this);
-		}
-		returnedEntity = context.pop();
-
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(ICPPASTFunctionDeclarator node) {
-		 returnedEntity = null;
-
-		// compute nodeName and binding
-		super.visit(node);
-
-		// just in case this is a definition and we already processed the declaration
-		returnedEntity = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
-		// try harder
-		if (returnedEntity == null) {
-			returnedEntity = resolveBehaviouralFromName(node, nodeBnd);
-		}
-
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(ICPPASTFunctionDefinition node) {
-		returnedEntity = null;
-
-		((ICPPASTFunctionDeclarator)node.getDeclarator()).accept(this);
-
-		this.context.push((BehaviouralEntity)returnedEntity);
-
-		for (ICPPASTConstructorChainInitializer init : node.getMemberInitializers()) {
-			init.accept(this);
-		}
-
-		node.getBody().accept(this);
-
-		this.context.pop();
-
-		return PROCESS_SKIP;
 	}
 
 	@Override
@@ -114,7 +56,6 @@ public class InvocationRefVisitor extends AbstractRefVisitor {
 		nodeName = null;
 		returnedEntity = null;
 
-		priorType = context.topType();
 		IASTNode[] children = node.getFunctionNameExpression().getChildren();
 		for (int i=0; i < children.length - 1; i++) {   // for all children save the last one (presumably the called function's name)
 			children[i].accept(this);
@@ -241,7 +182,7 @@ public class InvocationRefVisitor extends AbstractRefVisitor {
 
 	@Override
 	protected int visit(IASTIdExpression node) {
-		returnedEntity = nameInSource(((IASTIdExpression) node).getName(), node.getParent());
+		returnedEntity = associationToName(((IASTIdExpression) node).getName(), node.getParent());
 		return PROCESS_SKIP;
 	}
 
@@ -249,12 +190,54 @@ public class InvocationRefVisitor extends AbstractRefVisitor {
 	protected int visit(IASTFieldReference node) {
 		node.getFieldOwner().accept(this);   // TODO why this?
 
-		returnedEntity = nameInSource(node.getFieldName(), node.getParent());
+		returnedEntity = associationToName(node.getFieldName(), node.getParent());
 
 		return PROCESS_SKIP;
 	}
 
-	protected Invocation nameInSource(IASTName nodeName, IASTNode nodeParent) {
+	@Override
+	protected int visit(IASTLiteralExpression node) {
+		returnedEntity = null;
+		if ( node.getKind() == ICPPASTLiteralExpression.lk_this ) {
+			if (context.topType() != null) {
+				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity()));
+			}
+			else if (context.topMethod() != null) {
+				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topMethod().getParentType(), /*owner*/context.topBehaviouralEntity()));
+			}
+		}
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	public int visit(IASTBinaryExpression node) {
+		node.getOperand1().accept(this);
+
+		switch (node.getOperator()) {
+		case IASTBinaryExpression.op_assign:
+		case IASTBinaryExpression.op_binaryAndAssign:
+		case IASTBinaryExpression.op_binaryOrAssign:
+		case IASTBinaryExpression.op_binaryXorAssign:
+		case IASTBinaryExpression.op_divideAssign:
+		case IASTBinaryExpression.op_minusAssign:
+		case IASTBinaryExpression.op_moduloAssign:
+		case IASTBinaryExpression.op_multiplyAssign:
+		case IASTBinaryExpression.op_plusAssign:
+		case IASTBinaryExpression.op_shiftLeftAssign:
+		case IASTBinaryExpression.op_shiftRightAssign:
+			if (this.returnedEntity() instanceof Access) {
+				((Access) this.returnedEntity()).setIsWrite(true);
+			}
+		}
+		node.getOperand2().accept(this);
+		
+		return PROCESS_SKIP;
+	}
+
+
+
+
+	protected Association associationToName(IASTName nodeName, IASTNode nodeParent) {
 		NamedEntity fmx = null;
 		boolean isPointer;
 
@@ -270,11 +253,29 @@ public class InvocationRefVisitor extends AbstractRefVisitor {
 		isPointer = ( (nodeParent instanceof ICPPASTUnaryExpression) &&
 				  ( ((ICPPASTUnaryExpression)nodeParent).getOperator() == ICPPASTUnaryExpression.op_amper) );
 
-		if ( (fmx instanceof BehaviouralEntity) && (! isPointer) ) {
+		if (fmx instanceof StructuralEntity) {
+			return accessToVar((StructuralEntity) fmx);
+		}
+		else if ( (fmx instanceof BehaviouralEntity) && (! isPointer) ) {
 			return invocationOfBehavioural((BehaviouralEntity) fmx);
 		}
 		
 		return null;
+	}
+
+	/**
+	 * Records an Access to a StructuralEntity and sets lastAccess attribute.
+	 * Assumes the context is correctly set (i.e. top contains a BehaviouralEntity that makes the s) 
+	 * @param fmx -- Accessed StructuralEntity
+	 * @return the Access created
+	 */
+	protected Access accessToVar(StructuralEntity fmx) {
+		BehaviouralEntity accessor;
+		// put false to isWrite by default, will be corrected in the visitor
+		accessor = this.context.topBehaviouralEntity();
+		Access acc = dico.addFamixAccess(accessor, fmx, /*isWrite*/false, context.getLastAccess());
+		context.setLastAccess(acc);
+		return acc;
 	}
 
 }

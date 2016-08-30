@@ -2,6 +2,7 @@ package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTName;
@@ -10,6 +11,10 @@ import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
 import org.eclipse.cdt.core.index.IIndex;
@@ -20,6 +25,7 @@ import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
+import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
@@ -47,7 +53,6 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		return returnedEntity;
 	}
 
-	// CONSTRUCTORS ==========================================================================================================================
 
 	public AbstractRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
@@ -83,6 +88,66 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		returnedEntity = referedType(node.getName());
 		return PROCESS_SKIP;
 	}
+
+	/*
+	 * putting class definition on the context stack
+	 */
+	@Override
+	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		Class fmx;
+
+		/* Gets the key (IBinding) of the node to recover the famix type entity */
+		super.visit(node);
+
+		fmx = (Class) dico.getEntityByKey(nodeBnd);
+
+		this.context.push(fmx);
+		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
+			decl.accept(this);
+		}
+		returnedEntity = context.pop();
+
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(ICPPASTFunctionDeclarator node) {
+		 returnedEntity = null;
+
+		// compute nodeName and binding
+		super.visit(node);
+
+		// just in case this is a definition and we already processed the declaration
+		returnedEntity = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
+		// try harder
+		if (returnedEntity == null) {
+			returnedEntity = resolveBehaviouralFromName(node, nodeBnd);
+		}
+
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(ICPPASTFunctionDefinition node) {
+		returnedEntity = null;
+
+		((ICPPASTFunctionDeclarator)node.getDeclarator()).accept(this);
+
+		this.context.push((BehaviouralEntity)returnedEntity);
+
+		for (ICPPASTConstructorChainInitializer init : node.getMemberInitializers()) {
+			init.accept(this);
+		}
+
+		node.getBody().accept(this);
+
+		this.context.pop();
+
+		return PROCESS_SKIP;
+	}
+
+
+
 
 	/**
 	 * Find a referenced type from its name
@@ -156,44 +221,6 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	}
 
 	/**
-	 * Records a reference to a name which can be a variable or behavioral name.
-	 * @param nodeName
-	 * @param isPointer 
-	 * @return the Access or Invocation created
-	 */
-	protected Association referenceToName(IASTName nodeName, boolean isPointer) {
-		IBinding bnd = null;
-		NamedEntity fmx = null;
-
-		bnd = getBinding(nodeName);
-
-		if (bnd != null) {
-			fmx = dico.getEntityByKey(bnd);
-		}
-		else {
-			fmx = findInParent(nodeName.toString(), context.top(), /*recursive*/true);
-		}
-
-		if (fmx == null) {
-			return null;
-		}
-
-		if (fmx instanceof StructuralEntity) {
-			return accessToVar((StructuralEntity) fmx);
-		}
-		else if (fmx instanceof BehaviouralEntity) {
-			if (isPointer) {
-				return behaviouralPointer((BehaviouralEntity) fmx);
-			}
-			else {
-//				return invocationOfBehavioural((BehaviouralEntity) fmx);
-			}
-		}
-
-		return null;
-	}
-
-	/**
 	 * Records an Invocation of a famixBehaviouralEntity and sets lastInvocation attribute.
 	 * Assumes the context is correctly set (i.e. top contains a BehaviouralEntity that makes the invocation) 
 	 * @param fmx -- invoked BehaviouralEntity
@@ -229,21 +256,6 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		BehaviouralEntity referer = this.context.topBehaviouralEntity();
 		BehaviouralReference ref = dico.addFamixBehaviouralPointer(referer, fmx);
 		return ref;
-	}
-
-	/**
-	 * Records an Access to a StructuralEntity and sets lastAccess attribute.
-	 * Assumes the context is correctly set (i.e. top contains a BehaviouralEntity that makes the s) 
-	 * @param fmx -- Accessed StructuralEntity
-	 * @return the Access created
-	 */
-	protected Access accessToVar(StructuralEntity fmx) {
-		BehaviouralEntity accessor;
-		// put false to isWrite by default, will be corrected in the visitor
-		accessor = this.context.topBehaviouralEntity();
-		Access acc = dico.addFamixAccess(accessor, fmx, /*isWrite*/false, context.getLastAccess());
-		context.setLastAccess(acc);
-		return acc;
 	}
 
 }
