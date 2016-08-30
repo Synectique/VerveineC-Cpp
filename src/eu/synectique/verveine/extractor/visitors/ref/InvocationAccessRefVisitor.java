@@ -10,6 +10,7 @@ import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
@@ -38,6 +39,10 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	 * so that we can know where to look for the current identifier (or where to create a stub one)
 	 */
 
+	/**
+	 * set in visit(IASTUnaryExpression) to be used when visiting the operand
+	 */
+	private boolean inAmpersandUnaryExpression = false;
 
 	public InvocationAccessRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
@@ -102,7 +107,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 			icl.accept(this);
 
 			if (returnedEntity instanceof Association) {
-				invok.addArguments((Association) returnedEntity);  // should be an Invocation
+				invok.addArguments((Association) returnedEntity);
 			}
 			else {
 				// so that the order of arguments match exactly their corresponding parameters
@@ -110,7 +115,8 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 				IBinding fakeBnd = StubBinding.getInstance(UnknownVariable.class, EMPTY_ARGUMENT_NAME);
 				UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
 				invok.addArguments(dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null));
-			}		}
+			}
+		}
 
 		return PROCESS_SKIP;
 	}
@@ -188,7 +194,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 	@Override
 	protected int visit(IASTFieldReference node) {
-		node.getFieldOwner().accept(this);   // TODO why this?
+		node.getFieldOwner().accept(this);   // to detect some field accesses
 
 		returnedEntity = associationToName(node.getFieldName(), node.getParent());
 
@@ -206,6 +212,15 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topMethod().getParentType(), /*owner*/context.topBehaviouralEntity()));
 			}
 		}
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTUnaryExpression node) {
+		inAmpersandUnaryExpression = (node.getOperator() == ICPPASTUnaryExpression.op_amper);
+		node.getOperand().accept(this);
+		inAmpersandUnaryExpression = false;
+
 		return PROCESS_SKIP;
 	}
 
@@ -239,7 +254,6 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 	protected Association associationToName(IASTName nodeName, IASTNode nodeParent) {
 		NamedEntity fmx = null;
-		boolean isPointer;
 
 		nodeBnd = getBinding(nodeName);
 
@@ -249,14 +263,11 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		else {
 			fmx = findInParent(nodeName.toString(), context.top(), /*recursive*/true);
 		}
-		
-		isPointer = ( (nodeParent instanceof ICPPASTUnaryExpression) &&
-				  ( ((ICPPASTUnaryExpression)nodeParent).getOperator() == ICPPASTUnaryExpression.op_amper) );
 
 		if (fmx instanceof StructuralEntity) {
 			return accessToVar((StructuralEntity) fmx);
 		}
-		else if ( (fmx instanceof BehaviouralEntity) && (! isPointer) ) {
+		else if ( (fmx instanceof BehaviouralEntity) && (! inAmpersandUnaryExpression) ) {
 			return invocationOfBehavioural((BehaviouralEntity) fmx);
 		}
 		

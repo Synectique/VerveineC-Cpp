@@ -260,10 +260,4 @@ public class RefVisitor extends AbstractRefVisitor implements ICElementVisitor {
 		return PROCESS_SKIP;  // we already visited the children
 	}
 
-	@Override
-	protected int visit(IASTUnaryExpression node) {
-		node.getOperand().accept(this);
-		return PROCESS_SKIP;
-	}
-
 }
