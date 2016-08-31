@@ -34,10 +34,7 @@ import eu.synectique.verveine.extractor.utils.StubBinding;
 public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 	protected static final String EMPTY_ARGUMENT_NAME = "__Empty_Argument__";
-	/**
-	 * In a sequence of identifier, this allows to know what was the type of the previous identifier
-	 * so that we can know where to look for the current identifier (or where to create a stub one)
-	 */
+
 
 	/**
 	 * set in visit(IASTUnaryExpression) to be used when visiting the operand
@@ -50,7 +47,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 	@Override
 	protected String msgTrace() {
-		return "recording methods and functions invocations";
+		return "recording accesses to variables and invocations to methods/functions";
 	}
 
 	@Override

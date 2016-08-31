@@ -44,6 +44,7 @@ import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.DeclaredTypeRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InheritanceRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InvocationAccessRefVisitor;
+import eu.synectique.verveine.extractor.visitors.ref.ReferenceRefVisitor;
 
 public class VerveineCParser extends VerveineParser {
 	static final public String WORKSPACE_NAME = "tempWS";
@@ -161,6 +162,7 @@ public class VerveineCParser extends VerveineParser {
 		cproject.accept(new InheritanceRefVisitor(dico, index));
 		cproject.accept(new DeclaredTypeRefVisitor(dico, index));
 		cproject.accept(new InvocationAccessRefVisitor(dico, index));
+		cproject.accept(new ReferenceRefVisitor(dico, index));
 	}
 
 	private void configWorkspace(IWorkspace workspace) {

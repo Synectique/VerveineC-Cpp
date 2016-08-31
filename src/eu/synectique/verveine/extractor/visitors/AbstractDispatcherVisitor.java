@@ -19,6 +19,8 @@ import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTTypeId;
+import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
@@ -323,7 +325,10 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		else if (node instanceof IASTLiteralExpression) {
 			return visit((IASTLiteralExpression)node);
 		}
-	
+		else if (node instanceof IASTTypeIdExpression) {
+			return visit((IASTTypeIdExpression)node);
+		}
+
 		return super.visit(node);
 	}
 
@@ -353,6 +358,11 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 
 	@Override
 	public int visit(ICPPASTBaseSpecifier node) {
+		return super.visit(node);
+	}
+
+	@Override
+	public int visit(IASTTypeId node) {
 		return super.visit(node);
 	}
 
@@ -504,6 +514,10 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	protected int visit(IASTIdExpression node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTTypeIdExpression node) {
 		return PROCESS_CONTINUE;
 	}
 
