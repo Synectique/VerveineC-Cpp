@@ -1,8 +1,12 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
+import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
+import org.eclipse.cdt.core.dom.ast.IType;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 
@@ -16,6 +20,7 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 	 * set in visit(IASTUnaryExpression) to be used when visiting the type operand
 	 */
 	private boolean inSizeofExpression = false;
+	private boolean inCastExpression = false;
 
 	public ReferenceRefVisitor(CDictionary dico, IIndex index) {
 		super(dico, index);
@@ -24,6 +29,20 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 	@Override
 	protected String msgTrace() {
 		return "recording references to classes";
+	}
+
+	protected int visit(IASTCastExpression node) {
+		inCastExpression = true;
+		node.getTypeId().accept(this);
+		inCastExpression = false;
+		node.getOperand().accept(this);
+
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	public int visit(IASTTypeId node) {
+		return super.visit(node);
 	}
 
 	@Override
@@ -35,10 +54,18 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 		return PROCESS_SKIP;
 	}
 
+	public int visit(IASTSimpleDeclSpecifier node) {
+		if (inSizeofExpression || inCastExpression) {
+			referenceToType( dico.ensureFamixPrimitiveType(node.getType()) );
+		}
+
+		return PROCESS_SKIP;
+	}
+
 	@Override
 	public int visit(IASTElaboratedTypeSpecifier node) {
-		if (inSizeofExpression) {
-			referencetoType(node.getName());
+		if (inSizeofExpression || inCastExpression) {
+			referenceToType( referedType(node.getName()) );
 		}
 
 		return PROCESS_SKIP;
@@ -46,15 +73,15 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 
 	@Override
 	protected int visit(ICPPASTNamedTypeSpecifier node) {
-		if (inSizeofExpression) {
-			referencetoType(node.getName());
+		if (inSizeofExpression || inCastExpression) {
+			referenceToType( referedType(node.getName()) );
 		}
 
 		return PROCESS_SKIP;
 	}
 
-	protected Reference referencetoType(IASTName name) {
-		Reference ref = dico.addFamixReference(context.topBehaviouralEntity(), referedType(name),  context.getLastReference());
+	protected Reference referenceToType(Type referedType) {
+		Reference ref = dico.addFamixReference(context.topBehaviouralEntity(), referedType,  context.getLastReference());
 		context.setLastReference(ref);
 		return ref;
 	}

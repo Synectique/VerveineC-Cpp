@@ -2,6 +2,7 @@ package eu.synectique.verveine.extractor.visitors;
 
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
+import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
@@ -328,6 +329,9 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		else if (node instanceof IASTTypeIdExpression) {
 			return visit((IASTTypeIdExpression)node);
 		}
+		else if (node instanceof IASTCastExpression) {
+			return visit((IASTCastExpression)node);
+		}
 
 		return super.visit(node);
 	}
@@ -518,6 +522,10 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	protected int visit(IASTTypeIdExpression node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTCastExpression node) {
 		return PROCESS_CONTINUE;
 	}
 
