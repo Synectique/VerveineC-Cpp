@@ -17,6 +17,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTTemplateId;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Access;
@@ -245,7 +246,6 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		
 		return PROCESS_SKIP;
 	}
-
 
 
 

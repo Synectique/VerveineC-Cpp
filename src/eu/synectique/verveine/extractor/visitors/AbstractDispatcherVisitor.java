@@ -17,6 +17,7 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
+import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
@@ -34,6 +35,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNewExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
@@ -142,6 +144,15 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 
 
 	// CDT VISITING METODS ON AST (ASTVisitor) =============================================================================================
+
+	@Override
+	public int visit(IASTName node) {
+		if (node instanceof ICPPASTTemplateId) {
+			return visit((ICPPASTTemplateId)node);
+		}
+
+		return super.visit(node);
+	}
 
 	@Override
 	public int visit(IASTDeclaration node) {
@@ -537,7 +548,10 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	
+	protected int visit(ICPPASTTemplateId node) {
+		return PROCESS_CONTINUE;
+	}
+
 	// UTILITIES ======================================================================================================
 
 	protected void visitChildren(IParent elt) {
