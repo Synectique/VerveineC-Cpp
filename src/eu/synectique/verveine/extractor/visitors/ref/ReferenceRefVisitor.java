@@ -69,7 +69,8 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 
 	public int visit(IASTSimpleDeclSpecifier node) {
 		if (inSizeofExpression || inCastExpression || inTemplateArgumentExpression) {
-			referenceToType( dico.ensureFamixPrimitiveType(node.getType()) );
+			Reference ref = referenceToType( dico.ensureFamixPrimitiveType(node.getType()) );
+			dico.addSourceAnchor(ref, filename, node.getFileLocation());
 		}
 
 		return PROCESS_SKIP;
@@ -78,7 +79,8 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 	@Override
 	public int visit(IASTElaboratedTypeSpecifier node) {
 		if (inSizeofExpression || inCastExpression || inTemplateArgumentExpression) {
-			referenceToType( referedType(node.getName()) );
+			Reference ref = referenceToType( referedType(node.getName()) );
+			dico.addSourceAnchor(ref, filename, node.getFileLocation());
 		}
 
 		return PROCESS_SKIP;
@@ -87,7 +89,8 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 	@Override
 	protected int visit(ICPPASTNamedTypeSpecifier node) {
 		if (inSizeofExpression || inCastExpression || inTemplateArgumentExpression) {
-			referenceToType( referedType(node.getName()) );
+			Reference ref = referenceToType( referedType(node.getName()) );
+			dico.addSourceAnchor(ref, filename, node.getFileLocation());
 		}
 
 		return PROCESS_SKIP;

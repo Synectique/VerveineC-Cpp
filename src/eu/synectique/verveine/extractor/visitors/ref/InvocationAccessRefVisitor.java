@@ -17,7 +17,6 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.internal.core.dom.parser.cpp.CPPASTTemplateId;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Access;
@@ -112,7 +111,9 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 				// we create a fake association for argument that we cannot resolve
 				IBinding fakeBnd = StubBinding.getInstance(UnknownVariable.class, EMPTY_ARGUMENT_NAME);
 				UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
-				invok.addArguments(dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null));
+				Access acc = dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null);
+				invok.addArguments(acc);
+				//dico.addSourceAnchor(acc, filename, icl.getFileLocation());
 			}
 		}
 
@@ -175,6 +176,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 		if (fmx != null) {
 			returnedEntity = invocationOfBehavioural((BehaviouralEntity) fmx);
+			dico.addSourceAnchor(returnedEntity, filename, node.getFileLocation());
 		}
 
 		for (IASTInitializerClause icl : node.getArguments()) {
@@ -208,6 +210,9 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 			}
 			else if (context.topMethod() != null) {
 				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topMethod().getParentType(), /*owner*/context.topBehaviouralEntity()));
+			}
+			if (returnedEntity != null) {
+				dico.addSourceAnchor(returnedEntity, filename, node.getFileLocation());
 			}
 		}
 		return PROCESS_SKIP;
@@ -251,6 +256,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 	protected Association associationToName(IASTName nodeName, IASTNode nodeParent) {
 		NamedEntity fmx = null;
+		Association assoc = null;
 
 		nodeBnd = getBinding(nodeName);
 
@@ -262,13 +268,16 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		}
 
 		if (fmx instanceof StructuralEntity) {
-			return accessToVar((StructuralEntity) fmx);
+			assoc = accessToVar((StructuralEntity) fmx);
 		}
 		else if ( (fmx instanceof BehaviouralEntity) && (! inAmpersandUnaryExpression) ) {
-			return invocationOfBehavioural((BehaviouralEntity) fmx);
+			assoc = invocationOfBehavioural((BehaviouralEntity) fmx);
+		}
+		if (assoc != null) {
+			dico.addSourceAnchor(assoc, filename, nodeParent.getFileLocation());
 		}
 		
-		return null;
+		return assoc;
 	}
 
 	/**
