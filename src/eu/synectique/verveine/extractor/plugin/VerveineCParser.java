@@ -143,22 +143,8 @@ public class VerveineCParser extends VerveineParser {
 		cproject.accept(new TypeDefVisitor(dico, index));
 		cproject.accept(new BehaviouralDefVisitor(dico, index));		// must be after class definitions
 		cproject.accept(new TemplateParameterDefVisitor(dico, index));	// must be after method definitions (possible template)
-		cproject.accept(new AttributeDefVisitor(dico, index));			// must be after all class definitions
-		/*
-		 * Types def
-		 *   attribute def
-		 *   mth def
-		 *   template param def
-		 *     var type (attribute, parameter, global/local var)
-		 *     mth/fct return type
-		 *     inheritance
-		 *     reference
-		 * Attribute def
-		 *   accesses
-		 *   dereferenced invocation
-		 * Method def
-		 *   invocation
-		 */
+		cproject.accept(new AttributeDefVisitor(dico, index));			// must be after class/struct/enum definitions
+
 		cproject.accept(new InheritanceRefVisitor(dico, index));
 		cproject.accept(new DeclaredTypeRefVisitor(dico, index));
 		cproject.accept(new InvocationAccessRefVisitor(dico, index));
@@ -192,6 +178,7 @@ public class VerveineCParser extends VerveineParser {
 				project.refreshLocal(IResource.DEPTH_INFINITE, Constants.NULL_PROGRESS_MONITOR);
 			}
 		} catch (Exception exc) {
+			System.err.println("project path=" + project.getFullPath().toString());
 			exc.printStackTrace();
 		}
 

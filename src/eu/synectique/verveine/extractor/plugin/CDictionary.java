@@ -3,7 +3,6 @@ package eu.synectique.verveine.extractor.plugin;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IBinding;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleTypeTemplateParameter;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;

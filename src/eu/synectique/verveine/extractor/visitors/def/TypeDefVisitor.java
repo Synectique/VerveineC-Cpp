@@ -2,27 +2,21 @@ package eu.synectique.verveine.extractor.visitors.def;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleTypeTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplatedTypeTemplateParameter;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
-import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
-import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Package;
+import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
-
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
@@ -71,7 +65,14 @@ public class TypeDefVisitor extends AbstractVisitor {
 
 	@Override
 	protected int visit(IASTSimpleDeclaration node) {
+		TypeAlias aliasType = null;
+		Type concreteType = null;
+
 		if (declarationIsTypedef(node)) {
+			returnedEntity = null;
+			node.getDeclSpecifier().accept(this);
+			concreteType = (Type) returnedEntity;
+			
 			for (IASTDeclarator declarator : node.getDeclarators()) {
 			// this is a typedef, so the declarator(s) should be FAMIXType(s)
 
@@ -86,33 +87,17 @@ public class TypeDefVisitor extends AbstractVisitor {
 					nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), nodeName.toString()));
 				}
 
-				/* Call back method.
-				 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
-				 * thus several nodeName and bnd
-				 */
-				visitSimpleTypeDeclaration(node);
+				declarator.accept(this);
+
+				aliasType = dico.ensureFamixTypeAlias(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
+				aliasType.setIsStub(false);
+				aliasType.setParentPackage(currentPackage);
+				aliasType.setAliasedType(concreteType);
 			}
 			
 			return PROCESS_SKIP;  // typedef already handled
 		}
 		return PROCESS_CONTINUE;
-	}
-
-	/**
-	 * Call back method from {@link #visit(IASTSimpleDeclaration)}.
-	 * Creates an AliasType for the definedType.
-	 * Treated differently than other visit methods because, although unlikely, there could be more than one AliasType in the same typedef
-	 * thus several nodeName and bnd.
-	 * @param node not used in DefVisitor
-	 */
-	protected void visitSimpleTypeDeclaration(IASTSimpleDeclaration node) {
-		TypeAlias fmx;
-
-		fmx = dico.ensureFamixTypeAlias(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
-
-		fmx.setIsStub(false);
-
-		fmx.setParentPackage(currentPackage);
 	}
 
 	/** Visiting a class definition
@@ -171,5 +156,31 @@ public class TypeDefVisitor extends AbstractVisitor {
 		return PROCESS_SKIP;
 	}
 
+	@Override
+	protected int visit(IASTEnumerationSpecifier node) {
+		eu.synectique.verveine.core.gen.famix.Enum fmx;
+
+		nodeBnd = null;
+		nodeName = node.getName();
+		
+
+		if (nodeName.equals("")) {
+			// case of anonymous enum: it is probably within a typedef and will never be used directly
+			// so the key is mostly irrelevant, only used to find back the type when creating its enumerated values 
+			nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Enum.class, dico.mooseName(context.topBehaviouralEntity(), ""+node.getFileLocation().getNodeOffset()));
+		}
+		else {
+			nodeBnd = getBinding(nodeName);
+			if (nodeBnd == null) {
+				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Enum.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+			}
+		}
+		fmx = dico.ensureFamixEnum(nodeBnd, nodeName.toString(), (ContainerEntity)context.top(), /*persistIt*/true);
+		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
+
+		returnedEntity = fmx;
+
+		return PROCESS_SKIP;
+	}
 
 }

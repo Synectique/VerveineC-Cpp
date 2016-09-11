@@ -1,8 +1,11 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
+import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
@@ -11,7 +14,11 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.gen.famix.Attribute;
+import eu.synectique.verveine.core.gen.famix.ContainerEntity;
+import eu.synectique.verveine.core.gen.famix.Enum;
+import eu.synectique.verveine.core.gen.famix.EnumValue;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public class AttributeDefVisitor extends ClassMemberDefVisitor {
 
@@ -97,6 +104,57 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 		 * For example, in "int a,b;" the declaration starts at "int" whereas there are 2 declarators: a and b
 		 */
 		dico.addSourceAnchor(fmx, filename, node.getParent().getFileLocation());
+
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTSimpleDeclaration node) {
+
+		if (declarationIsTypedef(node)) {
+			node.getDeclSpecifier().accept(this);
+			// skip declarators
+			return PROCESS_SKIP;
+		}
+
+		return PROCESS_CONTINUE;
+	}
+
+	@Override
+	protected int visit(IASTEnumerationSpecifier node) {
+		nodeBnd = null;
+		nodeName = node.getName();
+
+		if (nodeName.equals("")) {
+			nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Enum.class, dico.mooseName(context.topBehaviouralEntity(), ""+node.getFileLocation().getNodeOffset()));
+		}
+		else {
+			nodeBnd = getBinding(nodeName);
+			if (nodeBnd == null) {
+				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Enum.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+			}
+		}
+
+		this.context.push(dico.getEntityByKey(nodeBnd));
+		for (IASTEnumerator decl : node.getEnumerators()) {
+			decl.accept(this);
+		}
+		returnedEntity = context.pop();
+
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	public int visit(IASTEnumerator node) {
+		EnumValue fmx;
+
+		nodeBnd = null;
+		nodeName = node.getName();
+		if (nodeBnd == null) {
+			nodeBnd = StubBinding.getInstance(EnumValue.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+		}
+		fmx = dico.ensureFamixEnumValue(nodeBnd, nodeName.toString(), (Enum)context.top(), /*persistIt*/true);
+		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 
 		return PROCESS_SKIP;
 	}

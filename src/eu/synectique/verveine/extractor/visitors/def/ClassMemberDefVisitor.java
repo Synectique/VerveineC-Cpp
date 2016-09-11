@@ -47,15 +47,4 @@ public abstract class ClassMemberDefVisitor extends AbstractVisitor {
 		return PROCESS_SKIP;
 	}
 
-	/*
-	 * To avoid getting ICPPASTDeclarator of types passed as possible attributes or methods
-	 */
-	@Override
-	protected int visit(IASTSimpleDeclaration node) {
-		if (declarationIsTypedef(node)) {
-			return PROCESS_SKIP;
-		}
-		return PROCESS_CONTINUE;
-	}
-
 }

@@ -3,14 +3,12 @@ package eu.synectique.verveine.extractor.visitors;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
@@ -82,14 +80,12 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		super(dico, index);
 	}
 
-
 	@Override
 	public void visit(ITranslationUnit elt) {
 		context = new CppEntityStack();
 		this.filename = elt.getFile().getRawLocation().toString();
 		super.visit(elt);
 	}
-
 
 	@Override
 	public int visit(ICPPASTNamespaceDefinition node) {
