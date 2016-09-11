@@ -59,7 +59,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		returnedEntity = null;
 
 		IASTNode[] children = node.getFunctionNameExpression().getChildren();
-		for (int i=0; i < children.length - 1; i++) {   // for all children save the last one (presumably the called function's name)
+		for (int i=0; i < children.length - 1; i++) {   // for all children except the last one (presumably the called function's name)
 			children[i].accept(this);
 		}
 
@@ -98,25 +98,30 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 				}
 			}
 		}
-		
-		// dealing with arguments
-		for (IASTInitializerClause icl : node.getArguments()) {
-			icl.accept(this);
 
-			if (returnedEntity instanceof Association) {
-				invok.addArguments((Association) returnedEntity);
-			}
-			else {
-				// so that the order of arguments match exactly their corresponding parameters
-				// we create a fake association for argument that we cannot resolve
-				IBinding fakeBnd = StubBinding.getInstance(UnknownVariable.class, EMPTY_ARGUMENT_NAME);
-				UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
-				Access acc = dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null);
-				invok.addArguments(acc);
-				//dico.addSourceAnchor(acc, filename, icl.getFileLocation());
+		// sometimes there is no function name in the node therefore, no fmx to invok
+		// this happens when the result of the call is casted, this creates 2 IASTFunctionCallExpression
+		// The parent holds the cast and has empty function name
+		if (invok != null) {
+			// dealing with arguments
+			for (IASTInitializerClause icl : node.getArguments()) {
+				icl.accept(this);
+
+				if (returnedEntity instanceof Association) {
+					invok.addArguments((Association) returnedEntity);
+				}
+				else {
+					// so that the order of arguments match exactly their corresponding parameters
+					// we create a fake association for argument that we cannot resolve
+					IBinding fakeBnd = StubBinding.getInstance(UnknownVariable.class, EMPTY_ARGUMENT_NAME);
+					UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
+					Access acc = dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null);
+					invok.addArguments(acc);
+					//dico.addSourceAnchor(acc, filename, icl.getFileLocation());
+				}
 			}
 		}
-
+		
 		return PROCESS_SKIP;
 	}
 
