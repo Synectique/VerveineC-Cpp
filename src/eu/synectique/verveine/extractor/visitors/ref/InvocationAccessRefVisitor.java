@@ -209,6 +209,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	@Override
 	protected int visit(IASTLiteralExpression node) {
 		returnedEntity = null;
+
 		if ( node.getKind() == ICPPASTLiteralExpression.lk_this ) {
 			if (context.topType() != null) {
 				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity()));

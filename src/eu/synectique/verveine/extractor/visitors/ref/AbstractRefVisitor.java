@@ -83,7 +83,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	}
 
 	@Override
-	protected int visit(ICPPASTNamedTypeSpecifier node) {
+	protected int visit(IASTNamedTypeSpecifier node) {
 		returnedEntity = referedType(node.getName());
 		return PROCESS_SKIP;
 	}

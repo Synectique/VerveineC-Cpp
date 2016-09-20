@@ -4,8 +4,10 @@ import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
@@ -34,7 +36,7 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 	 * To avoid type name with "parameter" as in: aType<aParam>
 	 */
 	@Override
-	protected int visit(ICPPASTNamedTypeSpecifier node) {
+	protected int visit(IASTNamedTypeSpecifier node) {
 		return PROCESS_SKIP;
 	}
 
@@ -50,15 +52,7 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 	 * to avoid parameter or local variable declarations
 	 */
 	@Override
-	protected int visit(ICPPASTFunctionDeclarator node) {
-		return PROCESS_SKIP;
-	}
-
-	/*
-	 * to avoid parameter or local variable declarations
-	 */
-	@Override
-	protected int visit(ICPPASTFunctionDefinition node) {
+	protected int visit(IASTStandardFunctionDeclarator node) {
 		return PROCESS_SKIP;
 	}
 
@@ -67,6 +61,14 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 	 */
 	@Override
 	protected int visit(IASTFunctionDeclarator node) {
+		return PROCESS_SKIP;
+	}
+
+	/*
+	 * to avoid parameter or local variable declarations
+	 */
+	@Override
+	protected int visit(ICPPASTFunctionDefinition node) {
 		return PROCESS_SKIP;
 	}
 

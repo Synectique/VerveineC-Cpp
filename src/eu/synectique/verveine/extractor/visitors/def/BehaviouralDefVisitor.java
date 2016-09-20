@@ -6,11 +6,14 @@ import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTForStatement;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTIfStatement;
 import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
 import org.eclipse.cdt.core.dom.ast.IASTNullStatement;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
@@ -46,7 +49,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	/*
 	 * Declaration
 	 */	@Override
-	protected int visit(ICPPASTFunctionDeclarator node) {
+	protected int visit(IASTStandardFunctionDeclarator node) {
 		BehaviouralEntity fmx = null;
 
 		// compute nodeName and binding
@@ -78,7 +81,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 		this.context.push(fmx);
 
-		for (ICPPASTParameterDeclaration param : node.getParameters()) {
+		for (IASTParameterDeclaration param : node.getParameters()) {
 			param.accept(this);
 		}
 		returnedEntity = this.context.pop();
@@ -90,10 +93,10 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	 * Definition
 	 */
 	 @Override
-	protected int visit(ICPPASTFunctionDefinition node) {
+	protected int visit(IASTFunctionDefinition node) {
 		BehaviouralEntity fmx = null;
 
-		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator());
+		node.getDeclarator().accept(this);
 		fmx = (BehaviouralEntity) returnedEntity;
 
 		// using pushBehaviouralEntity()/pushMethod() introduces a difference in the handling of the stack (for metrics CYCLO/NOS)
@@ -132,7 +135,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		if (super.visit(node) == PROCESS_SKIP) {
 			return PROCESS_SKIP;
 		}
-
+//System.err.println("visit(IASTParameterDeclaration) "+nodeName.toString()+ " @"+filename);
 		fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), context.topBehaviouralEntity());
 		fmx.setIsStub(false);
 		// no sourceAnchor for parameter, they sometimes only appear in the .C file

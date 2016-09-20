@@ -2,6 +2,7 @@ package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
@@ -87,7 +88,7 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 	}
 
 	@Override
-	protected int visit(ICPPASTNamedTypeSpecifier node) {
+	protected int visit(IASTNamedTypeSpecifier node) {
 		if (inSizeofExpression || inCastExpression || inTemplateArgumentExpression) {
 			Reference ref = referenceToType( referedType(node.getName()) );
 			dico.addSourceAnchor(ref, filename, node.getFileLocation());

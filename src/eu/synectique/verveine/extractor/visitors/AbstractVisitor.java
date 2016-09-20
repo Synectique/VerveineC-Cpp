@@ -3,10 +3,12 @@ package eu.synectique.verveine.extractor.visitors;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
@@ -122,7 +124,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	}
 
 	@Override
-	protected int visit(ICPPASTFunctionDeclarator node) {
+	protected int visit(IASTStandardFunctionDeclarator node) {
 		nodeBnd = null;
 		nodeName = node.getName();
 		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
@@ -441,7 +443,8 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 		// and finally the last composant of the fully qualified name
 		// first compute the type of this composant
-		// rule of the thumb: if parent is not a namespace (class or method), then we create a Class
+		// rule of the thumb: if parent is not a namespace (probably a class or method), then we create a Class
+		// because we can't have a namespace inside a class or method
 		if ( (parent == null) || (parent instanceof Namespace) ) {
 			nodeBnd = StubBinding.getInstance(Namespace.class, dico.mooseName((ContainerEntity) parent, str));
 			tmp = dico.ensureFamixNamespace(nodeBnd, str, (ScopingEntity) parent);
@@ -610,9 +613,10 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 			int i;
 			// remove parameters from the name
 			i = fullName.indexOf('(');
+			if (i > 0) {
+				fullName = fullName.substring(0, i);
+			}
 
-//System.err.println("isConstructorBinding // "+fullName);
-	        fullName = fullName.substring(0, i);
 			String[] parts = fullName.split(CDictionary.CPP_NAME_SEPARATOR);
 			
 			i = parts.length;
@@ -648,7 +652,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		}
 	}
 
-	protected BehaviouralEntity resolveBehaviouralFromName(ICPPASTFunctionDeclarator node, IBinding bnd) {
+	protected BehaviouralEntity resolveBehaviouralFromName(IASTStandardFunctionDeclarator node, IBinding bnd) {
 		String mthSig;
 		Type parent;
 		BehaviouralEntity fmx;
@@ -658,7 +662,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 				String fullName = ((StubBinding)bnd).getEntityName();
 				if (isFullyQualified(fullName)) {
 					mthSig = extractMethodSignature(fullName);
-					parent = (Type) resolveOrNamespace(extractMethodParentName(fullName));
+					parent = (Type) resolveOrClass(extractMethodParentName(fullName));
 				}
 				else {
 					mthSig = fullName;
@@ -669,6 +673,10 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 				mthSig = new SignatureBuilderVisitor(dico).getFullSignature(node);
 				if (isFullyQualified(nodeName)) {
 					parent = (Type) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
+					if (parent == null) {
+						// happened once in a badly coded case
+						parent = (Type) resolveOrClass(extractMethodParentName(nodeName.toString()));
+					}
 				}
 				else {
 					parent = context.topType();
@@ -698,7 +706,10 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	protected String extractMethodParentName(String fullname) {
 		int i;
 		i = fullname.indexOf('(');
-		fullname = fullname.substring(0, i);
+		if (i > 0) {
+			fullname = fullname.substring(0, i);
+		}
+
 		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		return fullname.substring(0, i);
 	}

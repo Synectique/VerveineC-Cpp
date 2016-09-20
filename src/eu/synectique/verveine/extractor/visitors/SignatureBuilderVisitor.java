@@ -1,9 +1,12 @@
 package eu.synectique.verveine.extractor.visitors;
 
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
@@ -36,7 +39,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 		return null;
 	}
 
-	public String getFullSignature(ICPPASTFunctionDeclarator node) {
+	public String getFullSignature(IASTStandardFunctionDeclarator node) {
 		String fullSignature;
 
 		signature = "";
@@ -58,10 +61,10 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	}
 
 	@Override
-	protected int visit(ICPPASTFunctionDeclarator node) {
+	protected int visit(IASTStandardFunctionDeclarator node) {
 		signature = simpleName(node.getName().toString()) + "(";
 		boolean first = true;
-		for (ICPPASTParameterDeclaration param : node.getParameters()) {
+		for (IASTParameterDeclaration param : node.getParameters()) {
 			if (! first) {
 				signature += ",";
 			}
@@ -108,7 +111,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	}
 
 	@Override
-	public int visit(ICPPASTNamedTypeSpecifier node) {
+	public int visit(IASTNamedTypeSpecifier node) {
 		signature += node.getName();
 		return PROCESS_SKIP;
 	}

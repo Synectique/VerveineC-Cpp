@@ -18,9 +18,11 @@ import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTInitializer;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
@@ -215,6 +217,9 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		if (node instanceof ICPPASTFunctionDeclarator) {
 			return this.visit((ICPPASTFunctionDeclarator)node);
 		}
+		else if (node instanceof IASTStandardFunctionDeclarator) {
+			return this.visit((IASTStandardFunctionDeclarator)node);
+		}
 		else if (node instanceof IASTFunctionDeclarator) {
 			return this.visit((IASTFunctionDeclarator)node);
 		}
@@ -236,6 +241,9 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		 * ******************************************************************************************** */
 		if (node instanceof ICPPASTFunctionDeclarator) {
 			return this.leave((ICPPASTFunctionDeclarator)node);
+		}
+		else if (node instanceof IASTStandardFunctionDeclarator) {
+			return this.leave((IASTStandardFunctionDeclarator)node);
 		}
 		else if (node instanceof IASTFunctionDeclarator) {
 			return this.leave((IASTFunctionDeclarator)node);
@@ -274,6 +282,10 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 			// -> typedef
 			return this.visit((ICPPASTNamedTypeSpecifier)node);
 		}
+		else if (node instanceof IASTNamedTypeSpecifier) {
+			// -> typedef
+			return this.visit((IASTNamedTypeSpecifier)node);
+		}
 		else {
 			// TODO missing sub-types?
 		}
@@ -298,6 +310,10 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		else if (node instanceof ICPPASTNamedTypeSpecifier) {
 			// -> typedef
 			return this.leave((ICPPASTNamedTypeSpecifier)node);
+		}
+		else if (node instanceof IASTNamedTypeSpecifier) {
+			// -> typedef
+			return this.leave((IASTNamedTypeSpecifier)node);
 		}
 	
 		return super.leave(node);
@@ -400,14 +416,6 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	protected int visit(ICPPASTFunctionDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
-	protected int leave(ICPPASTFunctionDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
 	protected int visit(IASTFunctionDefinition node) {
 		return PROCESS_CONTINUE;
 	}
@@ -416,11 +424,19 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	protected int visit(IASTFieldDeclarator node) {
+	protected int visit(ICPPASTFunctionDeclarator node) {
 		return PROCESS_CONTINUE;
 	}
 
-	protected int leave(IASTFieldDeclarator node) {
+	protected int leave(ICPPASTFunctionDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTStandardFunctionDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(IASTStandardFunctionDeclarator node) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -429,6 +445,14 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	protected int leave(IASTFunctionDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTFieldDeclarator node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(IASTFieldDeclarator node) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -473,6 +497,14 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	protected int leave(IASTEnumerationSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(IASTNamedTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int leave(IASTNamedTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 

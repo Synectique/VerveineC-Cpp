@@ -1,8 +1,10 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
@@ -45,12 +47,12 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 	 * get the function declarator, the return type and pass to visit(ICPPASTFunctionDeclarator)
 	 */
 	@Override
-	protected int visit(ICPPASTFunctionDefinition node) {
+	protected int visit(IASTFunctionDefinition node) {
 		returnedEntity = null;
 		node.getDeclSpecifier().accept(this);
 		referredType = (Type)returnedEntity;
 
-		this.visit( (ICPPASTFunctionDeclarator)node.getDeclarator());
+		node.getDeclarator().accept(this);
 
 		referredType = null;
 
@@ -99,7 +101,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 	}
 
 	@Override
-	protected int visit(ICPPASTFunctionDeclarator node) {
+	protected int visit(IASTStandardFunctionDeclarator node) {
 		BehaviouralEntity fmx;
 		// compute nodeName and binding
 		super.visit(node);
@@ -118,7 +120,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		this.context.push(fmx);
 
 		// visit parameters to set their declared type
-		for (ICPPASTParameterDeclaration param : node.getParameters()) {
+		for (IASTParameterDeclaration param : node.getParameters()) {
 			param.accept(this);
 		}
 		returnedEntity = this.context.pop();
