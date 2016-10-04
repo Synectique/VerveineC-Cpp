@@ -1,5 +1,8 @@
 package eu.synectique.verveine.extractor.plugin;
 
+import java.util.Hashtable;
+import java.util.Map;
+
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IBinding;
@@ -11,13 +14,16 @@ import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
-import eu.synectique.verveine.core.gen.famix.Class;
+import eu.synectique.verveine.core.gen.famix.CFile;
+import eu.synectique.verveine.core.gen.famix.CompilationUnit;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Function;
+import eu.synectique.verveine.core.gen.famix.Header;
 import eu.synectique.verveine.core.gen.famix.ImplicitVariable;
 import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Method;
+import eu.synectique.verveine.core.gen.famix.Module;
 import eu.synectique.verveine.core.gen.famix.MultipleFileAnchor;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
@@ -59,8 +65,11 @@ public class CDictionary extends Dictionary<IBinding> {
 	private static final String PRIM_T_CHAR = "char";
 	private static final String PRIM_T_UNKNOWN = "unknownPrimitiveType";
 
+	protected Map<IBinding,CFile> nameToFile;
+	
  	public CDictionary(Repository famixRepo) {
 		super(famixRepo);
+		nameToFile = new Hashtable<IBinding,CFile>();
 	}
 
 	protected NamedEntity getEntityIfNotNull(IBinding key) {
@@ -70,6 +79,19 @@ public class CDictionary extends Dictionary<IBinding> {
 		else {
 			return keyToEntity.get(key);
 		}
+	}
+
+	protected IndexedFileAnchor createIndexedSourceAnchor(String filename, int beg, int end) {
+		IndexedFileAnchor fa;
+
+		fa = new IndexedFileAnchor();
+		fa.setStartPos(beg);
+		fa.setEndPos(end);
+		fa.setFileName( filename);
+
+		famixRepoAdd(fa);
+
+		return fa;
 	}
 	
 	/**
@@ -81,28 +103,31 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * @return the Famix SourceAnchor added to fmx. May be null in case of incorrect/null parameter
 	 */
 	public SourceAnchor addSourceAnchor(SourcedEntity fmx, String filename, IASTFileLocation anchor) {
-			IndexedFileAnchor fa = null;
 
-			if ( (fmx == null) || (anchor == null) ) {
-				return null;
-			}
-
-			// position in source file
+		if (anchor == null) {
+			return null;
+		}
+		else {
 			int beg = anchor.getNodeOffset();
 			int end = beg + anchor.getNodeLength();
 
-			// create the Famix SourceAnchor
-			fa = new IndexedFileAnchor();
-			fa.setStartPos(beg);
-			fa.setEndPos(end);
-			fa.setFileName(filename);
+			return addSourceAnchor( fmx, filename, beg, end);
+		}
+	}
 
+	public SourceAnchor addSourceAnchor(SourcedEntity fmx, String filename, int start, int end) {
+			IndexedFileAnchor fa = null;
+
+			if (fmx == null) {
+				return null;
+			}
+
+			fa = createIndexedSourceAnchor(filename, start, end);
 			fmx.setSourceAnchor(fa);
-			famixRepo.add(fa);
 
 			return fa;
 		}
-	
+
 	/**
 	 * Adds location information to a Famix Entity that may be defined/declared in various files.
 	 * Currently only used for BehaviouralEntities (functions, methods).
@@ -113,10 +138,22 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * @return the Famix SourceAnchor added to fmx. May be null in case of incorrect/null parameter
 	 */
 	public SourceAnchor addSourceAnchorMulti(SourcedEntity fmx, String filename, IASTFileLocation anchor) {
-		MultipleFileAnchor mfa;
-		IndexedFileAnchor fa = null;
 
-		if ( (fmx == null) || (anchor == null) ) {
+		if (anchor == null) {
+			return null;
+		}
+		else {
+			int beg = anchor.getNodeOffset();
+			int end = beg + anchor.getNodeLength();
+
+			return addSourceAnchorMulti( fmx, filename, beg, end);
+		}
+	}
+
+	public SourceAnchor addSourceAnchorMulti(SourcedEntity fmx, String filename, int start, int end) {
+		MultipleFileAnchor mfa;
+
+		if (fmx == null) {
 			return null;
 		}
 
@@ -124,7 +161,7 @@ public class CDictionary extends Dictionary<IBinding> {
 		if (mfa == null) {
 			mfa = new MultipleFileAnchor();
 			fmx.setSourceAnchor(mfa);
-			famixRepo.add(mfa);
+			famixRepoAdd(mfa);
 		}
 
 		// check if we already have this filename in the MultipleFileAnchor
@@ -135,17 +172,8 @@ public class CDictionary extends Dictionary<IBinding> {
 			}
 		}
 
-		// not found add the filename to the MultipleFileAnchor
-
-		// create the Famix SourceAnchor
-		fa = new IndexedFileAnchor();
-		int beg = anchor.getNodeOffset();
-		int end = beg + anchor.getNodeLength();
-		fa.setStartPos( beg );
-		fa.setEndPos( end );
-		fa.setFileName(filename);
-		famixRepo.add(fa);
-		mfa.addAllFiles(fa);
+		// not found, add the filename to the MultipleFileAnchor
+		mfa.addAllFiles( createIndexedSourceAnchor(filename, start, end) );
 
 		return mfa;
 	}
@@ -170,6 +198,39 @@ public class CDictionary extends Dictionary<IBinding> {
 		pointer.setReferer(ref);
 		famixRepoAdd(pointer);
 		return pointer;
+	}
+
+	@SuppressWarnings("unchecked")  // because of return statement
+	protected <T extends CFile> T ensureFamixCFile(Class<T> fmxClass, IBinding key, String name) {
+		CFile fmx = nameToFile.get(key);
+		if (fmx == null) {
+			try {
+				fmx = fmxClass.newInstance();
+				fmx.setName(name);
+				famixRepo.add(fmx);
+				nameToFile.put(key, fmx);
+			} catch (InstantiationException | IllegalAccessException e) {
+				e.printStackTrace();
+				fmx = null;
+			}
+		}
+		
+		return (T) fmx;
+	}
+
+	public Header ensureFamixHeaderFile(IBinding key, String filename) {
+		return ensureFamixCFile(Header.class, key, filename);
+	}
+
+	public CompilationUnit ensureFamixCompilationUnit(IBinding key, String filename) {
+		return ensureFamixCFile(CompilationUnit.class, key, filename);
+	}
+
+	public Module ensureFamixModule(IBinding key, String name, Package owner) {
+		Module fmx = ensureFamixEntity(Module.class, key, name, /*persistIt*/true);
+		fmx.setParentPackage(owner);
+
+		return fmx;
 	}
 
 	/**
@@ -222,7 +283,7 @@ public class CDictionary extends Dictionary<IBinding> {
 
 	public eu.synectique.verveine.core.gen.famix.Class ensureFamixClass(IBinding key, String name, ContainerEntity owner) {
 		eu.synectique.verveine.core.gen.famix.Class fmx;
-		fmx = (Class) getEntityIfNotNull(key);
+		fmx = (eu.synectique.verveine.core.gen.famix.Class) getEntityIfNotNull(key);
 		if (fmx == null) {
 			fmx = super.ensureFamixClass(key, name, owner, /*persistIt*/true);
 		}

@@ -18,8 +18,8 @@ import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
 public class TemplateParameterDefVisitor extends AbstractVisitor {
 
-	public TemplateParameterDefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public TemplateParameterDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	protected String msgTrace() {
@@ -53,7 +53,7 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		// compute nodeName and binding
-		super.visit(node);
+		super.visit( node);
 
 		returnedEntity = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
 		// try harder

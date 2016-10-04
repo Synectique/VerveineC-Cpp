@@ -10,6 +10,7 @@ import org.eclipse.cdt.core.dom.ast.IScope;
 
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Package;
+import eu.synectique.verveine.core.gen.file.AbstractFile;
 
 /**
  * This is a CDT {@link IBinding} implementor to serve as key for unresolved entities

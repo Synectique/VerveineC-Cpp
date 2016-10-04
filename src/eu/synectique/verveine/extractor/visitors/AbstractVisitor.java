@@ -3,13 +3,13 @@ package eu.synectique.verveine.extractor.visitors;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
@@ -40,6 +40,11 @@ import eu.synectique.verveine.extractor.utils.NullTracer;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
+
+	/**
+	 * Prefix to remove from file names
+	 */
+	protected String rootFolder;
 
 	/**
 	 * A stack that keeps the current definition context (package/class/method)
@@ -78,14 +83,18 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	protected boolean visitHeaders;
 
 
-	public AbstractVisitor(CDictionary dico, IIndex index) {
+	public AbstractVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index);
+		this.rootFolder = rootFolder;
 	}
 
+	/*
+	 * be creful, overriden in some subclasses so that this one is not called
+	 */
 	@Override
 	public void visit(ITranslationUnit elt) {
 		context = new CppEntityStack();
-		this.filename = elt.getFile().getRawLocation().toString();
+		this.filename = FileUtil.localized(elt.getFile().getRawLocation().toString(), rootFolder);
 		super.visit(elt);
 	}
 
@@ -113,6 +122,18 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		return this.visit( (IASTCompositeTypeSpecifier)node);
+	}
+
+	/*
+	 * Visiting a class definition to get its key (IBinding) associated with the famix type entity
+	 */
+	@Override
+	protected int visit(ICASTCompositeTypeSpecifier node) {
+		return this.visit((IASTCompositeTypeSpecifier)node);
+	}
+
+	protected int visit(IASTCompositeTypeSpecifier node) {
 		nodeName = node.getName();
 		nodeBnd = getBinding(nodeName);
 
@@ -121,6 +142,11 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		}
 
 		return PROCESS_CONTINUE;
+	}
+
+	@Override
+	protected int visit(ICPPASTFunctionDeclarator node) {
+		return this.visit( (IASTStandardFunctionDeclarator)node);
 	}
 
 	@Override
@@ -517,6 +543,11 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 	protected boolean declarationIsTypedef(IASTSimpleDeclaration node) {
 		return (node.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef);
+	}
+
+	protected boolean typedefToFunctionPointer( IASTSimpleDeclaration node) {
+		return (node.getDeclarators().length>0) &&                       // should always be the case, no?
+				(node.getDeclarators()[0].getNestedDeclarator()!=null);
 	}
 
 	protected boolean nodeParentIsClass(IASTNode node) {

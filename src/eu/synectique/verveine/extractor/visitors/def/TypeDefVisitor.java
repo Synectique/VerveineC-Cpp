@@ -5,6 +5,7 @@ import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
@@ -14,7 +15,6 @@ import org.eclipse.cdt.core.model.ICContainer;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Package;
-import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
@@ -41,8 +41,8 @@ public class TypeDefVisitor extends AbstractVisitor {
 	 * @param dico where entities are created
 	 * @param index CDT index containing bindings
 	 */
-	public TypeDefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public TypeDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	protected String msgTrace() {
@@ -60,7 +60,9 @@ public class TypeDefVisitor extends AbstractVisitor {
 
 		super.visit(elt);                                // visit children
 
-		currentPackage = currentPackage.getParentPackage();    // back to parent package
+		if (currentPackage != null) {
+			currentPackage = currentPackage.getParentPackage();    // back to parent package
+		}
 	}
 
 	@Override
@@ -69,16 +71,27 @@ public class TypeDefVisitor extends AbstractVisitor {
 		Type concreteType = null;
 
 		if (declarationIsTypedef(node)) {
-			returnedEntity = null;
-			node.getDeclSpecifier().accept(this);
-			concreteType = (Type) returnedEntity;
-			
+			boolean functionPointerTypedef = false;
+
+			if (typedefToFunctionPointer(node)) {
+				concreteType = null;  // TODO create a FunctionPointer special type?
+				functionPointerTypedef = true;
+			}
+			else {
+				returnedEntity = null;
+				node.getDeclSpecifier().accept(this);
+				concreteType = (Type) returnedEntity;
+			}
+
 			for (IASTDeclarator declarator : node.getDeclarators()) {
 			// this is a typedef, so the declarator(s) should be FAMIXType(s)
 
-				nodeName = declarator.getName();
-
-				tracer.msg("IASTSimpleDeclaration (typedef):"+nodeName.toString());
+				if (functionPointerTypedef) {
+					nodeName = declarator.getNestedDeclarator().getName();
+				}
+				else {
+					nodeName = declarator.getName();
+				}
 
 				nodeBnd = getBinding(nodeName);
 
@@ -128,6 +141,29 @@ public class TypeDefVisitor extends AbstractVisitor {
 		else {
 			dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 		}
+
+		this.context.push(fmx);
+		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
+			decl.accept(this);
+		}
+		returnedEntity = context.pop();
+
+		return PROCESS_SKIP;
+	}
+
+	/** Visiting a struct in C
+	 * similar to C++ but no template
+	 */
+	@Override
+	protected int visit(ICASTCompositeTypeSpecifier node) {
+		Class fmx;
+
+		// compute nodeName and binding
+		super.visit(node);
+		fmx = dico.ensureFamixClass(nodeBnd, "struct "+nodeName.toString(), (ContainerEntity)context.top());
+
+		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
+		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 
 		this.context.push(fmx);
 		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {

@@ -5,10 +5,12 @@ import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
@@ -53,10 +55,31 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	}
 
 
-	public AbstractRefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public AbstractRefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
+
+	/*
+	 * putting class definition on the context stack
+	 */
+	@Override
+	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		Class fmx;
+
+		/* Gets the key (IBinding) of the node to recover the famix type entity */
+		super.visit(node);
+
+		fmx = (Class) dico.getEntityByKey(nodeBnd);
+
+		this.context.push(fmx);
+		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
+			decl.accept(this);
+		}
+		returnedEntity = context.pop();
+
+		return PROCESS_SKIP;
+	}
 
 	@Override
 	protected int visit(ICASTCompositeTypeSpecifier node) {
@@ -88,36 +111,16 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		return PROCESS_SKIP;
 	}
 
-	/*
-	 * putting class definition on the context stack
-	 */
 	@Override
-	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		Class fmx;
-
-		/* Gets the key (IBinding) of the node to recover the famix type entity */
-		super.visit(node);
-
-		fmx = (Class) dico.getEntityByKey(nodeBnd);
-
-		this.context.push(fmx);
-		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
-			decl.accept(this);
-		}
-		returnedEntity = context.pop();
-
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(ICPPASTFunctionDeclarator node) {
+	protected int visit(IASTStandardFunctionDeclarator node) {
 		 returnedEntity = null;
 
 		// compute nodeName and binding
 		super.visit(node);
 
 		// just in case this is a definition and we already processed the declaration
-		returnedEntity = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
+		NamedEntity tmp = dico.getEntityByKey(nodeBnd);
+		returnedEntity = (BehaviouralEntity) tmp;
 		// try harder
 		if (returnedEntity == null) {
 			returnedEntity = resolveBehaviouralFromName(node, nodeBnd);
@@ -127,10 +130,29 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	}
 
 	@Override
+	protected int visit(IASTFunctionDefinition node) {
+		returnedEntity = null;
+
+		((IASTStandardFunctionDeclarator)node.getDeclarator()).accept(this);
+
+		this.context.push((BehaviouralEntity)returnedEntity);
+
+		node.getBody().accept(this);
+
+		returnedEntity = this.context.pop();
+
+		return PROCESS_SKIP;
+	}
+
+	/*
+	 * need to have ICPPASTFunctionDefinition also because it has specificities not found in IASTFunctionDefinition
+	 * (MemberInitializers)
+	 */
+	@Override
 	protected int visit(ICPPASTFunctionDefinition node) {
 		returnedEntity = null;
 
-		((ICPPASTFunctionDeclarator)node.getDeclarator()).accept(this);
+		visit( (IASTFunctionDefinition)node);  // visit declarator and body (see above)
 
 		this.context.push((BehaviouralEntity)returnedEntity);
 
@@ -138,9 +160,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			init.accept(this);
 		}
 
-		node.getBody().accept(this);
-
-		this.context.pop();
+		returnedEntity = this.context.pop();
 
 		return PROCESS_SKIP;
 	}
@@ -160,7 +180,8 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			bnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), name.toString()));
 		}
 
-		fmx = (Type) dico.getEntityByKey(bnd);
+		NamedEntity tmp = dico.getEntityByKey(bnd);
+		fmx = (Type) tmp;
 
 		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
 			fmx = (Type) findInParent(name.toString(), context.top(), /*recursive*/true);

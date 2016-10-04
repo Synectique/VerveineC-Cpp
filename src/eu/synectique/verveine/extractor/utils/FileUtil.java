@@ -2,8 +2,10 @@ package eu.synectique.verveine.extractor.utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.util.LinkedList;
 import java.util.List;
@@ -42,6 +44,16 @@ public class FileUtil {
 		ext = name.substring(i);
 
 		return ext.startsWith(".h");
+	}
+
+	public static String basename(String name) {
+		int i = name.lastIndexOf(File.separatorChar);
+		if (i < 0) {
+			return name;
+		}
+		else {
+			return name.substring(i+1);
+		}
 	}
 
 
@@ -173,7 +185,45 @@ public class FileUtil {
 		}
 
 		return UNKNOWN_FILE;
-
 	}
 
+
+
+
+	public static RandomAccessFile openTranslationUnit(String filename) {
+		RandomAccessFile br = null;
+		try {
+			br = new RandomAccessFile( filename, "r");
+		} catch (FileNotFoundException e) {
+			System.err.println("Error opening "+filename+" for reading");
+		}
+
+		return br;
+	}
+
+	public static String getFileContent( RandomAccessFile input, int start, int end) {
+		byte buffer[] = new byte[ end-start+1];
+		try {
+			input.seek(start);
+			int ret = input.read(buffer);
+			if (ret < end-start+1) {
+				System.err.println("missing bytes, read "+ret+" instead of "+(end-start+1));
+				return "";
+			}
+			return buffer.toString();
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public static String localized(String filename, String prefix) {
+		if (filename.startsWith(prefix)) {
+			return filename.substring(prefix.length());
+		}
+		else {
+			return filename;
+		}
+	}
 }

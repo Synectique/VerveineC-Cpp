@@ -28,6 +28,7 @@ import org.eclipse.core.runtime.Path;
 
 import eu.synectique.verveine.core.VerveineParser;
 import eu.synectique.verveine.core.gen.famix.CSourceLanguage;
+import eu.synectique.verveine.core.gen.famix.CppSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.utils.Constants;
 import eu.synectique.verveine.extractor.utils.FileUtil;
@@ -38,7 +39,7 @@ import eu.synectique.verveine.extractor.visitors.def.AttributeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
-import eu.synectique.verveine.extractor.visitors.def.PackageDefVisistor;
+import eu.synectique.verveine.extractor.visitors.def.PackageFileDefVisistor;
 import eu.synectique.verveine.extractor.visitors.def.TemplateParameterDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.DeclaredTypeRefVisitor;
@@ -98,6 +99,17 @@ public class VerveineCParser extends VerveineParser {
 	private boolean autoinclude;
 
 	/**
+	 * flag telling whether we want to create a C or a C++ model.
+	 * Defaults to C++ (cModel == false)
+	 */
+	private boolean cModel;
+	
+	/**
+	 * Prefix to remove from file names
+	 */
+	protected String projectPrefix;
+
+	/**
 	 * used to report number of unresolved includes at the end of the program
 	 */
 	private IncludeVisitor incVisitor;
@@ -106,20 +118,24 @@ public class VerveineCParser extends VerveineParser {
 		super();
 		this.argIncludes = new ArrayList<String>();
 		this.argDefined = new HashMap<String,String>();
-		this .autoinclude = false;
+		this.autoinclude = false;
+		this.cModel = false;
 	}
 
 	public void parse() {
-		CDictionary dico = new CDictionary(getFamixRepo());
+		CDictionary dico;
 
 		tracer = new Tracer();
 		tracer.msg("Indexing source files");
 
         ICProject cproject = createEclipseProject(DEFAULT_PROJECT_NAME, userProjectDir);
+        projectPrefix = cproject.getLocationURI().getPath() + File.separator + DEFAULT_PROJECT_NAME + File.separator;
 
         configIndexer(cproject);
 		computeIndex(cproject);
-		
+
+		dico = new CDictionary(getFamixRepo());
+
         try {
     		runAllVisitors(dico, cproject);
 
@@ -130,25 +146,33 @@ public class VerveineCParser extends VerveineParser {
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
-        
+
 	}
 
 	private void runAllVisitors(CDictionary dico, ICProject cproject) throws CoreException {
 		/*Having very specialized visitors helps because each one is dead simple
 		 * so it is worth the impact on execution time
 		 * Note that the order is important, the visitors are not independent */
-		cproject.accept(new CommentDefVisitor(dico, index));
-		cproject.accept(new PackageDefVisistor(dico, index));
-		cproject.accept(new NamespaceDefVisitor(dico, index));
-		cproject.accept(new TypeDefVisitor(dico, index));
-		cproject.accept(new BehaviouralDefVisitor(dico, index));		// must be after class definitions
-		cproject.accept(new TemplateParameterDefVisitor(dico, index));	// must be after method definitions (possible template)
-		cproject.accept(new AttributeDefVisitor(dico, index));			// must be after class/struct/enum definitions
 
-		cproject.accept(new InheritanceRefVisitor(dico, index));
-		cproject.accept(new DeclaredTypeRefVisitor(dico, index));
-		cproject.accept(new InvocationAccessRefVisitor(dico, index));
-		cproject.accept(new ReferenceRefVisitor(dico, index));
+		cproject.accept(new PackageFileDefVisistor(dico, index, projectPrefix, cModel));
+		if (!cModel) {
+			cproject.accept(new NamespaceDefVisitor(dico, index, projectPrefix));
+		}
+		cproject.accept(new TypeDefVisitor(dico, index, projectPrefix));
+		cproject.accept(new BehaviouralDefVisitor(dico, index, projectPrefix));		// must be after class definitions
+		if (!cModel) {
+			cproject.accept(new TemplateParameterDefVisitor(dico, index, projectPrefix));	// must be after method definitions (possible template)
+		}
+		cproject.accept(new AttributeDefVisitor(dico, index, projectPrefix));			// must be after class/struct/enum definitions
+
+		if (!cModel) {
+			cproject.accept(new InheritanceRefVisitor(dico, index, projectPrefix));
+		}
+		cproject.accept(new DeclaredTypeRefVisitor(dico, index, projectPrefix));
+		cproject.accept(new InvocationAccessRefVisitor(dico, index, projectPrefix));
+		cproject.accept(new ReferenceRefVisitor(dico, index, projectPrefix));
+
+		cproject.accept(new CommentDefVisitor(dico, index, projectPrefix));
 	}
 
 	private void configWorkspace(IWorkspace workspace) {
@@ -275,7 +299,12 @@ public class VerveineCParser extends VerveineParser {
 
 	@Override
 	protected SourceLanguage getMyLgge() {
-		return new CSourceLanguage();
+		if (cModel) {
+			return new CSourceLanguage();
+		}
+		else {
+			return new CppSourceLanguage();
+		}
 	}
 
 	public void setOptions(String[] args) {
@@ -285,6 +314,9 @@ public class VerveineCParser extends VerveineParser {
 
 			if (arg.equals("-h")) {
 				usage();
+			}
+			else if (arg.startsWith("-c")) {
+				cModel = true;
 			}
 			else if (arg.equals("-autoinclude")) {
 				autoinclude = true;

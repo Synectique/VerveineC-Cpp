@@ -5,10 +5,8 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.index.IIndex;
 
@@ -26,8 +24,8 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 	 */
 	private Type referredType;
 
-	public DeclaredTypeRefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public DeclaredTypeRefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	protected String msgTrace() {
@@ -59,6 +57,11 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		return PROCESS_SKIP;
 	}
 
+	@Override
+	protected int visit(ICPPASTFunctionDefinition node) {
+		return this.visit( (IASTFunctionDefinition)node);
+	}
+
 	/*
 	 * class members: attribute/methods
 	 */
@@ -85,7 +88,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 	 * We should only get here in the case of an attribute declaration.
 	 */
 	@Override
-	protected int visit(ICPPASTDeclarator node) {
+	public int visitInternal(IASTDeclarator node) {
 		Attribute fmx = null;
 
 		nodeName = node.getName();
@@ -106,11 +109,11 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		// compute nodeName and binding
 		super.visit(node);
 
-		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
+		fmx = (BehaviouralEntity) returnedEntity; /*dico.getEntityByKey(nodeBnd);
 		// try harder
 		if (fmx == null) {
 			fmx = resolveBehaviouralFromName(node, nodeBnd);
-		}
+		}*/
 
 		// set the declared type
 		if ( (! isConstructor((BehaviouralEntity) fmx)) && (! isDestructor((BehaviouralEntity) fmx)) ) {

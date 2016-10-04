@@ -17,8 +17,8 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 
 	private Inheritance lastInheritance;
 
-	public InheritanceRefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public InheritanceRefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	protected String msgTrace() {

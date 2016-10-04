@@ -6,19 +6,14 @@ import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTForStatement;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTIfStatement;
 import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
-import org.eclipse.cdt.core.dom.ast.IASTNullStatement;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
@@ -37,8 +32,8 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
  */
 public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
-	public BehaviouralDefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public BehaviouralDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	protected String msgTrace() {
@@ -65,7 +60,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		if (fmx != null) {
 			// parent node is a SimpleDeclaration or a FunctionDefinition
 			IASTFileLocation defLoc = node.getParent().getFileLocation();
-			dico.addSourceAnchorMulti(fmx, defLoc.getFileName(), defLoc);
+			dico.addSourceAnchorMulti(fmx, filename, defLoc);
 		}
 
 		if (isDestructorBinding(nodeBnd)) {
@@ -184,12 +179,11 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	    	context.addTopMethodCyclo(1);
 	    }
 	    
-	    if ( (node instanceof IASTCaseStatement)	||
-		     (node instanceof IASTCompoundStatement)||
-		     (node instanceof IASTDefaultStatement)	||
-		     (node instanceof IASTLabelStatement)	||
-		     (node instanceof IASTNullStatement)	) {
-	    	// nothing to do, it's all in the else clause
+	    if ( (node instanceof IASTCaseStatement)	||    // not a statement but a case clause in a switch
+		     (node instanceof IASTCompoundStatement)||    // block
+		     (node instanceof IASTDefaultStatement)	||    // not a statement but the default clause in a switch
+		     (node instanceof IASTLabelStatement) ) {
+	    	// nothing to do for these, all the rest counts as one statement (in the else clause)
 	    }
 	    else {
 	    	context.addTopMethodNOS(1);

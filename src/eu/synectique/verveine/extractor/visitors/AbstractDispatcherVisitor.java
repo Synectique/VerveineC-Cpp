@@ -30,7 +30,6 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
@@ -183,32 +182,6 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	@Override
-	public int leave(IASTDeclaration node) {
-		/* ********************************************************************************************
-		 * BE CAREFULL: The order of the tests is important because choices are not mutually exclusive
-		 * ex: ICPPASTFunctionDefinition is a sub-interface of IASTFunctionDefinition
-		 * ******************************************************************************************** */
-		if (node instanceof IASTSimpleDeclaration) {
-			return leave((IASTSimpleDeclaration)node);
-		}
-		else if (node instanceof ICPPASTFunctionDefinition) {
-			return leave((ICPPASTFunctionDefinition)node);
-		}
-		else if (node instanceof IASTFunctionDefinition) {
-			return leave((IASTFunctionDefinition)node);
-		}
-		else if (node instanceof ICPPASTTemplateDeclaration) {
-			return leave((ICPPASTTemplateDeclaration)node);
-		}
-		else if (node instanceof ICPPASTVisibilityLabel) {
-			return leave((ICPPASTVisibilityLabel)node);
-		}
-		//else ICPPASTUsingDirective, ...
-	
-		return super.leave(node);
-	}
-
-	@Override
 	public int visit(IASTDeclarator node) {
 		/* ********************************************************************************************
 		 * BE CAREFULL: The order of the tests is important because choices are not mutually exclusive
@@ -226,46 +199,34 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		else if (node instanceof IASTFieldDeclarator) {  // actually seems to never occur ???
 			return this.visit((IASTFieldDeclarator)node);
 		}
-		else if (node instanceof ICPPASTDeclarator) {
+/* removed to deal with C attributes: IASTDeclarators
+  		else if (node instanceof ICPPASTDeclarator) {
 			return this.visit((ICPPASTDeclarator)node);
 		}
-	
-		return super.visit(node);
+	replaced by the following:
+*/	
+  		else {
+			return this.visitInternal(node);
+		}
 	}
 
-	@Override
-	public int leave(IASTDeclarator node) {
-		/* ********************************************************************************************
-		 * BE CAREFULL: The order of the tests is important because choices are not mutually exclusive
-		 * ex: ICPPASTFunctionDeclarator is a sub-interface of IASTFunctionDeclarator
-		 * ******************************************************************************************** */
-		if (node instanceof ICPPASTFunctionDeclarator) {
-			return this.leave((ICPPASTFunctionDeclarator)node);
-		}
-		else if (node instanceof IASTStandardFunctionDeclarator) {
-			return this.leave((IASTStandardFunctionDeclarator)node);
-		}
-		else if (node instanceof IASTFunctionDeclarator) {
-			return this.leave((IASTFunctionDeclarator)node);
-		}
-		else if (node instanceof ICPPASTDeclarator) {
-			return this.leave((ICPPASTDeclarator)node);
-		}
-	
-		if (node instanceof IASTFunctionDeclarator) {
-			return this.leave((IASTFunctionDeclarator)node);
-		}
-		return super.leave(node);
+	/* new visit method for "true IASTDeclarators" (e.g. attributes of struct in C)
+	 * this avoids surcharging visit(IASTDeclarator node) in the sub-classes of AbstractDispatcherVisitor
+	 * which would hide the dispatch done here
+	 */
+	protected int visitInternal(IASTDeclarator node) {
+		return PROCESS_CONTINUE;
 	}
+
 
 	@Override
 	public int visit(IASTDeclSpecifier node) {
 		if (node instanceof ICPPASTCompositeTypeSpecifier) {
-			// -> struct/union
+			// -> class/struct/union
 			return this.visit((ICPPASTCompositeTypeSpecifier)node);
 		}
 		else if (node instanceof ICASTCompositeTypeSpecifier) {
-			// -> class
+			// -> struct/union in C
 			return this.visit((ICASTCompositeTypeSpecifier)node);
 		}
 		else if (node instanceof IASTElaboratedTypeSpecifier) {
@@ -291,32 +252,6 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		}
 	
 		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTDeclSpecifier node) {
-		if (node instanceof ICASTCompositeTypeSpecifier) {
-			// -> struct/union
-			return this.leave((ICASTCompositeTypeSpecifier)node);
-		}
-		else if (node instanceof ICPPASTCompositeTypeSpecifier) {
-			// -> class
-			return this.leave((ICPPASTCompositeTypeSpecifier)node);
-		}
-		else if (node instanceof IASTEnumerationSpecifier) {
-			// -> enum
-			return this.leave((IASTEnumerationSpecifier)node);
-		}
-		else if (node instanceof ICPPASTNamedTypeSpecifier) {
-			// -> typedef
-			return this.leave((ICPPASTNamedTypeSpecifier)node);
-		}
-		else if (node instanceof IASTNamedTypeSpecifier) {
-			// -> typedef
-			return this.leave((IASTNamedTypeSpecifier)node);
-		}
-	
-		return super.leave(node);
 	}
 
 	@Override
@@ -369,21 +304,11 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	@Override
-	public int leave(ICPPASTTemplateParameter node) {
-		return super.visit(node);
-	}
-
-	@Override
 	public int visit(IASTParameterDeclaration node) {
 		if (node instanceof ICPPASTParameterDeclaration) {
 			return visit((ICPPASTParameterDeclaration)node);
 		}
 		// else is a valid choice (presumably for C language)
-		return super.visit(node);
-	}
-
-	@Override
-	public int leave(IASTParameterDeclaration node) {
 		return super.visit(node);
 	}
 
@@ -404,39 +329,19 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	protected int leave(IASTSimpleDeclaration node) {
-		return PROCESS_CONTINUE;
-	}
-
 	protected int visit(ICPPASTFunctionDefinition node) {
-		return PROCESS_CONTINUE;
-	}
-
-	protected int leave(ICPPASTFunctionDefinition node) {
-		return PROCESS_CONTINUE;
+		return this.visit( (IASTFunctionDefinition)node);
 	}
 
 	protected int visit(IASTFunctionDefinition node) {
 		return PROCESS_CONTINUE;
 	}
 
-	protected int leave(IASTFunctionDefinition node) {
-		return PROCESS_CONTINUE;
-	}
-
 	protected int visit(ICPPASTFunctionDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
-	protected int leave(ICPPASTFunctionDeclarator node) {
-		return PROCESS_CONTINUE;
+		return this.visit( (IASTStandardFunctionDeclarator)node);
 	}
 
 	protected int visit(IASTStandardFunctionDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
-	protected int leave(IASTStandardFunctionDeclarator node) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -444,15 +349,7 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	protected int leave(IASTFunctionDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
 	protected int visit(IASTFieldDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
-
-	protected int leave(IASTFieldDeclarator node) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -460,31 +357,18 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	protected int leave(ICPPASTVisibilityLabel node) {
-		return PROCESS_CONTINUE;
-	}
-
+/* removed to deal with C attributes: IASTDeclarators
 	protected int visit(ICPPASTDeclarator node) {
 		return PROCESS_CONTINUE;
 	}
-
-	protected int leave(ICPPASTDeclarator node) {
-		return PROCESS_CONTINUE;
-	}
+   replaced by the new visit method visitInternal(IASTDeclarator node) above
+*/
 
 	protected int visit(ICASTCompositeTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 
-	protected int leave(ICASTCompositeTypeSpecifier node) {
-		return PROCESS_CONTINUE;
-	}
-
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
-		return PROCESS_CONTINUE;
-	}
-
-	protected int leave(ICPPASTCompositeTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 
@@ -496,24 +380,12 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	protected int leave(IASTEnumerationSpecifier node) {
-		return PROCESS_CONTINUE;
-	}
-
 	protected int visit(IASTNamedTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 
-	protected int leave(IASTNamedTypeSpecifier node) {
-		return PROCESS_CONTINUE;
-	}
-
 	protected int visit(ICPPASTNamedTypeSpecifier node) {
-		return PROCESS_CONTINUE;
-	}
-
-	protected int leave(ICPPASTNamedTypeSpecifier node) {
-		return PROCESS_CONTINUE;
+		return this.visit( (IASTNamedTypeSpecifier)node);
 	}
 
 	public int visit(IASTSimpleDeclSpecifier node) {
@@ -524,15 +396,7 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	protected int leave(ICPPASTTemplateDeclaration node) {
-		return PROCESS_CONTINUE;
-	}
-
 	protected int visit(ICPPASTParameterDeclaration node) {
-		return PROCESS_CONTINUE;
-	}
-
-	protected int leave(ICPPASTParameterDeclaration node) {
 		return PROCESS_CONTINUE;
 	}
 

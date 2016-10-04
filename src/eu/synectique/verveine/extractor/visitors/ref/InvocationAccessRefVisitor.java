@@ -10,6 +10,7 @@ import org.eclipse.cdt.core.dom.ast.IASTInitializerClause;
 import org.eclipse.cdt.core.dom.ast.IASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
@@ -41,13 +42,23 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	 */
 	private boolean inAmpersandUnaryExpression = false;
 
-	public InvocationAccessRefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public InvocationAccessRefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	@Override
 	protected String msgTrace() {
 		return "recording accesses to variables and invocations to methods/functions";
+	}
+
+	@Override
+	protected int visit(IASTSimpleDeclaration node) {
+		if (declarationIsTypedef(node)) {
+			return PROCESS_SKIP;
+		}
+		else {
+			return super.visit(node);
+		}
 	}
 
 	@Override
@@ -117,7 +128,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 					UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
 					Access acc = dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null);
 					invok.addArguments(acc);
-					//dico.addSourceAnchor(acc, filename, icl.getFileLocation());
+					dico.addSourceAnchor(acc, filename, icl.getFileLocation());
 				}
 			}
 		}

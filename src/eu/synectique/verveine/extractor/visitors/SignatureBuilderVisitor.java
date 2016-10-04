@@ -1,20 +1,16 @@
 package eu.synectique.verveine.extractor.visitors;
 
-import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
-import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
 
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 
@@ -32,7 +28,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	protected boolean visitSignature;
 
 	public SignatureBuilderVisitor(CDictionary dico) {
-		super(dico, null);
+		super(dico, null, null);
 	}
 
 	protected String msgTrace() {
@@ -84,8 +80,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 		return PROCESS_CONTINUE;
 	}
 
-	@Override
-	public int visit(ICPPASTDeclarator node) {
+	protected int visitInternal(IASTDeclarator node) {
 		for (@SuppressWarnings("unused") IASTPointerOperator ptr : node.getPointerOperators()) {
 			signature += "*";
 		}

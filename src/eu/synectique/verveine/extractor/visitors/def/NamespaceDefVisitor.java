@@ -10,8 +10,8 @@ import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
 public class NamespaceDefVisitor extends AbstractVisitor {
 
-	public NamespaceDefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public NamespaceDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	@Override

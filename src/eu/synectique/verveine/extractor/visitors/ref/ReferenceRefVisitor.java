@@ -5,9 +5,9 @@ import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.index.IIndex;
 
@@ -26,8 +26,8 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 
 	private boolean inTemplateArgumentExpression = false;
 
-	public ReferenceRefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public ReferenceRefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	@Override
@@ -95,6 +95,16 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 		}
 
 		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTSimpleDeclaration node) {
+		if (declarationIsTypedef(node)) {
+			return PROCESS_SKIP;
+		}
+		else {
+			return super.visit(node);
+		}
 	}
 
 

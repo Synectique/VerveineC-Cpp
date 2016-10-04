@@ -1,7 +1,8 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
+import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.index.IIndex;
@@ -15,8 +16,8 @@ public abstract class ClassMemberDefVisitor extends AbstractVisitor {
 
 	protected Visibility currentVisibility;
 
-	public ClassMemberDefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public ClassMemberDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	protected int visit(ICPPASTVisibilityLabel node) {
@@ -33,6 +34,16 @@ public abstract class ClassMemberDefVisitor extends AbstractVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		return visit((IASTCompositeTypeSpecifier)node);
+	}
+	
+	@Override
+	protected int visit(ICASTCompositeTypeSpecifier node) {
+		return visit((IASTCompositeTypeSpecifier)node);
+	}
+
+	@Override
+	protected int visit(IASTCompositeTypeSpecifier node) {
 		Class fmx;
 
 		super.visit(node);

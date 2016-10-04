@@ -1,5 +1,6 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
@@ -9,14 +10,10 @@ import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclarator;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.gen.famix.Attribute;
-import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Enum;
 import eu.synectique.verveine.core.gen.famix.EnumValue;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
@@ -24,8 +21,8 @@ import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public class AttributeDefVisitor extends ClassMemberDefVisitor {
 
-	public AttributeDefVisitor(CDictionary dico, IIndex index) {
-		super(dico, index);
+	public AttributeDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+		super(dico, index, rootFolder);
 	}
 
 	protected String msgTrace() {
@@ -90,7 +87,7 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 	 * We should only get here in the case of an attribute declaration.
 	 */
 	@Override
-	protected int visit(ICPPASTDeclarator node) {
+	public int visitInternal(IASTDeclarator node) {
 		Attribute fmx = null;
 
 		nodeName = node.getName();
