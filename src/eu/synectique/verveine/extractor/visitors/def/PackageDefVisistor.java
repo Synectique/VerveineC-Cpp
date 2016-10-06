@@ -1,27 +1,19 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
-import java.io.File;
-
-import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 
-import eu.synectique.verveine.core.gen.famix.Module;
 import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.utils.FileUtil;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractDispatcherVisitor;
 
-public class PackageFileDefVisistor extends AbstractDispatcherVisitor {
+public class PackageDefVisistor extends AbstractDispatcherVisitor {
 
 	/**
 	 * The file directory being visited at any given time
 	 */
 	protected eu.synectique.verveine.core.gen.famix.Package currentPackage = null;
-
-	protected boolean isCModel;
 
 	/**
 	 * Leading directory are the path of the project.
@@ -30,15 +22,8 @@ public class PackageFileDefVisistor extends AbstractDispatcherVisitor {
 	 */
 	protected int nbOfLeadingDirectory;
 
-	/**
-	 * Prefix to remove from file names
-	 */
-	protected String rootFolder;
-
-	public PackageFileDefVisistor(CDictionary dico, IIndex index, String rootFolder, boolean isCModel) {
+	public PackageDefVisistor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index);
-		this.rootFolder = rootFolder;
-		this.isCModel = isCModel;
 		nbOfLeadingDirectory = 2;  // i.e. tempProj/tempProj
 	}
 
@@ -76,17 +61,7 @@ public class PackageFileDefVisistor extends AbstractDispatcherVisitor {
 	 */
 	@Override
 	public void visit(ITranslationUnit elt) {
-		if (isCModel) {
-			Module fmx;
-			String filename = elt.getFile().getFullPath().toString();
-			IBinding key = StubBinding.getInstance(Module.class, filename);
-			filename = FileUtil.basename(filename);
 
-			fmx = dico.ensureFamixModule( key, filename, currentPackage);
-			fmx.setIsStub(false);
-		}
-		
-		// no need to visit AST
 	}
 
 }

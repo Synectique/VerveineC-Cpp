@@ -21,6 +21,7 @@ import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Header;
 import eu.synectique.verveine.core.gen.famix.ImplicitVariable;
+import eu.synectique.verveine.core.gen.famix.Include;
 import eu.synectique.verveine.core.gen.famix.IndexedFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Module;
@@ -39,6 +40,7 @@ import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
+import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public class CDictionary extends Dictionary<IBinding> {
@@ -85,8 +87,8 @@ public class CDictionary extends Dictionary<IBinding> {
 		IndexedFileAnchor fa;
 
 		fa = new IndexedFileAnchor();
-		fa.setStartPos(beg);
-		fa.setEndPos(end);
+		fa.setStartPos(beg+1);
+		fa.setEndPos(end+1);
 		fa.setFileName( filename);
 
 		famixRepoAdd(fa);
@@ -200,30 +202,21 @@ public class CDictionary extends Dictionary<IBinding> {
 		return pointer;
 	}
 
-	@SuppressWarnings("unchecked")  // because of return statement
-	protected <T extends CFile> T ensureFamixCFile(Class<T> fmxClass, IBinding key, String name) {
+	public CFile ensureFamixCFile( IBinding key, String name) {
 		CFile fmx = nameToFile.get(key);
 		if (fmx == null) {
-			try {
-				fmx = fmxClass.newInstance();
-				fmx.setName(name);
-				famixRepo.add(fmx);
-				nameToFile.put(key, fmx);
-			} catch (InstantiationException | IllegalAccessException e) {
-				e.printStackTrace();
-				fmx = null;
+			if (FileUtil.isHeader(name)) {
+				fmx = new Header();
 			}
+			else {
+				fmx = new CompilationUnit();
+			}
+			fmx.setName(name);
+			famixRepo.add(fmx);
+			nameToFile.put(key, fmx);
 		}
 		
-		return (T) fmx;
-	}
-
-	public Header ensureFamixHeaderFile(IBinding key, String filename) {
-		return ensureFamixCFile(Header.class, key, filename);
-	}
-
-	public CompilationUnit ensureFamixCompilationUnit(IBinding key, String filename) {
-		return ensureFamixCFile(CompilationUnit.class, key, filename);
+		return fmx;
 	}
 
 	public Module ensureFamixModule(IBinding key, String name, Package owner) {
@@ -233,8 +226,21 @@ public class CDictionary extends Dictionary<IBinding> {
 		return fmx;
 	}
 
+	public Include addFamixInclude(CFile src, CFile tgt) {
+		if ( (src == null) || (tgt == null) ) {
+			return null;
+		}
+
+		Include inc = new Include();
+		inc.setTarget(tgt);
+		inc.setSource(src);
+		famixRepoAdd(inc);
+
+		return inc;
+	}
+
 	/**
-//	 * Create an UnknownVariable. parent currently not used
+	 * Create an UnknownVariable. parent currently not used
 	 */
 	public UnknownVariable createFamixUnknownVariable(String name, NamedEntity parent) {
 		UnknownVariable fmx;

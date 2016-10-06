@@ -39,7 +39,7 @@ import eu.synectique.verveine.extractor.visitors.def.AttributeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
-import eu.synectique.verveine.extractor.visitors.def.PackageFileDefVisistor;
+import eu.synectique.verveine.extractor.visitors.def.PackageDefVisistor;
 import eu.synectique.verveine.extractor.visitors.def.TemplateParameterDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.DeclaredTypeRefVisitor;
@@ -109,11 +109,6 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	protected String projectPrefix;
 
-	/**
-	 * used to report number of unresolved includes at the end of the program
-	 */
-	private IncludeVisitor incVisitor;
-
 	public VerveineCParser() {
 		super();
 		this.argIncludes = new ArrayList<String>();
@@ -139,10 +134,6 @@ public class VerveineCParser extends VerveineParser {
         try {
     		runAllVisitors(dico, cproject);
 
-	        // statistics on unresolved includes
-			incVisitor = new IncludeVisitor(dico, index);
-    		cproject.accept(incVisitor);
-	        incVisitor.reportUnresolvedIncludes();
 		} catch (CoreException e) {
 			e.printStackTrace();
 		}
@@ -154,7 +145,12 @@ public class VerveineCParser extends VerveineParser {
 		 * so it is worth the impact on execution time
 		 * Note that the order is important, the visitors are not independent */
 
-		cproject.accept(new PackageFileDefVisistor(dico, index, projectPrefix, cModel));
+		IncludeVisitor incVisitor;
+		incVisitor = new IncludeVisitor(dico, index, projectPrefix);
+		cproject.accept(incVisitor);
+        incVisitor.reportUnresolvedIncludes();        // statistics on unresolved includes
+
+		cproject.accept(new PackageDefVisistor(dico, index, projectPrefix));
 		if (!cModel) {
 			cproject.accept(new NamespaceDefVisitor(dico, index, projectPrefix));
 		}
