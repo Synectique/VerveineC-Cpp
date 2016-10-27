@@ -40,6 +40,7 @@ import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.PackageDefVisistor;
+import eu.synectique.verveine.extractor.visitors.def.PreprocessorStmtDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.TemplateParameterDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.DeclaredTypeRefVisitor;
@@ -169,6 +170,7 @@ public class VerveineCParser extends VerveineParser {
 		cproject.accept(new ReferenceRefVisitor(dico, index, projectPrefix));
 
 		cproject.accept(new CommentDefVisitor(dico, index, projectPrefix));
+		cproject.accept(new PreprocessorStmtDefVisitor(dico, index));
 	}
 
 	private void configWorkspace(IWorkspace workspace) {
