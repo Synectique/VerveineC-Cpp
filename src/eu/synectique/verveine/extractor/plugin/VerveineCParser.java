@@ -170,7 +170,7 @@ public class VerveineCParser extends VerveineParser {
 		cproject.accept(new ReferenceRefVisitor(dico, index, projectPrefix));
 
 		cproject.accept(new CommentDefVisitor(dico, index, projectPrefix));
-		cproject.accept(new PreprocessorStmtDefVisitor(dico, index));
+		cproject.accept(new PreprocessorStmtDefVisitor(dico, index, projectPrefix));
 	}
 
 	private void configWorkspace(IWorkspace workspace) {

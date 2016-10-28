@@ -15,6 +15,7 @@ import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
 import eu.synectique.verveine.core.gen.famix.CFile;
+import eu.synectique.verveine.core.gen.famix.Comment;
 import eu.synectique.verveine.core.gen.famix.CompilationUnit;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
@@ -33,6 +34,7 @@ import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.ParameterType;
 import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
 import eu.synectique.verveine.core.gen.famix.ParameterizedType;
+import eu.synectique.verveine.core.gen.famix.PreprocessorIfdef;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourceAnchor;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
@@ -237,6 +239,16 @@ public class CDictionary extends Dictionary<IBinding> {
 		famixRepoAdd(inc);
 
 		return inc;
+	}
+
+	public PreprocessorIfdef createFamixPreprocIfdef(String macroName) {
+		PreprocessorIfdef fmx;
+
+		fmx = new PreprocessorIfdef();
+		fmx.setMacro(macroName);
+		this.famixRepo.add(fmx);
+
+		return fmx;
 	}
 
 	/**

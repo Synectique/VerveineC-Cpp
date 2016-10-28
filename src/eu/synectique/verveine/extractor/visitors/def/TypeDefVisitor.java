@@ -1,6 +1,5 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
-import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
@@ -20,8 +19,6 @@ import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.utils.CppEntityStack;
-import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
@@ -70,11 +67,10 @@ public class TypeDefVisitor extends AbstractVisitor {
 	}
 
 	/*
-	 * be creful, overriden in some subclasses so that this one is not called
+	 * be careful, overriden in some subclasses so that this one is not called
 	 */
 	@Override
 	public void visit(ITranslationUnit elt) {
-		System.err.println("ITransUnit:"+elt.getFile().getRawLocation().toString());
 		super.visit(elt);
 	}
 
