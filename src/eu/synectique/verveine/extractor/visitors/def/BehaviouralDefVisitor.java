@@ -6,9 +6,11 @@ import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
 import org.eclipse.cdt.core.dom.ast.IASTForStatement;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTIfStatement;
 import org.eclipse.cdt.core.dom.ast.IASTLabelStatement;
+import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
@@ -17,6 +19,7 @@ import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
+import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.Dictionary;
@@ -27,7 +30,32 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
 
 /**
  * A visitor for Behavioural entities: Functions and methods.
- * For methods, it inherits from {@link ClassMemberDefVisitor}
+ * To deal with methods, it inherits from {@link ClassMemberDefVisitor}
+ * 
+ * There are 2 main entry pints in this visitor
+ * <ul>
+ * <li> visit(IASTStandardFunctionDeclarator)</li>
+ * <li> visit(ICASTKnRFunctionDeclarator)</li>
+ * </ul>
+
+ * For reference, the inheritance hierarchy of function declarator nodes:
+ * <ul>
+ * <li> IASTFunctionDeclarator
+ *   <ul>
+ *   <li> IASTStandardFunctionDeclarator
+ *     <ul>
+ *     <li> ICPPASTFunctionDeclarator
+ *       <ul>
+ *       <li> ICPPASTFunctionTryBlockDeclarator</li>
+ *       </ul>
+ *     </li>
+ *     </ul>
+ *   </li>
+ *   <li>ICASTKnRFunctionDeclarator</li>
+ *   </ul>
+ * </li>
+ * </ul>
+ * 
  * @author anquetil
  */
 public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
@@ -40,61 +68,40 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		return "creating methods and functions";
 	}
 
+	//  MAIN ENTRY POINTS --------------------------------------------------------------------------------------------
 
-	/*
-	 * Declaration
-	 */	@Override
+	@Override
 	protected int visit(IASTStandardFunctionDeclarator node) {
 		BehaviouralEntity fmx = null;
 
-		// compute nodeName and binding
-		super.visit(node);
-
-		// just in case this is a definition and we already processed the declaration
-		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
-		// try harder
-		if (fmx == null) {
-			fmx = resolveBehaviouralFromName(node, nodeBnd);
-		}
-
-		if (fmx != null) {
-			// parent node is a SimpleDeclaration or a FunctionDefinition
-			IASTFileLocation defLoc = node.getParent().getFileLocation();
-			dico.addSourceAnchorMulti(fmx, filename, defLoc);
-		}
-
-		if (isDestructorBinding(nodeBnd)) {
-			((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
-		}
-		if (isConstructorBinding(nodeBnd)) {
-			((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
-		}
-		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
-		fmx.setNumberOfParameters(node.getParameters().length);
-		// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
-		// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
-
-		this.context.push(fmx);
-
-		for (IASTParameterDeclaration param : node.getParameters()) {
-			param.accept(this);
-		}
-		returnedEntity = this.context.pop();
+		fmx = initializeBehavioural(node);
+		visitParameters(node.getParameters(), fmx);
+		returnedEntity = fmx;
 
 		return PROCESS_SKIP;
 	}
 
-	/*
-	 * Definition
-	 */
-	 @Override
+	@Override
+	protected int visit(ICASTKnRFunctionDeclarator node) {
+		BehaviouralEntity fmx = null;
+
+		fmx = initializeBehavioural(node);
+		visitParameters( node.getParameterDeclarations(), fmx);
+		returnedEntity = fmx;
+
+		return PROCESS_SKIP;
+	}
+
+	// OTHER VISIT METHOD --------------------------------------------------------------------------------------------
+
+	@Override
 	protected int visit(IASTFunctionDefinition node) {
 		BehaviouralEntity fmx = null;
 
 		node.getDeclarator().accept(this);
 		fmx = (BehaviouralEntity) returnedEntity;
 
-		// using pushBehaviouralEntity()/pushMethod() introduces a difference in the handling of the stack (for metrics CYCLO/NOS)
+		// FIXME using pushBehaviouralEntity()/pushMethod() introduces a difference in the handling of the stack (for metrics CYCLO/NOS)
 		// this behaviour was inherited from VerveineJ and would need to be refactored
 		this.context.pushBehaviouralEntity(fmx);
 
@@ -190,6 +197,41 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	    }
 
 		return super.visit(node);
+	}
+
+
+	// common parts to visiting IASTStandardFunctionDeclarator and ICASTKnRFunctionDeclarator
+
+
+	protected BehaviouralEntity initializeBehavioural(IASTFunctionDeclarator node) {
+		BehaviouralEntity fmx;
+
+		fmx = super.getBehavioural(node);
+
+		// parent node is a SimpleDeclaration or a FunctionDefinition
+		IASTFileLocation defLoc = node.getParent().getFileLocation();
+		dico.addSourceAnchorMulti(fmx, filename, defLoc);
+
+		if (isDestructorBinding(nodeBnd)) {
+			((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
+		}
+		if (isConstructorBinding(nodeBnd)) {
+			((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
+		}
+		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
+
+		return fmx;
+	}
+
+	@Override
+	protected void visitParameters(IASTNode[] params, BehaviouralEntity fmx) {
+
+		fmx.setNumberOfParameters(params.length);
+		// note that there are 2 ways to get the number of parameters of a BehaviouralEntity in Famix: getNumberOfParameters() and numberOfParameters()
+		// the first returns the attribute numberOfParameters (set here),
+		// the second computes the size of parameter list so does not need to be set per se
+
+		super.visitParameters(params, fmx);
 	}
 
 }

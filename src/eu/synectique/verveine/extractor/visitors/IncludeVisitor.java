@@ -50,7 +50,8 @@ public class IncludeVisitor extends AbstractDispatcherVisitor {
 		IBinding key = StubBinding.getInstance(CFile.class, filename);   // better not to localize filename for the key
 		currentFile = dico.ensureFamixCFile(key, FileUtil.localized(filename, projectRootFolder));
 		
-		super.visit(elt);
+		// overriding superclass visit() to not visit AST but only the children
+		visitChildren(elt);
 	}
 
 	public void visit(IInclude elt) {

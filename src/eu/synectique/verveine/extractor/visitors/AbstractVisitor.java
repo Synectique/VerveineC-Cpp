@@ -3,15 +3,14 @@ package eu.synectique.verveine.extractor.visitors;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
@@ -144,43 +143,30 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return PROCESS_CONTINUE;
 	}
 
+	/**
+	 * All functions treated equally here
+	 * Inheritance hierarchy of function declarator nodes:
+	 * <ul>
+	 * <li> IASTFunctionDeclarator
+	 *   <ul>
+	 *   <li> IASTStandardFunctionDeclarator
+	 *     <ul>
+	 *     <li> ICPPASTFunctionDeclarator
+	 *       <ul>
+	 *       <li> ICPPASTFunctionTryBlockDeclarator</li>
+	 *       </ul>
+	 *     </li>
+	 *     </ul>
+	 *   </li>
+	 *   <li>ICASTKnRFunctionDeclarator</li>
+	 *   </ul>
+	 * </li>
+	 * </ul>
+	 */
 	@Override
-	protected int visit(ICPPASTFunctionDeclarator node) {
-		return this.visit( (IASTStandardFunctionDeclarator)node);
-	}
-
-	@Override
-	protected int visit(IASTStandardFunctionDeclarator node) {
-		nodeBnd = null;
+	protected int visit(IASTFunctionDeclarator node) {
 		nodeName = node.getName();
-		tracer.msg("ICPPASTFunctionDeclarator: "+nodeName);
-
-		nodeBnd = getBinding(nodeName);
-
-		if (nodeBnd == null) {
-			NamedEntity parent = null;
-			String behavName;
-			// create one anyway, function or method?
-			
-			if (isFullyQualified(nodeName)) {
-				int i = nodeName.toString().lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-				parent = resolveOrNamespace(nodeName.toString().substring(0, i));
-			}
-			else {
-				parent = context.top();
-			}
-			// for behavioral, we put the full signature in the key to have better chance of recovering it
-			SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
-			node.accept(sigVisitor);
-			behavName = sigVisitor.getFullSignature(node);
-
-			if (parent instanceof eu.synectique.verveine.core.gen.famix.Class) {
-				nodeBnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)parent, behavName ));
-			}
-			else {
-				nodeBnd = StubBinding.getInstance(Function.class, dico.mooseName((ContainerEntity) parent, behavName));
-			}
-		}
+		nodeBnd = getFunctionBinding(node, nodeName);
 
 		return PROCESS_CONTINUE;
 	}
@@ -204,6 +190,15 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return PROCESS_CONTINUE;
 	}
 
+
+	protected void visitParameters(IASTNode[] params, BehaviouralEntity fmx) {
+		this.context.push(fmx);
+		for (IASTNode param : params) {
+			param.accept(this);
+		}
+		this.context.pop();
+	}
+
 	// NAME RESOLUTION UTILITIES & STUB CREATION ===========================================================================
 
 	protected <T extends NamedEntity> IBinding mkStubKey(IASTName name, java.lang.Class<T> entityType) {
@@ -211,7 +206,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		String simpleName = null;
 		if (isFullyQualified(name)) {
 			parent = getParentOfFullyQualifiedName(name);
-			simpleName = simpleName(name);
+			simpleName = unqualifiedName(name);
 		}
 		else {
 			parent = context.getTopCppNamespace();
@@ -493,7 +488,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 		if (isFullyQualified(name)) {
 			parent = recursiveEnsureParentNamespace(name);
-			name = simpleName(name);
+			name = unqualifiedName(name);
 		}
 		
 		// sometimes the "class" happens to have been created as a type before ...
@@ -585,12 +580,12 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	/**
 	 * Returns the last part of a fully qualified name
 	 */
-	protected String simpleName(IASTName name) {
+	protected String unqualifiedName(IASTName name) {
 		
-		return simpleName(name.toString());
+		return unqualifiedName(name.toString());
 	}
 
-	protected String simpleName(String name) {
+	protected String unqualifiedName(String name) {
 		String str = name.toString(); 
 		int i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		if (i < 0) {
@@ -665,7 +660,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		}
 		if (isStubBinding(bnd)) {
 			// simplified test. Could look at the name of the class as in isConstructorBinding(bnd)
-			return simpleName(((StubBinding)bnd).getEntityName()).charAt(0) == '~';
+			return unqualifiedName(((StubBinding)bnd).getEntityName()).charAt(0) == '~';
 		}
 		return false;
 	}
@@ -683,58 +678,125 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		}
 	}
 
-	protected BehaviouralEntity resolveBehaviouralFromName(IASTStandardFunctionDeclarator node, IBinding bnd) {
-		String mthSig;
-		Type parent;
-		BehaviouralEntity fmx;
-		if (isMethodBinding(bnd)) {
-			/* get method name and parent */
-			if (bnd instanceof StubBinding) {
-				String fullName = ((StubBinding)bnd).getEntityName();
-				if (isFullyQualified(fullName)) {
-					mthSig = extractMethodSignature(fullName);
-					parent = (Type) resolveOrClass(extractMethodParentName(fullName));
-				}
-				else {
-					mthSig = fullName;
-					parent = context.topType();
-				}
+	protected IBinding getFunctionBinding(IASTFunctionDeclarator node, IASTName name) {
+		IBinding bnd;
+		
+		bnd = getBinding(name);   // generic getBinding method
+
+		if (bnd == null) {
+			NamedEntity parent = null;
+			String behavName;
+			// create one anyway, function or method?
+			
+			if (isFullyQualified(name)) {
+				int i = name.toString().lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+				parent = resolveOrNamespace(name.toString().substring(0, i));
 			}
 			else {
-				mthSig = new SignatureBuilderVisitor(dico).getFullSignature(node);
-				if (isFullyQualified(nodeName)) {
-					parent = (Type) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
-					if (parent == null) {
-						// happened once in a badly coded case
-						parent = (Type) resolveOrClass(extractMethodParentName(nodeName.toString()));
-					}
-				}
-				else {
-					parent = context.topType();
-				}
+				parent = context.top();
 			}
-			
-			/* last try to recover method ... */
-			fmx = (BehaviouralEntity) findInParent(mthSig, parent, false);
-			/* ... or create it */
-			if (fmx == null) {
-				fmx = dico.ensureFamixMethod(bnd, simpleName(nodeName.toString()), mthSig, /*owner*/parent);
+			behavName = computeSignature(node);
+
+			if (parent instanceof eu.synectique.verveine.core.gen.famix.Class) {
+				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)parent, behavName ));
+			}
+			else {
+				bnd = StubBinding.getInstance(Function.class, dico.mooseName((ContainerEntity) parent, behavName));
 			}
 		}
-		else {                    //   C function or may be a stub ?
-			fmx = dico.ensureFamixFunction(bnd, simpleName(nodeName), new SignatureBuilderVisitor(dico).getFullSignature(node), (ContainerEntity)context.top());
+		return bnd;
+	}
+
+	protected BehaviouralEntity getBehavioural(IASTFunctionDeclarator node) {
+		BehaviouralEntity fmx;
+
+		nodeName = node.getName();
+		nodeBnd = getFunctionBinding(node, nodeName);
+
+		// just in case this is a definition and we already processed the declaration
+		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
+		// try harder
+		if (fmx == null) {
+			fmx = resolveBehaviouralFromName(node, nodeBnd);
 		}
 		return fmx;
 	}
 
-	protected String extractMethodSignature(String fullname) {
-		int i;
-		i = fullname.indexOf('(');
-		i = fullname.substring(0, i).lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		return fullname.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
+	protected BehaviouralEntity resolveBehaviouralFromName(IASTFunctionDeclarator node, IBinding bnd) {
+		String mthSig;
+		Type parent;
+		BehaviouralEntity fmx;
+		if (isMethodBinding(bnd)) {
+			// get method name and parent
+			if (bnd instanceof StubBinding) {
+				String fullname = ((StubBinding)bnd).getEntityName();
+				mthSig = extractMethodSignatureFromFullname(fullname);
+				parent = getParentFromNameOrContext(fullname);
+			}
+			else {
+				mthSig = computeSignature(node);
+				parent = getParentFromBindingOrContext(bnd);
+			}
+			
+			// last try to recover method ...
+			fmx = (BehaviouralEntity) findInParent(mthSig, parent, false);
+			// ... create it if failed
+			if (fmx == null) {
+				fmx = dico.ensureFamixMethod(bnd, unqualifiedName(nodeName.toString()), mthSig, /*owner*/parent);
+			}
+		}
+		else {                    //   C function or may be a stub ?
+			fmx = dico.ensureFamixFunction(bnd, unqualifiedName(nodeName), computeSignature(node), (ContainerEntity)context.top());
+		}
+		return fmx;
 	}
 
-	protected String extractMethodParentName(String fullname) {
+	protected Type getParentFromBindingOrContext(IBinding bnd) {
+		Type parent;
+		if (isFullyQualified(nodeName)) {
+			parent = (Type) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
+			if (parent == null) {
+				// happened once in a badly coded case
+				parent = (Type) resolveOrClass(extractMethodParentNameFromFullname(nodeName.toString()));
+			}
+		}
+		else {
+			parent = context.topType();
+		}
+		return parent;
+	}
+
+	protected Type getParentFromNameOrContext(String fullname) {
+		if (isFullyQualified(fullname)) {
+			return (Type) resolveOrClass( extractMethodParentNameFromFullname(fullname) );
+		}
+		else {
+			return context.topType();
+		}
+	}
+
+	protected String computeSignature(IASTFunctionDeclarator node) {
+		String behavName;
+		// for behavioral, we put the full signature in the key to have better chance of recovering it
+		SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
+		node.accept(sigVisitor);
+		behavName = sigVisitor.getSignature();
+		return behavName;
+	}
+
+	protected String extractMethodSignatureFromFullname(String fullname) {
+		if (isFullyQualified(fullname)) {
+			int i;
+			i = fullname.indexOf('(');
+			i = fullname.substring(0, i).lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+			return fullname.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
+		}
+		else {
+			return fullname;
+		}
+	}
+
+	protected String extractMethodParentNameFromFullname(String fullname) {
 		int i;
 		i = fullname.indexOf('(');
 		if (i > 0) {
@@ -743,39 +805,6 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		return fullname.substring(0, i);
-	}
-
-
-	/**
-	 * Dictionary getter.<BR>
-	 * Only intended for subRef visitors to get the same dictionary as their parent visitor
-	 */
-	public CDictionary getDico() {
-		return dico;
-	}
-
-	/**
-	 * context setter.<BR>
-	 * Only intended for subRef visitors to have the same context as their parent visitor
-	 */
-	public void setContext(CppEntityStack context) {
-		this.context = context;
-	}
-
-	/**
-	 * context getter.<BR>
-	 * Only intended for subRef visitors to get the same context as their parent visitor
-	 */
-	public CppEntityStack getContext() {
-		return context;
-	}
-
-	/**
-	 * Index getter.<BR>
-	 * Only intended for subRef visitors to get the same index as their parent visitor
-	 */
-	public IIndex getIndex() {
-		return index;
 	}
 
 }

@@ -39,6 +39,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
+import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
@@ -193,6 +194,9 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		else if (node instanceof IASTStandardFunctionDeclarator) {
 			return this.visit((IASTStandardFunctionDeclarator)node);
 		}
+		else if (node instanceof ICASTKnRFunctionDeclarator) {
+			return this.visit((ICASTKnRFunctionDeclarator)node);
+		}
 		else if (node instanceof IASTFunctionDeclarator) {
 			return this.visit((IASTFunctionDeclarator)node);
 		}
@@ -337,12 +341,26 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
+	/**
+	 * By default calls {@link #visit(IASTStandardFunctionDeclarator)}
+	 * which in turn calls {@link #visit(IASTFunctionDeclarator)}
+	 */
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		return this.visit( (IASTStandardFunctionDeclarator)node);
 	}
 
+	/**
+	 * By default calls {@link #visit(IASTFunctionDeclarator)}
+	 */
 	protected int visit(IASTStandardFunctionDeclarator node) {
-		return PROCESS_CONTINUE;
+		return this.visit( (IASTFunctionDeclarator)node);
+	}
+
+	/**
+	 * By default calls {@link #visit(IASTFunctionDeclarator)}
+	 */
+	protected int visit(ICASTKnRFunctionDeclarator node) {
+		return this.visit( (IASTFunctionDeclarator)node);
 	}
 
 	protected int visit(IASTFunctionDeclarator node) {

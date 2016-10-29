@@ -5,6 +5,7 @@ import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNameOwner;
@@ -19,6 +20,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPTemplateInstance;
+import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.EntityStack;
@@ -112,20 +114,9 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	}
 
 	@Override
-	protected int visit(IASTStandardFunctionDeclarator node) {
-		 returnedEntity = null;
-
-		// compute nodeName and binding
-		super.visit(node);
-
-		// just in case this is a definition and we already processed the declaration
-		NamedEntity tmp = dico.getEntityByKey(nodeBnd);
-		returnedEntity = (BehaviouralEntity) tmp;
-		// try harder
-		if (returnedEntity == null) {
-			returnedEntity = resolveBehaviouralFromName(node, nodeBnd);
-		}
-
+	protected int visit(IASTFunctionDeclarator node) {
+		 returnedEntity = super.getBehavioural(node);
+		
 		return PROCESS_SKIP;
 	}
 
@@ -133,7 +124,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	protected int visit(IASTFunctionDefinition node) {
 		returnedEntity = null;
 
-		((IASTStandardFunctionDeclarator)node.getDeclarator()).accept(this);
+		node.getDeclarator().accept(this);
 
 		this.context.push((BehaviouralEntity)returnedEntity);
 
@@ -192,7 +183,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 				fmx = referedParameterTypeInstance(bnd, name);
 			}
 			else {
-				fmx = dico.ensureFamixType(bnd, simpleName(name), /*owner*/getParentOfFullyQualifiedName(name));
+				fmx = dico.ensureFamixType(bnd, unqualifiedName(name), /*owner*/getParentOfFullyQualifiedName(name));
 			}
 		}
 
@@ -206,7 +197,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	private Type referedParameterTypeInstance(IBinding bnd, IASTName name) {
 		String strName = name.toString();
 		int i = strName.indexOf('<');
-		String typName = simpleName(strName.substring(0, i));
+		String typName = unqualifiedName(strName.substring(0, i));
 
 		ParameterizedType fmx = null;
 		ParameterizableClass generic = null;

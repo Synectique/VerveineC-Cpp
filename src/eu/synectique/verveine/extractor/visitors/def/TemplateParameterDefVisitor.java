@@ -1,6 +1,7 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
@@ -53,7 +54,7 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
 		// compute nodeName and binding
-		super.visit( node);
+		super.visit( (IASTFunctionDeclarator)node);
 
 		returnedEntity = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
 		// try harder

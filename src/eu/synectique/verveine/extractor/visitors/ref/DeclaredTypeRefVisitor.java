@@ -1,12 +1,14 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
+import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.gen.famix.Attribute;
@@ -97,7 +99,12 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		}
 
 		fmx = (Attribute) dico.getEntityByKey(nodeBnd);
-		fmx.setDeclaredType(referredType);
+		if (fmx == null) {
+			System.err.println("could not find Attribute "+nodeName.toString()+" in "+ filename);
+		}
+		else {
+			fmx.setDeclaredType(referredType);
+		}
 
 		return PROCESS_SKIP;
 	}
@@ -105,29 +112,39 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 	@Override
 	protected int visit(IASTStandardFunctionDeclarator node) {
 		BehaviouralEntity fmx;
-		// compute nodeName and binding
-		super.visit(node);
 
-		fmx = (BehaviouralEntity) returnedEntity; /*dico.getEntityByKey(nodeBnd);
-		// try harder
-		if (fmx == null) {
-			fmx = resolveBehaviouralFromName(node, nodeBnd);
-		}*/
+		processFunctionDeclarator(node);
+		fmx = (BehaviouralEntity) returnedEntity;
 
-		// set the declared type
-		if ( (! isConstructor((BehaviouralEntity) fmx)) && (! isDestructor((BehaviouralEntity) fmx)) ) {
-			((BehaviouralEntity)fmx).setDeclaredType(referredType);
-		}
+		visitParameters(node.getParameters(), fmx);
 
-		this.context.push(fmx);
-
-		// visit parameters to set their declared type
-		for (IASTParameterDeclaration param : node.getParameters()) {
-			param.accept(this);
-		}
-		returnedEntity = this.context.pop();
+		returnedEntity = fmx;
 
 		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(ICASTKnRFunctionDeclarator node) {
+		BehaviouralEntity fmx;
+
+		processFunctionDeclarator(node);
+		fmx = (BehaviouralEntity) returnedEntity;
+
+		visitParameters(node.getParameterDeclarations(), fmx);
+
+		returnedEntity = fmx;
+
+		return PROCESS_SKIP;
+	}
+
+	protected void processFunctionDeclarator(IASTFunctionDeclarator node) {
+		BehaviouralEntity fmx;
+		super.visit(node);  // calls getBehavioural(IASTFunctionDeclarator)
+		fmx = (BehaviouralEntity) returnedEntity;
+
+		if ( (! isConstructor(fmx)) && (! isDestructor(fmx)) ) {
+			fmx.setDeclaredType(referredType);
+		}
 	}
 
 	@Override
