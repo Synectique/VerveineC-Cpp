@@ -6,6 +6,7 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.model.ITranslationUnit;
 
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
@@ -20,6 +21,17 @@ public abstract class ClassMemberDefVisitor extends AbstractVisitor {
 		super(dico, index, rootFolder);
 	}
 
+	/**
+	 * Overriden to initialize {@link #currentVisibility} to null
+	 * (e.g. at the begining of a .c file) 
+	 */
+	@Override
+	public void visit(ITranslationUnit elt) {
+		super.visit(elt);
+		currentVisibility = null;
+	}
+
+	@Override
 	protected int visit(ICPPASTVisibilityLabel node) {
 		switch (node.getVisibility()) {
 		case ICPPASTVisibilityLabel.v_private :   currentVisibility = Visibility.PRIVATE;   break;
@@ -34,11 +46,13 @@ public abstract class ClassMemberDefVisitor extends AbstractVisitor {
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
+		currentVisibility = Visibility.PRIVATE;
 		return visit((IASTCompositeTypeSpecifier)node);
 	}
 	
 	@Override
 	protected int visit(ICASTCompositeTypeSpecifier node) {
+		currentVisibility = Visibility.PUBLIC;
 		return visit((IASTCompositeTypeSpecifier)node);
 	}
 

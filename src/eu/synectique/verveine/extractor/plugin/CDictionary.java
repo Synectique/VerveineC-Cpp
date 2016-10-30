@@ -43,6 +43,7 @@ import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.StubBinding;
+import eu.synectique.verveine.extractor.utils.Visibility;
 
 public class CDictionary extends Dictionary<IBinding> {
 
@@ -424,6 +425,16 @@ public class CDictionary extends Dictionary<IBinding> {
 
 	public ImplicitVariable ensureFamixImplicitVariable(String name, Type type, BehaviouralEntity owner) {
 		return super.ensureFamixImplicitVariable( name, type, owner, /*persistIt*/true);
+	}
+
+	/**
+	 * Sets the visibility of a FamixNamedEntity.
+	 * <code>null</code> visibility (e.g. in the case of a function) is silently ignored.
+	 */
+	public void setVisibility(NamedEntity fmx, Visibility visi) {
+		if (visi != null) {
+			fmx.addModifiers(visi.toString());
+		}
 	}
 
 	// UTILITIES =========================================================================================================================================

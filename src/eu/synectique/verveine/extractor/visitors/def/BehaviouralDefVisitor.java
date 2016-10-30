@@ -242,7 +242,8 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	protected BehaviouralEntity initializeBehavioural(IASTFunctionDeclarator node) {
 		BehaviouralEntity fmx;
 
-		fmx = super.getBehavioural(node);
+		fmx = ensureBehavioural(node);
+		dico.setVisibility(fmx, currentVisibility);
 
 		// parent node is a SimpleDeclaration or a FunctionDefinition
 		IASTFileLocation defLoc = node.getParent().getFileLocation();

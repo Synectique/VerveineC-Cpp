@@ -59,7 +59,7 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 		returnedEntity = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
 		// try harder
 		if (returnedEntity == null) {
-			returnedEntity = resolveBehaviouralFromName(node, nodeBnd);
+			returnedEntity = ensureBehaviouralFromName(node, nodeBnd);
 		}
 
 		// Not visiting children, because assuming there is no template inside a method

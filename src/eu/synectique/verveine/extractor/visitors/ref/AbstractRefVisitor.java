@@ -115,7 +115,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 	@Override
 	protected int visit(IASTFunctionDeclarator node) {
-		 returnedEntity = super.getBehavioural(node);
+		 returnedEntity = super.ensureBehavioural(node);
 		
 		return PROCESS_SKIP;
 	}

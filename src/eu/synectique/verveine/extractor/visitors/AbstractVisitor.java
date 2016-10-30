@@ -12,6 +12,7 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
@@ -197,6 +198,11 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 			param.accept(this);
 		}
 		this.context.pop();
+	}
+
+	@Override
+	protected int visit(ICPPASTVisibilityLabel node) {
+		return PROCESS_CONTINUE;
 	}
 
 	// NAME RESOLUTION UTILITIES & STUB CREATION ===========================================================================
@@ -695,7 +701,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 			else {
 				parent = context.top();
 			}
-			behavName = computeSignature(node);
+			behavName = computeSignatureFromAST(node);
 
 			if (parent instanceof eu.synectique.verveine.core.gen.famix.Class) {
 				bnd = StubBinding.getInstance(Method.class, dico.mooseName( (eu.synectique.verveine.core.gen.famix.Class)parent, behavName ));
@@ -707,7 +713,12 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return bnd;
 	}
 
-	protected BehaviouralEntity getBehavioural(IASTFunctionDeclarator node) {
+	/**
+	 * Get a behaviouralEntity for the node.
+	 * Tries to recover from the binding or the name (does some name resolution based on fully qualified names).
+	 * If all fails, will create an entity.
+	 */
+	protected BehaviouralEntity ensureBehavioural(IASTFunctionDeclarator node) {
 		BehaviouralEntity fmx;
 
 		nodeName = node.getName();
@@ -717,12 +728,12 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
 		// try harder
 		if (fmx == null) {
-			fmx = resolveBehaviouralFromName(node, nodeBnd);
+			fmx = ensureBehaviouralFromName(node, nodeBnd);
 		}
 		return fmx;
 	}
 
-	protected BehaviouralEntity resolveBehaviouralFromName(IASTFunctionDeclarator node, IBinding bnd) {
+	protected BehaviouralEntity ensureBehaviouralFromName(IASTFunctionDeclarator node, IBinding bnd) {
 		String mthSig;
 		Type parent;
 		BehaviouralEntity fmx;
@@ -734,7 +745,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 				parent = getParentFromNameOrContext(fullname);
 			}
 			else {
-				mthSig = computeSignature(node);
+				mthSig = computeSignatureFromAST(node);
 				parent = getParentFromBindingOrContext(bnd);
 			}
 			
@@ -746,7 +757,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 			}
 		}
 		else {                    //   C function or may be a stub ?
-			fmx = dico.ensureFamixFunction(bnd, unqualifiedName(nodeName), computeSignature(node), (ContainerEntity)context.top());
+			fmx = dico.ensureFamixFunction(bnd, unqualifiedName(nodeName), computeSignatureFromAST(node), (ContainerEntity)context.top());
 		}
 		return fmx;
 	}
@@ -775,7 +786,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		}
 	}
 
-	protected String computeSignature(IASTFunctionDeclarator node) {
+	protected String computeSignatureFromAST(IASTFunctionDeclarator node) {
 		String behavName;
 		// for behavioral, we put the full signature in the key to have better chance of recovering it
 		SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);

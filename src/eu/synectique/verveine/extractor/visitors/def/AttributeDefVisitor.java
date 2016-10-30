@@ -92,6 +92,7 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 
 		fmx = dico.ensureFamixAttribute(nodeBnd, nodeName.toString(), context.topType());
 		fmx.setIsStub(false);
+		dico.setVisibility(fmx, currentVisibility);
 
 		/* For attributes (ICPPASTDeclarator) the location is that of the parent AST node, i.e. the declaration
 		 * For example, in "int a,b;" the declaration starts at "int" whereas there are 2 declarators: a and b
