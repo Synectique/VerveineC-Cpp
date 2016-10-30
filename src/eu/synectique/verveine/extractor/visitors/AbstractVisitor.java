@@ -493,7 +493,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		Type typ;
 
 		if (isFullyQualified(name)) {
-			parent = recursiveEnsureParentNamespace(name);
+			parent = (ContainerEntity) resolveOrNamespace(name);
 			name = unqualifiedName(name);
 		}
 		
