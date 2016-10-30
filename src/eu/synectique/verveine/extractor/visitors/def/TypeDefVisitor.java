@@ -1,5 +1,6 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
+import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
@@ -229,4 +230,11 @@ public class TypeDefVisitor extends AbstractVisitor {
 		return PROCESS_SKIP;
 	}
 
+	/**
+	 * Explicitly skipping CastExpressions because they may contain "TypeDeclaration" 
+	 */
+	@Override
+	protected int visit(IASTCastExpression node) {
+		return PROCESS_SKIP;
+	}
 }

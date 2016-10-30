@@ -14,10 +14,18 @@ import org.eclipse.cdt.core.index.IIndex;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Parameter;
+import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
+
+	/**
+	 * flag describing whether we are visiting K&R function style parameters.
+	 * Needed because these parameters look like variable (or attribute) definition)
+	 */
+	private boolean inKnRParams;
 
 	/**
 	 * The referred type set in visit(ICPPASTFunctionDefinition) or visit(IASTSimpleDeclaration)
@@ -27,6 +35,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 
 	public DeclaredTypeRefVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
+		inKnRParams = false;
 	}
 
 	protected String msgTrace() {
@@ -78,33 +87,34 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 
 		for (IASTDeclarator declarator : node.getDeclarators()) {
 			// gets the entity and sets its simpleDeclaratorReferredType
-			this.visit( declarator );
+			declarator.accept(this);
 		}
 		referredType = null;
 
 		return PROCESS_SKIP;
 	}
 
-	/*
-	 * We should only get here in the case of an attribute declaration.
+	/**
+	 * can be an attribute or K&R style parameter declaration.
+	 * The inKnRParams is used to tell them apart
 	 */
 	@Override
 	public int visitInternal(IASTDeclarator node) {
-		Attribute fmx = null;
+		StructuralEntity fmx = null;
 
 		nodeName = node.getName();
 		nodeBnd = getBinding(nodeName);
 		if (nodeBnd == null) {
-			nodeBnd = mkStubKey(nodeName, Attribute.class);
+			if (inKnRParams) {
+				nodeBnd = StubBinding.getInstance( Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+			}
+			else {
+				nodeBnd = mkStubKey(nodeName, Attribute.class);
+			}
 		}
 
-		fmx = (Attribute) dico.getEntityByKey(nodeBnd);
-		if (fmx == null) {
-			System.err.println("could not find Attribute "+nodeName.toString()+" in "+ filename);
-		}
-		else {
-			fmx.setDeclaredType(referredType);
-		}
+		fmx = (StructuralEntity) dico.getEntityByKey(nodeBnd);
+		fmx.setDeclaredType(referredType);
 
 		return PROCESS_SKIP;
 	}
@@ -130,7 +140,9 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		processFunctionDeclarator(node);
 		fmx = (BehaviouralEntity) returnedEntity;
 
+		inKnRParams = true;
 		visitParameters(node.getParameterDeclarations(), fmx);
+		inKnRParams = false;
 
 		returnedEntity = fmx;
 

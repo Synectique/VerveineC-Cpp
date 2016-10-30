@@ -586,7 +586,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	}
 
 	protected String unqualifiedName(String name) {
-		String str = name.toString(); 
+		String str = name.toString();
 		int i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
 		if (i < 0) {
 			return name;

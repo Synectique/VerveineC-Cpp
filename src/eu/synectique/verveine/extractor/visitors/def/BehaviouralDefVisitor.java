@@ -1,7 +1,10 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
+import java.util.Iterator;
+
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
 import org.eclipse.cdt.core.dom.ast.IASTFileLocation;
@@ -23,10 +26,12 @@ import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.Dictionary;
+import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 
 /**
  * A visitor for Behavioural entities: Functions and methods.
@@ -59,9 +64,16 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
  * @author anquetil
  */
 public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
+	
+	/**
+	 * flag describing whether we are visiting K&R function style parameters.
+	 * Needed because these parameters look like variable (or attribute) definition)
+	 */
+	private boolean inKnRParams;
 
 	public BehaviouralDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
+		inKnRParams = false;
 	}
 
 	protected String msgTrace() {
@@ -86,7 +98,11 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		BehaviouralEntity fmx = null;
 
 		fmx = initializeBehavioural(node);
+
+		inKnRParams = true;
 		visitParameters( node.getParameterDeclarations(), fmx);
+		inKnRParams = false;
+
 		returnedEntity = fmx;
 
 		return PROCESS_SKIP;
@@ -131,17 +147,12 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	 */
 	@Override
 	public int visit(IASTParameterDeclaration node) {
-		Parameter fmx = null;
-
-		 // get node name and bnd
+		 // get node name and bnd, may fail (e.g. "function(void)")
 		if (super.visit(node) == PROCESS_SKIP) {
 			return PROCESS_SKIP;
 		}
-//System.err.println("visit(IASTParameterDeclaration) "+nodeName.toString()+ " @"+filename);
-		fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), context.topBehaviouralEntity());
-		fmx.setIsStub(false);
-		// no sourceAnchor for parameter, they sometimes only appear in the .C file
-		// whereas it would seem more natural to store the anchor referent to the .H file ...
+
+		innerCreateParameter();
 
 		return PROCESS_SKIP;
 	}
@@ -159,9 +170,34 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 			// prune typedefs
 			return PROCESS_SKIP;
 		}
+
+		// K&R style parameter definition
+		if (inKnRParams) {
+			for (IASTDeclarator decl : node.getDeclarators()) {
+				decl.accept(this);
+			}
+		}
+
 		return PROCESS_CONTINUE;
 	}
 
+	/**
+	 * dealing with K&R style parameter declaration
+	 */
+	@Override
+	protected int visitInternal(IASTDeclarator node) {
+		if (inKnRParams) {
+			nodeName = node.getName();
+			nodeBnd = getBinding(nodeName);
+			if (nodeBnd == null) {
+				nodeBnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));   // mkStubKey(nodeName, Parameter.class); ?
+			}
+
+			innerCreateParameter();
+		}
+
+		return PROCESS_SKIP;
+	}
 
 	/**
 	 * Visiting a statement. Used to compute some metrics on the methods:
@@ -232,6 +268,15 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		// the second computes the size of parameter list so does not need to be set per se
 
 		super.visitParameters(params, fmx);
+	}
+
+	protected Parameter innerCreateParameter() {
+		Parameter fmx;
+		fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), context.topBehaviouralEntity());
+		fmx.setIsStub(false);
+		// no sourceAnchor for parameter, they sometimes only appear in the .C file
+		// whereas it would seem more natural to store the anchor referent to the .H file ...
+		return fmx;
 	}
 
 }

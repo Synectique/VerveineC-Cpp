@@ -11,6 +11,7 @@ import org.eclipse.cdt.core.dom.ast.IASTPointerOperator;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 
@@ -27,13 +28,7 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
  * <li>visit(IASTStandardFunctionDeclarator)</li>
  * <li>visit(ICASTKnRFunctionDeclarator)</li>
  * </ul>
- *   
- * there are also 2 other "parent entry points" used to get the return type of the function
- * <ul>
- * <li>visit(IASTStandardFunctionDeclarator)</li>
- * <li>visit(ICASTKnRFunctionDeclarator)</li>
- * </ul>
- *   
+ *
  * For reference, the inheritance hierarchy of function declarator nodes:
  * <ul>
  * <li> IASTFunctionDeclarator
@@ -80,8 +75,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 		// parameters
 		visitParameters(node.getParameters());
 		// return type
-		signature += "->";
-		node.getParent().accept(this);
+		visitParent(node.getParent());
 
 		return PROCESS_SKIP;
 	}
@@ -93,27 +87,26 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 		// parameters
 		visitParameters(node.getParameterDeclarations());
 		// return type
+		visitParent(node.getParent());
+
+		return PROCESS_SKIP;
+	}
+
+	/**
+	 * This method could be more elegent ( "instanceof" replaced by direct call to "parent.accept(this)" ), but it protects against infinite recursion:
+	 * here we visit the parent which could cause the FuctionDeclaration node to be visited again ...
+	 * 
+	 * In this method, we remove this risk by allowing only those parents that we now we can deal with
+	 */
+	protected void visitParent(IASTNode parent) {
 		signature += "->";
-		node.getParent().accept(this);
-
-		return PROCESS_SKIP;
-	}
-
-	//  "PARENT ENTRY POINTS" --------------------------------------------------------------------------------------------
-
-
-	@Override
-	public int visit(IASTSimpleDeclaration parent) {
-		parent.getDeclSpecifier().accept(this);
-
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	public int visit(IASTFunctionDefinition parent) {
-		parent.getDeclSpecifier().accept(this);
-
-		return PROCESS_SKIP;
+		
+		if (parent instanceof IASTSimpleDeclaration) {
+			((IASTSimpleDeclaration)parent).getDeclSpecifier().accept(this);
+		}
+		else if (parent instanceof IASTFunctionDefinition) {
+			((IASTFunctionDefinition)parent).getDeclSpecifier().accept(this);
+		}
 	}
 
 	// OTHER VISIT METHOD --------------------------------------------------------------------------------------------

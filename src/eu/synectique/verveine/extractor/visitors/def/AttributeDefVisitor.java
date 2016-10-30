@@ -11,6 +11,7 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.gen.famix.Attribute;
@@ -47,14 +48,7 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 
 	/*
 	 * to avoid parameter or local variable declarations
-	 */
-	@Override
-	protected int visit(IASTStandardFunctionDeclarator node) {
-		return PROCESS_SKIP;
-	}
-
-	/*
-	 * to avoid parameter or local variable declarations
+	 * May miss anonymous class definition ... (but unlikely to have attributes)
 	 */
 	@Override
 	protected int visit(IASTFunctionDeclarator node) {
