@@ -493,7 +493,9 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		Type typ;
 
 		if (isFullyQualified(name)) {
-			parent = (ContainerEntity) resolveOrNamespace(name);
+			int i = name.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+			// looks for the parent of the class	
+			parent = (ContainerEntity) resolveOrNamespace(name.substring(0, i));
 			name = unqualifiedName(name);
 		}
 		
@@ -741,8 +743,8 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 			// get method name and parent
 			if (bnd instanceof StubBinding) {
 				String fullname = ((StubBinding)bnd).getEntityName();
-				mthSig = extractMethodSignatureFromFullname(fullname);
-				parent = getParentFromNameOrContext(fullname);
+				mthSig = extractSignatureFromMethodFullname(fullname);
+				parent = getParentTypeFromNameOrContext(fullname);
 			}
 			else {
 				mthSig = computeSignatureFromAST(node);
@@ -768,7 +770,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 			parent = (Type) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
 			if (parent == null) {
 				// happened once in a badly coded case
-				parent = (Type) resolveOrClass(extractMethodParentNameFromFullname(nodeName.toString()));
+				parent = (Type) resolveOrClass(extractParentNameFromMethodFullname(nodeName.toString()));
 			}
 		}
 		else {
@@ -777,9 +779,9 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return parent;
 	}
 
-	protected Type getParentFromNameOrContext(String fullname) {
-		if (isFullyQualified(fullname)) {
-			return (Type) resolveOrClass( extractMethodParentNameFromFullname(fullname) );
+	protected Type getParentTypeFromNameOrContext(String name) {
+		if (isFullyQualified(name)) {
+			return resolveOrClass( extractParentNameFromMethodFullname(name) );
 		}
 		else {
 			return context.topType();
@@ -795,7 +797,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return behavName;
 	}
 
-	protected String extractMethodSignatureFromFullname(String fullname) {
+	protected String extractSignatureFromMethodFullname(String fullname) {
 		if (isFullyQualified(fullname)) {
 			int i;
 			i = fullname.indexOf('(');
@@ -807,7 +809,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		}
 	}
 
-	protected String extractMethodParentNameFromFullname(String fullname) {
+	protected String extractParentNameFromMethodFullname(String fullname) {
 		int i;
 		i = fullname.indexOf('(');
 		if (i > 0) {

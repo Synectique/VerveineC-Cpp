@@ -2,6 +2,7 @@ package eu.synectique.verveine.extractor.visitors.def;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTParameterDeclaration;
@@ -14,6 +15,7 @@ import org.eclipse.cdt.core.index.IIndex;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
+import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
@@ -92,11 +94,13 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 			}
 
 			else if (param instanceof ICPPASTParameterDeclaration ) {
-				// non type parameter for a template (such has in "template <Class T, size_t N> class List ..." were N is a non type parameter
+				IBinding bnd;
+				// non type parameter for a template (such has N in "template <Class T, size_t N> class List ...")
 				// should represent them as Parameters but implies redefining ParameterizableClass
 				// use UnknownVariable as a temporary(!) workaround
 				name = ((ICPPASTParameterDeclaration)param).getDeclarator().getName().toString();
-				dico.createFamixUnknownVariable( name, /*parent*/theTemplate);
+				bnd = mkStubKey( ((ICPPASTParameterDeclaration)param).getDeclarator().getName(), UnknownVariable.class);
+				dico.ensureFamixUnknownVariable( bnd, name, /*parent*/context.topPckg());
 			}
 
 			else {

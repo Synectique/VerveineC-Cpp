@@ -49,7 +49,6 @@ import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.internal.core.dom.parser.c.CASTDeclarator;
 import org.eclipse.core.runtime.CoreException;
 
 import eu.synectique.verveine.extractor.plugin.CDictionary;

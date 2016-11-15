@@ -30,20 +30,24 @@ public class NamespaceDefVisitor extends AbstractVisitor {
 	public int visit(ICPPASTNamespaceDefinition node) {
 		Namespace fmx;
 		nodeName = node.getName();
-		nodeBnd = getBinding(nodeName);
+		if (! nodeName.toString().equals("")) {
+			nodeBnd = getBinding(nodeName);
 
-		fmx = dico.ensureFamixNamespace(nodeBnd, nodeName.toString(), (Namespace) this.context.top());
-		fmx.setIsStub(false);
+			fmx = dico.ensureFamixNamespace(nodeBnd, nodeName.toString(), (Namespace) this.context.top());
+			fmx.setIsStub(false);
 
-		this.context.push(fmx);
+			this.context.push(fmx);
+		}
 
-		return PROCESS_CONTINUE;
-	}
+		for (IASTDeclaration decl : node.getDeclarations()) {
+			decl.accept(this);
+		}
 
-	@Override
-	public int leave(ICPPASTNamespaceDefinition node) {
-		this.context.pop();
-		return super.leave(node);
+		if (! nodeName.toString().equals("")) {
+			context.pop();
+		}
+
+		return PROCESS_SKIP;
 	}
 
 }

@@ -59,30 +59,87 @@ public class FileUtil {
 
 	/**
 	 * Copies all source files from src to the source directory of project
-	 * @param project -- project where to copy the file(s)
+	 * @param project -- Eclipse project where to copy the file(s)
 	 * @param src -- A directory of file to copy to the project
+	 * @param destDir -- name of directory inside Eclipse project where to copy
+	 * @param toLowerCase -- convert all file names to lower case (in windows, case is not important and might be inconsistent)
 	 */
-	public static void copySourceFilesInProject(IProject project, String rootName, File src) {
+	public static void copySourceFilesInProject(IProject project, String destDir, File src, boolean toLowerCase) {
+		if (toLowerCase) {
+			destDir = destDir.toLowerCase();
+		}
+
 		if (src.isDirectory()) {
-			copySourceFilesRecursive(project, project.getFolder(rootName), src);
+			copySourceFilesRecursive(project, project.getFolder(destDir), src, toLowerCase);
 		}
 		else {
-			copyFile(project, project.getFolder(rootName), src);
+			copyFile(project, project.getFolder(destDir), src, toLowerCase);
 		}
 	}
 
-	private static void copySourceFilesRecursive(IProject project, IFolder internalPath, File dir) {
+	private static void copySourceFilesRecursive(IProject project, IFolder destPath, File dir, boolean toLowerCase) {
 		if (checkFileType(dir.getName()) == IGNORE_FILE) {
 			return;
 		}
 
 		for (File child : dir.listFiles()) {
+			String childName = null;
 			if (child.isDirectory()) {
-				copySourceFilesRecursive(project, internalPath.getFolder(child.getName()), child);
+				if (toLowerCase) {
+					childName = child.getName().toLowerCase();
+				}
+				else {
+					childName = child.getName();
+				}
+				copySourceFilesRecursive(project, destPath.getFolder(childName), child, toLowerCase);
 			}
 			else {
-				copyFile(project, internalPath, child);
+				copyFile(project, destPath, child, toLowerCase);
 			}
+		}
+	}
+
+	/**
+	 * Copies one source file in an Eclipse project to dest.
+	 * If dest already exist, it is silently overridden
+	 * @param project -- project where to copy the file
+	 * @param orig -- file to copy in the project
+	 * @param toLowerCase -- convert all file names to lower case (in windows, case is not important and might be inconsistent)
+	 * @param dest -- path within the project where to put the file
+	 */
+	private static void copyFile(IProject project, IFolder destPath, File orig, boolean toLowerCase) {
+		if (checkFileType(orig.getName()) != SOURCE_FILE) {
+			return;
+		}
+
+		if (! destPath.exists()) {
+			mkdirs(destPath);
+		}
+
+		try {
+			String destName;
+			if (toLowerCase) {
+				destName = orig.getName().toLowerCase();
+			}
+			else {
+				destName = orig.getName();
+			}
+			InputStream source = new ByteArrayInputStream( Files.readAllBytes(orig.toPath()) );
+			IFile file = destPath.getFile(destName);
+
+			if (toLowerCase) {
+				file.create(new IncludeToLowerInputStream(source), /*force*/true, Constants.NULL_PROGRESS_MONITOR);
+			}
+			else {
+				file.create(source, /*force*/true, Constants.NULL_PROGRESS_MONITOR);
+			}
+
+			file.refreshLocal(IResource.DEPTH_ZERO, Constants.NULL_PROGRESS_MONITOR);
+
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -135,36 +192,6 @@ public class FileUtil {
 		}
 
 		return ret;
-	}
-
-	/**
-	 * Copies one source file in an Eclipse project to dest.
-	 * If dest already exist, it is silently overriden
-	 * @param project -- project where to copy the file
-	 * @param orig -- file to copy in the project
-	 * @param dest -- path within the project where to put the file
-	 */
-	private static void copyFile(IProject project, IFolder destPath, File orig) {
-		 if (checkFileType(orig.getName()) != SOURCE_FILE) {
-			 return;
-		 }
-
-		 if (! destPath.exists()) {
-			mkdirs(destPath);
-		}
-
-		try {
-			InputStream source = new ByteArrayInputStream( Files.readAllBytes(orig.toPath()) );
-			IFile file = destPath.getFile(orig.getName());
-
-			file.create(source, /*force*/true, Constants.NULL_PROGRESS_MONITOR);
-			file.refreshLocal(IResource.DEPTH_ZERO, Constants.NULL_PROGRESS_MONITOR);
-
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 
 	/**

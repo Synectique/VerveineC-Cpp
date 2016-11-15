@@ -35,7 +35,7 @@ import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.IncludeVisitor;
-import eu.synectique.verveine.extractor.visitors.def.AttributeDefVisitor;
+import eu.synectique.verveine.extractor.visitors.def.AttributeGlobalVarDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
@@ -53,7 +53,7 @@ public class VerveineCParser extends VerveineParser {
 
 	static final public String DEFAULT_PROJECT_NAME = "tempProj";
 
-	private static final String SOURCE_ROOT_DIR = File.separator + DEFAULT_PROJECT_NAME;
+	private static final String SOURCE_ROOT_DIR = "src";
 
 	/**
 	 * Directory where the project to analyze is located
@@ -83,6 +83,13 @@ public class VerveineCParser extends VerveineParser {
 	 * Temporary variable to gather macros defined from the command line
 	 */
 	private Map<String,String> argDefined;
+
+	/**
+	 * Whether this is a "windows" project.
+	 * "Windows" project have file names where the case is not significant,
+	 * thus AFile.c is the same as AFILE.c or aFILE.c
+	 */
+	private boolean windows;
 
 	/**
 	 * Eclipse CDT indexer
@@ -115,6 +122,7 @@ public class VerveineCParser extends VerveineParser {
 		this.argIncludes = new ArrayList<String>();
 		this.argDefined = new HashMap<String,String>();
 		this.autoinclude = false;
+		this.windows = false;
 		this.cModel = false;
 	}
 
@@ -122,10 +130,10 @@ public class VerveineCParser extends VerveineParser {
 		CDictionary dico;
 
 		tracer = new Tracer();
-		tracer.msg("Indexing source files");
-
+		
+		tracer.msg("Copying source files in local project");
         ICProject cproject = createEclipseProject(DEFAULT_PROJECT_NAME, userProjectDir);
-        projectPrefix = cproject.getLocationURI().getPath() + File.separator + DEFAULT_PROJECT_NAME + File.separator;
+        projectPrefix = cproject.getLocationURI().getPath() + File.separator + (windows ? SOURCE_ROOT_DIR.toLowerCase() : SOURCE_ROOT_DIR) + File.separator;
 
         configIndexer(cproject);
 		computeIndex(cproject);
@@ -160,7 +168,7 @@ public class VerveineCParser extends VerveineParser {
 		if (!cModel) {
 			cproject.accept(new TemplateParameterDefVisitor(dico, index, projectPrefix));	// must be after method definitions (possible template)
 		}
-		cproject.accept(new AttributeDefVisitor(dico, index, projectPrefix));			// must be after class/struct/enum definitions
+		cproject.accept(new AttributeGlobalVarDefVisitor(dico, index, projectPrefix));			// must be after class/struct/enum definitions
 
 		if (!cModel) {
 			cproject.accept(new InheritanceRefVisitor(dico, index, projectPrefix));
@@ -228,7 +236,7 @@ public class VerveineCParser extends VerveineParser {
 		ICProjectDescription cProjectDesc = CoreModel.getDefault().getProjectDescription(project, true);
 		cProjectDesc.setCdtProjectCreated();
 
-		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, new File(sourcePath));
+		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, new File(sourcePath), /*toLowerCase*/windows);
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
         try {
 			descManager.updateProjectDescriptions(new IProject[] { project }, Constants.NULL_PROGRESS_MONITOR);
@@ -284,6 +292,8 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	private void computeIndex(ICProject cproject) {
+		tracer.msg("Indexing source files");
+
 		IIndexManager imanager = CCorePlugin.getIndexManager();
 		imanager.setIndexerId(cproject, "org.eclipse.cdt.core.fastIndexer");
         imanager.reindex(cproject);
@@ -324,6 +334,9 @@ public class VerveineCParser extends VerveineParser {
 			}
 			else if (arg.startsWith("-D")) {
 				parseMacroDefinition(arg);
+			}
+			else if (arg.equals("-windows")) {
+				windows = true;
 			}
 			else {
 				int j = super.setOption(i - 1, args);

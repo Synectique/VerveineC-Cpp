@@ -8,21 +8,34 @@ import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
-import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
-import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.gen.famix.Attribute;
+import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Enum;
 import eu.synectique.verveine.core.gen.famix.EnumValue;
+import eu.synectique.verveine.core.gen.famix.GlobalVariable;
+import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.Package;
+import eu.synectique.verveine.core.gen.famix.ScopingEntity;
+import eu.synectique.verveine.core.gen.famix.StructuralEntity;
+import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 
-public class AttributeDefVisitor extends ClassMemberDefVisitor {
+public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 
-	public AttributeDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+	/**
+	 * A small enumeration to differentiate the different kind of variable we can create
+	 */
+	private enum VariableKind {
+		GLOBAL, ATTRIBUTE, UNKNOWN;
+	}
+
+	public AttributeGlobalVarDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
 	}
 
@@ -78,19 +91,62 @@ public class AttributeDefVisitor extends ClassMemberDefVisitor {
 	}
 
 	/*
-	 * We should only get here in the case of an attribute declaration.
+	 * We should only get here in the case of a variable declaration.
+	 * Is it an attribute or a "global" variable?
 	 */
 	@Override
 	public int visitInternal(IASTDeclarator node) {
-		Attribute fmx = null;
+		StructuralEntity fmx = null;
+		ContainerEntity parent;
+		VariableKind kind;
 
 		nodeName = node.getName();
-		nodeBnd = getBinding(nodeName);
-		if (nodeBnd == null) {
-			nodeBnd = mkStubKey(nodeName, Attribute.class);
+		if (isFullyQualified(nodeName)) {
+			parent = (ContainerEntity) resolveOrNamespace( extractParentNameFromMethodFullname(nodeName.toString()));
+		}
+		else {
+			parent = (ContainerEntity) context.top();
 		}
 
-		fmx = dico.ensureFamixAttribute(nodeBnd, nodeName.toString(), context.topType());
+		if ( (parent == null) || (parent instanceof Namespace) ) {
+			kind = VariableKind.GLOBAL;
+		}
+		else if (parent instanceof Type) {
+			kind = VariableKind.ATTRIBUTE;
+		}
+		else {
+			parent = context.topPckg();
+			kind = VariableKind.UNKNOWN;
+		}
+
+		nodeBnd = getBinding(nodeName);
+		if (nodeBnd == null) {
+			switch (kind) {
+			case GLOBAL:
+				nodeBnd = mkStubKey(nodeName, GlobalVariable.class);
+				break;
+			case ATTRIBUTE:
+				nodeBnd = mkStubKey(nodeName, Attribute.class);
+				break;
+			case UNKNOWN:
+				nodeBnd = mkStubKey(nodeName, UnknownVariable.class);
+				break;
+			}
+		}
+
+	
+		switch (kind) {
+		case GLOBAL:
+			fmx = dico.ensureFamixGlobalVariable(nodeBnd, nodeName.toString(), (ScopingEntity) parent);
+			break;
+		case ATTRIBUTE:
+			fmx = dico.ensureFamixAttribute(nodeBnd, nodeName.toString(), (Type) parent);
+			break;
+		case UNKNOWN:
+			fmx = dico.ensureFamixUnknownVariable(nodeBnd, nodeName.toString(), (Package) parent);
+			break;
+		}
+		
 		fmx.setIsStub(false);
 		dico.setVisibility(fmx, currentVisibility);
 

@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry exported="true" kind="lib" path="lib/famix-20161028_0945.jar" sourcepath="/verveine.core"/>
-	<classpathentry exported="true" kind="lib" path="lib/fast-20161028_0945.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/verveine.core-20161028_0945.jar" sourcepath="/verveine.core"/>
+	<classpathentry exported="true" kind="lib" path="lib/famix-20161107_1528.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/fast-20161107_1528.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/verveine.core-20161107_1528.jar" sourcepath="/verveine.core"/>
 	<classpathentry exported="true" kind="lib" path="lib/fame-201403040925.jar" sourcepath="/home/anquetil/Documents/RMod/Tools/workspace/Fame"/>
 	<classpathentry exported="true" kind="lib" path="lib/akuhn-util-r28011.jar"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="test"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jdk1.7.0_80"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

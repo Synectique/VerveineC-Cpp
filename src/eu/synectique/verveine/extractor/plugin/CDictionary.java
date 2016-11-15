@@ -9,7 +9,6 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
-import eu.synectique.verveine.core.gen.famix.AbstractFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
@@ -19,6 +18,7 @@ import eu.synectique.verveine.core.gen.famix.CompilationUnit;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Function;
+import eu.synectique.verveine.core.gen.famix.GlobalVariable;
 import eu.synectique.verveine.core.gen.famix.Header;
 import eu.synectique.verveine.core.gen.famix.ImplicitVariable;
 import eu.synectique.verveine.core.gen.famix.Include;
@@ -169,14 +169,13 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 
 		// check if we already have this filename in the MultipleFileAnchor
-		for (AbstractFileAnchor f : mfa.getAllFiles()) {
-			if (f.getFileName().equals(filename)) {
+		/*for (AbstractFileAnchor f : mfa.getAllFiles()) {
+			if ( f.getFileName().equals(filename) ) {
 				// note: Could check also the position in the file ...
 				return mfa;
 			}
-		}
+		}*/
 
-		// not found, add the filename to the MultipleFileAnchor
 		mfa.addAllFiles( createIndexedSourceAnchor(filename, start, end) );
 
 		return mfa;
@@ -251,15 +250,26 @@ public class CDictionary extends Dictionary<IBinding> {
 		return fmx;
 	}
 
-	/**
-	 * Create an UnknownVariable. parent currently not used
-	 */
-	public UnknownVariable createFamixUnknownVariable(String name, NamedEntity parent) {
-		UnknownVariable fmx;
+	public UnknownVariable ensureFamixUnknownVariable(IBinding key, String name, Package parent) {
+		UnknownVariable fmx = null;
 		
-		fmx = ensureFamixEntity(UnknownVariable.class, /*key*/null, name, /*persistIt*/true);
-		fmx.setIsStub(true);
+		if (key != null) {
+			fmx = (UnknownVariable) getEntityByKey(key);
+		}
+
+		if (fmx == null) {
+			fmx = super.ensureFamixEntity(UnknownVariable.class, key, name, /*persistIt*/true);
+			fmx.setParentPackage(parent);
+		}
 		
+		return fmx;
+	}
+
+	public GlobalVariable ensureFamixGlobalVariable(IBinding key, String name, ScopingEntity parent) {
+		GlobalVariable fmx;
+		fmx = ensureFamixEntity(GlobalVariable.class, key, name, /*persistIt*/true);
+		fmx.setParentScope(parent);
+
 		return fmx;
 	}
 
@@ -507,13 +517,19 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * Computes moose name for a Namespace child.
 	 * MooseName is the concatenation of the moosename of the parent Namescape with the simple name of the child
 	 */
+int count = 0;
 	public String mooseName(Namespace parent, String name) {
+		String ret;
+		count++;
+		
 		if (parent != null) {
-			return concatMooseName( mooseName((Namespace)parent.getParentScope(), parent.getName()) , name);
+			ret = concatMooseName( mooseName((Namespace)parent.getParentScope(), parent.getName()) , name);
 		}
 		else {
-			return name;
+			ret = name;
 		}
+		count = 0;
+		return ret;
 	}
 	
 	/**

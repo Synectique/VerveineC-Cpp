@@ -1,7 +1,5 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
-import java.util.Iterator;
-
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
@@ -26,7 +24,6 @@ import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.Dictionary;
-import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Parameter;
