@@ -15,14 +15,13 @@ import eu.synectique.verveine.extractor.plugin.VerveineCParser;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 
-public class IncludeVisitor extends AbstractDispatcherVisitor {
+public class IncludeVisitor extends AbstractVisitor {
 
 	protected CFile currentFile;
 
 	/**
 	 * Prefix to remove from file names
 	 */
-	protected String absoluteRootFolder;
 	protected String projectRootFolder;
 
 	/**
@@ -31,9 +30,8 @@ public class IncludeVisitor extends AbstractDispatcherVisitor {
 	protected Set<String> unresolvedIncludes;
 
 	public IncludeVisitor(CDictionary dico, IIndex index, String rootFolder) {
-		super(dico, index);
+		super(dico, index, rootFolder);
 		unresolvedIncludes = new HashSet<String>();
-		this.absoluteRootFolder = rootFolder;
 		int i = rootFolder.indexOf(VerveineCParser.WORKSPACE_NAME);
 		if (i > 0) {		
 			this.projectRootFolder = rootFolder.substring(i+VerveineCParser.WORKSPACE_NAME.length());
@@ -47,7 +45,7 @@ public class IncludeVisitor extends AbstractDispatcherVisitor {
 	@Override
 	public void visit(ITranslationUnit elt) {
 		String filename = elt.getFile().getFullPath().toString();        // fullPath relative to project directory
-		IBinding key = StubBinding.getInstance(CFile.class, filename);   // better not to localize filename for the key
+		IBinding key = resolver.mkStubKey(filename, /*container*/null, CFile.class);   // better not to localize filename for the key
 		currentFile = dico.ensureFamixCFile(key, FileUtil.localized(filename, projectRootFolder));
 		
 		// overriding superclass visit() to not visit AST but only the children
@@ -61,8 +59,8 @@ public class IncludeVisitor extends AbstractDispatcherVisitor {
 	
 		if (elt.isResolved()) {
 			includedName = elt.getFullFileName();                       // fullpath relative to the entire file system
-			key = StubBinding.getInstance(Module.class, includedName);
-			includedName = FileUtil.localized(includedName, absoluteRootFolder);
+			key = resolver.mkStubKey(includedName, /*container*/null, Module.class);
+			includedName = FileUtil.localized(includedName, rootFolder);
 		}
 		else {
 			String includeStr;
@@ -73,7 +71,7 @@ public class IncludeVisitor extends AbstractDispatcherVisitor {
 				unresolvedIncludes.add(includeStr);
 			}
 			includedName = elt.getIncludeName();
-			key = StubBinding.getInstance(Module.class, includedName);
+			key = resolver.mkStubKey(includedName, /*container*/null, Module.class);
 		}
 
 		included = dico.ensureFamixCFile(key, includedName);

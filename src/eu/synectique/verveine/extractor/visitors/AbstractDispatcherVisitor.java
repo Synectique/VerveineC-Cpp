@@ -62,7 +62,7 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
 public abstract class AbstractDispatcherVisitor extends ASTVisitor implements ICElementVisitor {
 
 	/**
-	 * CDT index to get AST and resolve symbols
+	 * CDT index, required to get AST
 	 */
 	protected IIndex index;
 

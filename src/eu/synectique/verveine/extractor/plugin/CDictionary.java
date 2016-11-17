@@ -508,7 +508,7 @@ public class CDictionary extends Dictionary<IBinding> {
 		else if (parent instanceof Function) {
 			return mooseName((Function)parent, name);
 		}
-		else {
+		else { // e.g. parent == null
 			return name;
 		}
 	}
@@ -517,10 +517,8 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * Computes moose name for a Namespace child.
 	 * MooseName is the concatenation of the moosename of the parent Namescape with the simple name of the child
 	 */
-int count = 0;
 	public String mooseName(Namespace parent, String name) {
 		String ret;
-		count++;
 		
 		if (parent != null) {
 			ret = concatMooseName( mooseName((Namespace)parent.getParentScope(), parent.getName()) , name);
@@ -528,7 +526,7 @@ int count = 0;
 		else {
 			ret = name;
 		}
-		count = 0;
+
 		return ret;
 	}
 	

@@ -39,7 +39,7 @@ import eu.synectique.verveine.extractor.visitors.def.AttributeGlobalVarDefVisito
 import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.CommentDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.NamespaceDefVisitor;
-import eu.synectique.verveine.extractor.visitors.def.PackageDefVisistor;
+import eu.synectique.verveine.extractor.visitors.def.PackageDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.PreprocessorStmtDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.TemplateParameterDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.TypeDefVisitor;
@@ -159,7 +159,7 @@ public class VerveineCParser extends VerveineParser {
 		cproject.accept(incVisitor);
         incVisitor.reportUnresolvedIncludes();        // statistics on unresolved includes
 
-		cproject.accept(new PackageDefVisistor(dico, index, projectPrefix));
+		cproject.accept(new PackageDefVisitor(dico));
 		if (!cModel) {
 			cproject.accept(new NamespaceDefVisitor(dico, index, projectPrefix));
 		}

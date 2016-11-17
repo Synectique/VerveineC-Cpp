@@ -103,13 +103,13 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		StructuralEntity fmx = null;
 
 		nodeName = node.getName();
-		nodeBnd = getBinding(nodeName);
+		nodeBnd = resolver.getBinding(nodeName);
 		if (nodeBnd == null) {
 			if (inKnRParams) {
-				nodeBnd = StubBinding.getInstance( Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+				nodeBnd = resolver.mkStubKey(nodeName, Parameter.class);
 			}
 			else {
-				nodeBnd = mkStubKey(nodeName, Attribute.class);
+				nodeBnd = resolver.mkStubKey(nodeName, Attribute.class);
 			}
 		}
 
@@ -154,7 +154,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		super.visit(node);  // calls getBehavioural(IASTFunctionDeclarator)
 		fmx = (BehaviouralEntity) returnedEntity;
 
-		if ( (! isConstructor(fmx)) && (! isDestructor(fmx)) ) {
+		if ( (! resolver.isConstructor(fmx)) && (! resolver.isDestructor(fmx)) ) {
 			fmx.setDeclaredType(referredType);
 		}
 	}

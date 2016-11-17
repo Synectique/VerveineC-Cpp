@@ -29,6 +29,7 @@ import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
 import eu.synectique.verveine.core.gen.famix.Class;
+import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
@@ -74,11 +75,11 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 		fmx = (Class) dico.getEntityByKey(nodeBnd);
 
-		this.context.push(fmx);
+		this.getContext().push(fmx);
 		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
 			decl.accept(this);
 		}
-		returnedEntity = context.pop();
+		returnedEntity = getContext().pop();
 
 		return PROCESS_SKIP;
 	}
@@ -115,8 +116,10 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 	@Override
 	protected int visit(IASTFunctionDeclarator node) {
-		 returnedEntity = super.ensureBehavioural(node);
-		
+		// get node name and bnd
+		super.visit(node);
+		returnedEntity = resolver.ensureBehavioural(node, nodeBnd, nodeName);
+
 		return PROCESS_SKIP;
 	}
 
@@ -126,11 +129,11 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 		node.getDeclarator().accept(this);
 
-		this.context.push((BehaviouralEntity)returnedEntity);
+		this.getContext().push((BehaviouralEntity)returnedEntity);
 
 		node.getBody().accept(this);
 
-		returnedEntity = this.context.pop();
+		returnedEntity = this.getContext().pop();
 
 		return PROCESS_SKIP;
 	}
@@ -145,13 +148,13 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 
 		visit( (IASTFunctionDefinition)node);  // visit declarator and body (see above)
 
-		this.context.push((BehaviouralEntity)returnedEntity);
+		this.getContext().push((BehaviouralEntity)returnedEntity);
 
 		for (ICPPASTConstructorChainInitializer init : node.getMemberInitializers()) {
 			init.accept(this);
 		}
 
-		returnedEntity = this.context.pop();
+		returnedEntity = this.getContext().pop();
 
 		return PROCESS_SKIP;
 	}
@@ -165,17 +168,17 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 */
 	protected Type referedType(IASTName name) {
 		Type fmx = null;
-		IBinding bnd = getBinding( name);
+		IBinding bnd = resolver.getBinding( name);
 
 		if (bnd == null) {
-			bnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), name.toString()));
+			bnd = resolver.mkStubKey(name, Type.class);
 		}
 
 		NamedEntity tmp = dico.getEntityByKey(bnd);
 		fmx = (Type) tmp;
 
 		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
-			fmx = (Type) findInParent(name.toString(), context.top(), /*recursive*/true);
+			fmx = (Type) resolver.findInParent(name.toString(), getContext().top(), /*recursive*/true);
 		}
 
 		if (fmx == null) {  // still not found, create it
@@ -183,7 +186,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 				fmx = referedParameterTypeInstance(bnd, name);
 			}
 			else {
-				fmx = dico.ensureFamixType(bnd, unqualifiedName(name), /*owner*/getParentOfFullyQualifiedName(name));
+				fmx = dico.ensureFamixType(bnd, resolver.unqualifiedName(name), /*owner*/(ContainerEntity)resolver.resolveOrNamespace(resolver.nameQualifier(name)));
 			}
 		}
 
@@ -197,23 +200,23 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	private Type referedParameterTypeInstance(IBinding bnd, IASTName name) {
 		String strName = name.toString();
 		int i = strName.indexOf('<');
-		String typName = unqualifiedName(strName.substring(0, i));
+		String typName = resolver.unqualifiedName(strName.substring(0, i));
 
 		ParameterizedType fmx = null;
 		ParameterizableClass generic = null;
 		try {
-			generic = (ParameterizableClass) findInParent(typName, context.top(), /*recursive*/true);
+			generic = (ParameterizableClass) resolver.findInParent(typName, getContext().top(), /*recursive*/true);
 		}
 		catch (ClassCastException e) {
 			// create a ParameterizedType for an unknown generic
 			// 'generic' var. remains null
 		}
-		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, getParentOfFullyQualifiedName(name));
+		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, (ContainerEntity)resolver.resolveOrNamespace(resolver.nameQualifier(name)));
 
 		for (String typArg : strName.substring(i+1, strName.length()-1).split(",")) {
 			typArg = typArg.trim();
 			try {
-				Type arg = (Type) findInParent(typArg, context.top(), /*recursive*/true);
+				Type arg = (Type) resolver.findInParent(typArg, getContext().top(), /*recursive*/true);
 				if (arg != null) {
 					fmx.addArguments(arg);
 				}
@@ -238,9 +241,9 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @return the invocation created
 	 */
 	protected Invocation invocationOfBehavioural(BehaviouralEntity fmx) {
-		BehaviouralEntity accessor = this.context.topBehaviouralEntity();
-		Invocation invok = dico.addFamixInvocation(accessor, fmx, /*receiver*/null, /*signature*/null, context.getLastInvocation());
-		context.setLastInvocation(invok);
+		BehaviouralEntity accessor = this.getContext().topBehaviouralEntity();
+		Invocation invok = dico.addFamixInvocation(accessor, fmx, /*receiver*/null, /*signature*/null, getContext().getLastInvocation());
+		getContext().setLastInvocation(invok);
 		return invok;
 	}
 
@@ -251,9 +254,9 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @return the invocation created
 	 */
 	protected DereferencedInvocation dereferencedInvocation(StructuralEntity fmx, String sig) {
-		BehaviouralEntity accessor = this.context.topBehaviouralEntity();
-		DereferencedInvocation invok = dico.addFamixDereferencedInvocation(accessor, fmx, /*signature*/sig, context.getLastInvocation());
-		context.setLastInvocation(invok);
+		BehaviouralEntity accessor = this.getContext().topBehaviouralEntity();
+		DereferencedInvocation invok = dico.addFamixDereferencedInvocation(accessor, fmx, /*signature*/sig, getContext().getLastInvocation());
+		getContext().setLastInvocation(invok);
 		return invok;
 	}
 
@@ -264,7 +267,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	 * @return the reference created
 	 */
 	protected BehaviouralReference behaviouralPointer(BehaviouralEntity fmx) {
-		BehaviouralEntity referer = this.context.topBehaviouralEntity();
+		BehaviouralEntity referer = this.getContext().topBehaviouralEntity();
 		BehaviouralReference ref = dico.addFamixBehaviouralPointer(referer, fmx);
 		return ref;
 	}

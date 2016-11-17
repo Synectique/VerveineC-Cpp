@@ -56,7 +56,7 @@ public class TypeDefVisitor extends AbstractVisitor {
 	 */
 	@Override
 	public void visit(ICContainer elt) {
-		IBinding key = StubBinding.getInstance(Package.class, dico.mooseName(currentPackage, elt.getElementName()));
+		IBinding key = resolver.mkStubKey(elt.getElementName(), /*container*/null, Package.class);
 
 		currentPackage = (Package) dico.getEntityByKey(key);
 
@@ -103,16 +103,16 @@ public class TypeDefVisitor extends AbstractVisitor {
 					nodeName = declarator.getName();
 				}
 
-				nodeBnd = getBinding(nodeName);
+				nodeBnd = resolver.getBinding(nodeName);
 
 				if (nodeBnd == null) {
 					// create one anyway, assume this is a Type
-					nodeBnd = StubBinding.getInstance(Type.class, dico.mooseName(context.getTopCppNamespace(), nodeName.toString()));
+					nodeBnd = resolver.mkStubKey(nodeName, Type.class);
 				}
 
 				declarator.accept(this);
 
-				aliasType = dico.ensureFamixTypeAlias(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
+				aliasType = dico.ensureFamixTypeAlias(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top());
 				aliasType.setIsStub(false);
 				aliasType.setParentPackage(currentPackage);
 				aliasType.setAliasedType(concreteType);
@@ -136,11 +136,11 @@ public class TypeDefVisitor extends AbstractVisitor {
 		super.visit(node);
 
 		if (isTemplate) {
-			fmx = dico.ensureFamixParameterizableClass(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
+			fmx = dico.ensureFamixParameterizableClass(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top());
 		}
 		else {
 			// if node is a stub with a fully qualified name, its parent is not context.top() :-(
-			fmx = dico.ensureFamixClass(nodeBnd, nodeName.toString(), (ContainerEntity)context.top());
+			fmx = dico.ensureFamixClass(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top());
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 		fmx.setParentPackage(currentPackage);
@@ -153,11 +153,11 @@ public class TypeDefVisitor extends AbstractVisitor {
 			dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 		}
 
-		this.context.push(fmx);
+		this.getContext().push(fmx);
 		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
 			decl.accept(this);
 		}
-		returnedEntity = context.pop();
+		returnedEntity = getContext().pop();
 
 		return PROCESS_SKIP;
 	}
@@ -171,16 +171,16 @@ public class TypeDefVisitor extends AbstractVisitor {
 
 		// compute nodeName and binding
 		super.visit(node);
-		fmx = dico.ensureFamixClass(nodeBnd, "struct "+nodeName.toString(), (ContainerEntity)context.top());
+		fmx = dico.ensureFamixClass(nodeBnd, "struct "+nodeName.toString(), (ContainerEntity)getContext().top());
 
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 
-		this.context.push(fmx);
+		this.getContext().push(fmx);
 		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
 			decl.accept(this);
 		}
-		returnedEntity = context.pop();
+		returnedEntity = getContext().pop();
 
 		return PROCESS_SKIP;
 	}
@@ -214,15 +214,15 @@ public class TypeDefVisitor extends AbstractVisitor {
 		if (nodeName.equals("")) {
 			// case of anonymous enum: it is probably within a typedef and will never be used directly
 			// so the key is mostly irrelevant, only used to find back the type when creating its enumerated values 
-			nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Enum.class, dico.mooseName(context.topBehaviouralEntity(), ""+node.getFileLocation().getNodeOffset()));
+			nodeBnd = resolver.mkStubKey(""+node.getFileLocation().getNodeOffset(), eu.synectique.verveine.core.gen.famix.Enum.class);
 		}
 		else {
-			nodeBnd = getBinding(nodeName);
+			nodeBnd = resolver.getBinding(nodeName);
 			if (nodeBnd == null) {
-				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Enum.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+				nodeBnd = resolver.mkStubKey(nodeName, eu.synectique.verveine.core.gen.famix.Enum.class);
 			}
 		}
-		fmx = dico.ensureFamixEnum(nodeBnd, nodeName.toString(), (ContainerEntity)context.top(), /*persistIt*/true);
+		fmx = dico.ensureFamixEnum(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top(), /*persistIt*/true);
 		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 
 		returnedEntity = fmx;

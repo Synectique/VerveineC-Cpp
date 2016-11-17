@@ -110,8 +110,8 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 
 
 	protected Reference referenceToType(Type referedType) {
-		Reference ref = dico.addFamixReference(context.topBehaviouralEntity(), referedType,  context.getLastReference());
-		context.setLastReference(ref);
+		Reference ref = dico.addFamixReference(getContext().topBehaviouralEntity(), referedType,  getContext().getLastReference());
+		getContext().setLastReference(ref);
 		return ref;
 	}
 

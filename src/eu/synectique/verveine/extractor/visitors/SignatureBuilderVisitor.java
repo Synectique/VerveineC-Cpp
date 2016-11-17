@@ -70,7 +70,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	@Override
 	protected int visit(IASTStandardFunctionDeclarator node) {
 		// name
-		signature = unqualifiedName(node.getName().toString());
+		signature = resolver.unqualifiedName(node.getName().toString());
 		// parameters
 		visitParameters(node.getParameters());
 		// return type
@@ -82,7 +82,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	@Override
 	protected int visit(ICASTKnRFunctionDeclarator node) {
 		// name
-		signature = unqualifiedName(node.getName().toString());
+		signature = resolver.unqualifiedName(node.getName().toString());
 		// parameters
 		visitParameters(node.getParameterDeclarations());
 		// return type

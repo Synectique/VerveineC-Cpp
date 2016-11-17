@@ -78,7 +78,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		IASTNode lastChild = children[children.length - 1];
 		if (lastChild instanceof IASTName) {
 			nodeName = (IASTName)lastChild;
-			nodeBnd = getBinding( nodeName );
+			nodeBnd = resolver.getBinding( nodeName );
 
 			if (nodeBnd != null) {
 				fmx = dico.getEntityByKey(nodeBnd);
@@ -124,9 +124,9 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 				else {
 					// so that the order of arguments match exactly their corresponding parameters
 					// we create a fake association for argument that we cannot resolve
-					IBinding fakeBnd = StubBinding.getInstance(UnknownVariable.class, EMPTY_ARGUMENT_NAME);
+					IBinding fakeBnd = resolver.mkStubKey(EMPTY_ARGUMENT_NAME, UnknownVariable.class);
 					UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
-					Access acc = dico.addFamixAccess(context.topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null);
+					Access acc = dico.addFamixAccess(getContext().topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null);
 					invok.addArguments(acc);
 					dico.addSourceAnchor(acc, filename, icl.getFileLocation());
 				}
@@ -143,7 +143,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	protected int visit(ICPPASTConstructorChainInitializer node) {
 		IASTName memberName = node.getMemberInitializerId();
 		returnedEntity = null;
-		nodeBnd = getBinding(memberName);
+		nodeBnd = resolver.getBinding(memberName);
 		node.getInitializer().accept(this);
 
 		return PROCESS_SKIP;
@@ -158,7 +158,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		for (IASTImplicitName candidate : parent.getImplicitNames()) {
 			IBinding constBnd = null; 
 
-			constBnd = getBinding( candidate );
+			constBnd = resolver.getBinding( candidate );
 
 			if (constBnd != null) {
 				fmx = dico.getEntityByKey(constBnd);
@@ -222,11 +222,11 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		returnedEntity = null;
 
 		if ( node.getKind() == ICPPASTLiteralExpression.lk_this ) {
-			if (context.topType() != null) {
-				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topType(), /*owner*/context.topBehaviouralEntity()));
+			if (getContext().topType() != null) {
+				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/getContext().topType(), /*owner*/getContext().topBehaviouralEntity()));
 			}
-			else if (context.topMethod() != null) {
-				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/context.topMethod().getParentType(), /*owner*/context.topBehaviouralEntity()));
+			else if (getContext().topMethod() != null) {
+				returnedEntity = accessToVar(dico.ensureFamixImplicitVariable(Dictionary.SELF_NAME, /*type*/getContext().topMethod().getParentType(), /*owner*/getContext().topBehaviouralEntity()));
 			}
 			if (returnedEntity != null) {
 				dico.addSourceAnchor(returnedEntity, filename, node.getFileLocation());
@@ -275,13 +275,13 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		NamedEntity fmx = null;
 		Association assoc = null;
 
-		nodeBnd = getBinding(nodeName);
+		nodeBnd = resolver.getBinding(nodeName);
 
 		if (nodeBnd != null) {
 			fmx = dico.getEntityByKey(nodeBnd);
 		}
 		else {
-			fmx = findInParent(nodeName.toString(), context.top(), /*recursive*/true);
+			fmx = resolver.findInParent(nodeName.toString(), getContext().top(), /*recursive*/true);
 		}
 
 		if (fmx instanceof StructuralEntity) {
@@ -306,9 +306,9 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	protected Access accessToVar(StructuralEntity fmx) {
 		BehaviouralEntity accessor;
 		// put false to isWrite by default, will be corrected in the visitor
-		accessor = this.context.topBehaviouralEntity();
-		Access acc = dico.addFamixAccess(accessor, fmx, /*isWrite*/false, context.getLastAccess());
-		context.setLastAccess(acc);
+		accessor = this.getContext().topBehaviouralEntity();
+		Access acc = dico.addFamixAccess(accessor, fmx, /*isWrite*/false, getContext().getLastAccess());
+		getContext().setLastAccess(acc);
 		return acc;
 	}
 

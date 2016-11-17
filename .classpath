@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry exported="true" kind="lib" path="lib/famix-20161107_1528.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/famix-20161107_1528.jar" sourcepath="/verveine.core"/>
 	<classpathentry exported="true" kind="lib" path="lib/fast-20161107_1528.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/verveine.core-20161107_1528.jar" sourcepath="/verveine.core"/>
 	<classpathentry exported="true" kind="lib" path="lib/fame-201403040925.jar" sourcepath="/home/anquetil/Documents/RMod/Tools/workspace/Fame"/>

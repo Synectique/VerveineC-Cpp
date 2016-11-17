@@ -35,21 +35,21 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 		super.visit(node);
 		subClass = (Class) dico.getEntityByKey(nodeBnd);
 
-		context.push(subClass);
+		getContext().push(subClass);
 		lastInheritance = null;
 
 		for (ICPPASTBaseSpecifier base : node.getBaseSpecifiers()) {
 			base.accept(this);
 		}
 
-		this.context.pop();
+		this.getContext().pop();
 
 		return PROCESS_SKIP;
 	}
 
 	@Override
 	public int visit(ICPPASTBaseSpecifier node) {
-		Class subClass = (Class) context.top();
+		Class subClass = (Class) getContext().top();
 		Type supClass = null;
 
 		// why isn't it an IASTName like everywhere else?
@@ -57,12 +57,12 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 		
 		nodeBnd = baseName.resolveBinding();
 		if ( (nodeBnd == null) || (nodeBnd instanceof IProblemBinding) ) {
-			nodeBnd = mkStubKey((IASTName)baseName, Class.class);
+			nodeBnd = resolver.mkStubKey((IASTName)baseName, Class.class);
 		}
 		supClass = (Type) dico.getEntityByKey(nodeBnd);
 
 		if (supClass == null) {
-			supClass = resolveOrClass( baseName.toString());
+			supClass = resolver.resolveOrClass( baseName.toString());
 		}
 
 		if (supClass != null) { 

@@ -1,6 +1,5 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
-import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 
@@ -8,7 +7,7 @@ import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.visitors.AbstractDispatcherVisitor;
 
-public class PackageDefVisistor extends AbstractDispatcherVisitor {
+public class PackageDefVisitor extends AbstractDispatcherVisitor {
 
 	/**
 	 * The file directory being visited at any given time
@@ -22,8 +21,8 @@ public class PackageDefVisistor extends AbstractDispatcherVisitor {
 	 */
 	protected int nbOfLeadingDirectory;
 
-	public PackageDefVisistor(CDictionary dico, IIndex index, String rootFolder) {
-		super(dico, index);
+	public PackageDefVisitor(CDictionary dico) {
+		super(dico, null);
 		nbOfLeadingDirectory = 2;  // i.e. tempProj/tempProj
 	}
 

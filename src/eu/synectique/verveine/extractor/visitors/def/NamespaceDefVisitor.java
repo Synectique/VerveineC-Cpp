@@ -31,12 +31,12 @@ public class NamespaceDefVisitor extends AbstractVisitor {
 		Namespace fmx;
 		nodeName = node.getName();
 		if (! nodeName.toString().equals("")) {
-			nodeBnd = getBinding(nodeName);
+			nodeBnd = resolver.getBinding(nodeName);
 
-			fmx = dico.ensureFamixNamespace(nodeBnd, nodeName.toString(), (Namespace) this.context.top());
+			fmx = dico.ensureFamixNamespace(nodeBnd, nodeName.toString(), (Namespace) this.getContext().top());
 			fmx.setIsStub(false);
 
-			this.context.push(fmx);
+			this.getContext().push(fmx);
 		}
 
 		for (IASTDeclaration decl : node.getDeclarations()) {
@@ -44,7 +44,7 @@ public class NamespaceDefVisitor extends AbstractVisitor {
 		}
 
 		if (! nodeName.toString().equals("")) {
-			context.pop();
+			getContext().pop();
 		}
 
 		return PROCESS_SKIP;

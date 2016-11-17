@@ -101,11 +101,11 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 		VariableKind kind;
 
 		nodeName = node.getName();
-		if (isFullyQualified(nodeName)) {
-			parent = (ContainerEntity) resolveOrNamespace( extractParentNameFromMethodFullname(nodeName.toString()));
+		if (resolver.isFullyQualified(nodeName)) {
+			parent = (ContainerEntity) resolver.resolveOrNamespace( resolver.extractParentNameFromMethodFullname(nodeName.toString()));
 		}
 		else {
-			parent = (ContainerEntity) context.top();
+			parent = (ContainerEntity) getContext().top();
 		}
 
 		if ( (parent == null) || (parent instanceof Namespace) ) {
@@ -115,21 +115,21 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 			kind = VariableKind.ATTRIBUTE;
 		}
 		else {
-			parent = context.topPckg();
+			parent = getContext().topPckg();
 			kind = VariableKind.UNKNOWN;
 		}
 
-		nodeBnd = getBinding(nodeName);
+		nodeBnd = resolver.getBinding(nodeName);
 		if (nodeBnd == null) {
 			switch (kind) {
 			case GLOBAL:
-				nodeBnd = mkStubKey(nodeName, GlobalVariable.class);
+				nodeBnd = resolver.mkStubKey(nodeName, GlobalVariable.class);
 				break;
 			case ATTRIBUTE:
-				nodeBnd = mkStubKey(nodeName, Attribute.class);
+				nodeBnd = resolver.mkStubKey(nodeName, Attribute.class);
 				break;
 			case UNKNOWN:
-				nodeBnd = mkStubKey(nodeName, UnknownVariable.class);
+				nodeBnd = resolver.mkStubKey(nodeName, UnknownVariable.class);
 				break;
 			}
 		}
@@ -176,20 +176,20 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 		nodeName = node.getName();
 
 		if (nodeName.equals("")) {
-			nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Enum.class, dico.mooseName(context.topBehaviouralEntity(), ""+node.getFileLocation().getNodeOffset()));
+			nodeBnd = resolver.mkStubKey(""+node.getFileLocation().getNodeOffset(), eu.synectique.verveine.core.gen.famix.Enum.class);
 		}
 		else {
-			nodeBnd = getBinding(nodeName);
+			nodeBnd = resolver.getBinding(nodeName);
 			if (nodeBnd == null) {
-				nodeBnd = StubBinding.getInstance(eu.synectique.verveine.core.gen.famix.Enum.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+				nodeBnd = resolver.mkStubKey(nodeName.toString(), eu.synectique.verveine.core.gen.famix.Enum.class);
 			}
 		}
 
-		this.context.push(dico.getEntityByKey(nodeBnd));
+		this.getContext().push(dico.getEntityByKey(nodeBnd));
 		for (IASTEnumerator decl : node.getEnumerators()) {
 			decl.accept(this);
 		}
-		returnedEntity = context.pop();
+		returnedEntity = getContext().pop();
 
 		return PROCESS_SKIP;
 	}
@@ -201,9 +201,9 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 		nodeBnd = null;
 		nodeName = node.getName();
 		if (nodeBnd == null) {
-			nodeBnd = StubBinding.getInstance(EnumValue.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));
+			nodeBnd = resolver.mkStubKey(nodeName.toString(), EnumValue.class);
 		}
-		fmx = dico.ensureFamixEnumValue(nodeBnd, nodeName.toString(), (Enum)context.top(), /*persistIt*/true);
+		fmx = dico.ensureFamixEnumValue(nodeBnd, nodeName.toString(), (Enum)getContext().top(), /*persistIt*/true);
 		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 
 		return PROCESS_SKIP;

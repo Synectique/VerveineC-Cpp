@@ -83,6 +83,8 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	protected int visit(IASTStandardFunctionDeclarator node) {
 		BehaviouralEntity fmx = null;
 
+		// get node name and bnd
+		super.visit( node);
 		fmx = initializeBehavioural(node);
 		visitParameters(node.getParameters(), fmx);
 		returnedEntity = fmx;
@@ -94,6 +96,8 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	protected int visit(ICASTKnRFunctionDeclarator node) {
 		BehaviouralEntity fmx = null;
 
+		// get node name and bnd
+		super.visit( node);
 		fmx = initializeBehavioural(node);
 
 		inKnRParams = true;
@@ -116,22 +120,22 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 		// FIXME using pushBehaviouralEntity()/pushMethod() introduces a difference in the handling of the stack (for metrics CYCLO/NOS)
 		// this behaviour was inherited from VerveineJ and would need to be refactored
-		this.context.pushBehaviouralEntity(fmx);
+		this.getContext().pushBehaviouralEntity(fmx);
 
 		// now visiting the children of the node
 		node.getDeclSpecifier().accept(this);
 
-		context.setLastAccess(null);		// TODO remove these 3 lines
-		context.setLastInvocation(null);
-		context.setLastReference(null);
-		context.setTopMethodCyclo(1);
-		context.setTopMethodNOS(0);
+		getContext().setLastAccess(null);		// TODO remove these 3 lines
+		getContext().setLastInvocation(null);
+		getContext().setLastReference(null);
+		getContext().setTopMethodCyclo(1);
+		getContext().setTopMethodNOS(0);
 
 		node.getBody().accept(this);
 
-		fmx.setNumberOfStatements(context.getTopMethodNOS());
-		fmx.setCyclomaticComplexity(context.getTopMethodCyclo());
-		this.context.pop();
+		fmx.setNumberOfStatements(getContext().getTopMethodNOS());
+		fmx.setCyclomaticComplexity(getContext().getTopMethodCyclo());
+		this.getContext().pop();
 
 		return PROCESS_SKIP;  // we already visited the children
 	}
@@ -185,9 +189,9 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	protected int visitInternal(IASTDeclarator node) {
 		if (inKnRParams) {
 			nodeName = node.getName();
-			nodeBnd = getBinding(nodeName);
+			nodeBnd = resolver.getBinding(nodeName);
 			if (nodeBnd == null) {
-				nodeBnd = StubBinding.getInstance(Parameter.class, dico.mooseName(context.topBehaviouralEntity(), nodeName.toString()));   // mkStubKey(nodeName, Parameter.class); ?
+				nodeBnd = resolver.mkStubKey(nodeName, Parameter.class);
 			}
 
 			innerCreateParameter();
@@ -216,7 +220,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	    	 (node instanceof IASTWhileStatement)			||
 	    	 (node instanceof ICPPASTRangeBasedForStatement)||
 	    	 (node instanceof ICPPASTTryBlockStatement)		)  {
-	    	context.addTopMethodCyclo(1);
+	    	getContext().addTopMethodCyclo(1);
 	    }
 	    
 	    if ( (node instanceof IASTCaseStatement)	||    // not a statement but a case clause in a switch
@@ -226,7 +230,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	    	// nothing to do for these, all the rest counts as one statement (in the else clause)
 	    }
 	    else {
-	    	context.addTopMethodNOS(1);
+	    	getContext().addTopMethodNOS(1);
 	    }
 
 		return super.visit(node);
@@ -239,17 +243,17 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	protected BehaviouralEntity initializeBehavioural(IASTFunctionDeclarator node) {
 		BehaviouralEntity fmx;
 
-		fmx = ensureBehavioural(node);
+		fmx = resolver.ensureBehavioural(node, nodeBnd, nodeName);
 		dico.setVisibility(fmx, currentVisibility);
 
 		// parent node is a SimpleDeclaration or a FunctionDefinition
 		IASTFileLocation defLoc = node.getParent().getFileLocation();
 		dico.addSourceAnchorMulti(fmx, filename, defLoc);
 
-		if (isDestructorBinding(nodeBnd)) {
+		if (resolver.isDestructorBinding(nodeBnd)) {
 			((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
 		}
-		if (isConstructorBinding(nodeBnd)) {
+		if (resolver.isConstructorBinding(nodeBnd)) {
 			((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
@@ -270,7 +274,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 	protected Parameter innerCreateParameter() {
 		Parameter fmx;
-		fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), context.topBehaviouralEntity());
+		fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), getContext().topBehaviouralEntity());
 		fmx.setIsStub(false);
 		// no sourceAnchor for parameter, they sometimes only appear in the .C file
 		// whereas it would seem more natural to store the anchor referent to the .H file ...

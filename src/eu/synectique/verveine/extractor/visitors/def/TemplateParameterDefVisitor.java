@@ -44,11 +44,11 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 		/*
 		 * Visiting possible template methods
 		 */
-		this.context.push(fmx);
+		this.getContext().push(fmx);
 		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
 			decl.accept(this);
 		}
-		returnedEntity = context.pop();
+		returnedEntity = getContext().pop();
 
 		return PROCESS_SKIP;
 	}
@@ -61,7 +61,7 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 		returnedEntity = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
 		// try harder
 		if (returnedEntity == null) {
-			returnedEntity = ensureBehaviouralFromName(node, nodeBnd);
+			returnedEntity = resolver.ensureBehaviouralFromName(node, nodeBnd, nodeName);
 		}
 
 		// Not visiting children, because assuming there is no template inside a method
@@ -77,7 +77,7 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 		theTemplate = (ContainerEntity)returnedEntity;
 
 		// template parameters are local to the entity defined in the template declaration
-		context.push(theTemplate);
+		getContext().push(theTemplate);
 		for (ICPPASTTemplateParameter param : node.getTemplateParameters()) {
 			String name;
 
@@ -99,8 +99,8 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 				// should represent them as Parameters but implies redefining ParameterizableClass
 				// use UnknownVariable as a temporary(!) workaround
 				name = ((ICPPASTParameterDeclaration)param).getDeclarator().getName().toString();
-				bnd = mkStubKey( ((ICPPASTParameterDeclaration)param).getDeclarator().getName(), UnknownVariable.class);
-				dico.ensureFamixUnknownVariable( bnd, name, /*parent*/context.topPckg());
+				bnd = resolver.mkStubKey( name, UnknownVariable.class);
+				dico.ensureFamixUnknownVariable( bnd, name, /*parent*/getContext().topPckg());
 			}
 
 			else {
@@ -108,7 +108,7 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 				throw new IllegalStateException("Unrecognized type for ICPPASTTemplateParameter `"+param.getRawSignature()+"' in file "+node.getContainingFilename());
 			}
 		}
-		context.pop();
+		getContext().pop();
 
 		return PROCESS_SKIP;
 	}
