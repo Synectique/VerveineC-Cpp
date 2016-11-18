@@ -211,7 +211,7 @@ public class NameResolver {
 			// because need to know whether it is a method or a function
 			QualifiedName qualName = new QualifiedName(name);
 			if (qualName.isFullyQualified()) {
-				parent = (ContainerEntity) resolveOrNamespace(qualName.nameQualifiers().toString());
+				parent = (ContainerEntity) resolveOrClass(qualName.nameQualifiers());
 			}
 			else {
 				parent = context.getTopCppNamespace();
@@ -575,8 +575,9 @@ public class NameResolver {
 	}
 
 	protected Type getParentTypeFromNameOrContext(String name) {
-		if (QualifiedName.isFullyQualified(name)) {
-			return resolveOrClass( extractParentNameFromMethodFullname(name) );
+		QualifiedName qualName = new QualifiedName(name);
+		if (qualName.isFullyQualified()) {
+			return resolveOrClass( qualName.nameQualifiers() );
 		}
 		else {
 			return context.topType();
