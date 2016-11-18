@@ -17,7 +17,6 @@ import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 

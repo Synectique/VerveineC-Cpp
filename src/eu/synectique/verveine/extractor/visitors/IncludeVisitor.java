@@ -13,7 +13,6 @@ import eu.synectique.verveine.core.gen.famix.Module;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.plugin.VerveineCParser;
 import eu.synectique.verveine.extractor.utils.FileUtil;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public class IncludeVisitor extends AbstractVisitor {
 
@@ -90,4 +89,5 @@ public class IncludeVisitor extends AbstractVisitor {
 			}
 		}
 	}
+
 }

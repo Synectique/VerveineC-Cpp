@@ -30,7 +30,6 @@ import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
@@ -103,7 +102,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 				}
 				else if (fmx instanceof StructuralEntity) {
 					// fmx is probably a pointer to a BehavioralEntity
-					String stubSig =  mkStubSig(fmx.getName(), node.getArguments().length);
+					String stubSig =  resolver.mkStubSig(fmx.getName(), node.getArguments().length);
 					invok = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx, stubSig);
 					dico.addSourceAnchor(invok, filename, node.getFileLocation());
 				}

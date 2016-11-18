@@ -20,7 +20,6 @@ import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
 public class TypeDefVisitor extends AbstractVisitor {
@@ -83,7 +82,7 @@ public class TypeDefVisitor extends AbstractVisitor {
 		if (declarationIsTypedef(node)) {
 			boolean functionPointerTypedef = false;
 
-			if (typedefToFunctionPointer(node)) {
+			if (isFunctionPointerTypedef(node)) {
 				concreteType = null;  // TODO create a FunctionPointer special type?
 				functionPointerTypedef = true;
 			}
@@ -236,5 +235,10 @@ public class TypeDefVisitor extends AbstractVisitor {
 	@Override
 	protected int visit(IASTCastExpression node) {
 		return PROCESS_SKIP;
+	}
+
+	protected boolean isFunctionPointerTypedef(IASTSimpleDeclaration node) {
+		return (node.getDeclarators().length>0) &&                       // should always be the case, no?
+				(node.getDeclarators()[0].getNestedDeclarator()!=null);
 	}
 }

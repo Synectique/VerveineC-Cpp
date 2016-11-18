@@ -72,4 +72,5 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 		return PROCESS_SKIP;
 	}
 
+
 }

@@ -28,7 +28,6 @@ import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 
 /**
  * A visitor for Behavioural entities: Functions and methods.

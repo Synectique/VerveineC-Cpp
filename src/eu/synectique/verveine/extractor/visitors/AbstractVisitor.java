@@ -13,32 +13,20 @@ import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
-import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.core.runtime.CoreException;
 
-import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
-import eu.synectique.verveine.core.gen.famix.ContainerEntity;
 import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Method;
-import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
-import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
-import eu.synectique.verveine.core.gen.famix.StructuralEntity;
-import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.CppEntityStack;
 import eu.synectique.verveine.extractor.utils.FileUtil;
-import eu.synectique.verveine.extractor.utils.ITracer;
 import eu.synectique.verveine.extractor.utils.NameResolver;
-import eu.synectique.verveine.extractor.utils.NullTracer;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 
 public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
@@ -210,7 +198,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 	protected BehaviouralEntity makeStubBehavioural(String name, int nbArgs, boolean isMethod) {
 		BehaviouralEntity fmx;
-		String stubSig =  mkStubSig(name, nbArgs);
+		String stubSig =  resolver.mkStubSig(name, nbArgs);
 		if (isMethod) {
 			fmx = dico.ensureFamixMethod(/*key*/resolver.mkStubKey(name+"__"+nbArgs, Method.class), name, stubSig, /*container*/null);
 		}
@@ -223,33 +211,10 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		return fmx;
 	}
 
-	/**
-	 * Forges a signature for stub BehaviouralEntities
-	 * @return "name(&lt;parameters&gt;)" where parametres are substitued by "_" 
-	 */
-	protected String mkStubSig(String name, int nbParam) {
-		String sig = name + "(";
-		for (int i=0; i < nbParam-1; i++) {
-			sig += "_," ;
-		}
-		if (nbParam > 0) {
-			sig += "_)" ;
-		}
-		else {
-			sig += ")" ;
-		}
-		return sig;
-	}
-
 	// UTILITIES ======================================================================================================
 
 	protected boolean declarationIsTypedef(IASTSimpleDeclaration node) {
 		return (node.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef);
-	}
-
-	protected boolean typedefToFunctionPointer( IASTSimpleDeclaration node) {
-		return (node.getDeclarators().length>0) &&                       // should always be the case, no?
-				(node.getDeclarators()[0].getNestedDeclarator()!=null);
 	}
 
 	protected boolean nodeParentIsClass(IASTNode node) {

@@ -88,7 +88,25 @@ public class NameResolver {
 		}
 		return StubBinding.getInstance(entityType, dico.mooseName(parent, simpleName));
 	}
-	
+
+	/**
+	 * Forges a signature for stub BehaviouralEntities
+	 * @return "name(&lt;parameters&gt;)" where parametres are substitued by "_" 
+	 */
+	public String mkStubSig(String name, int nbParam) {
+		String sig = name + "(";
+		for (int i=0; i < nbParam-1; i++) {
+			sig += "_," ;
+		}
+		if (nbParam > 0) {
+			sig += "_)" ;
+		}
+		else {
+			sig += ")" ;
+		}
+		return sig;
+	}
+
 	public boolean isFullyQualified(IASTName name) {
 		return isFullyQualified(name.toString());
 	}
