@@ -40,6 +40,7 @@ import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.QualifiedName;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
@@ -187,7 +188,8 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 				fmx = referedParameterTypeInstance(bnd, name);
 			}
 			else {
-				fmx = dico.ensureFamixType(bnd, resolver.unqualifiedName(name), /*owner*/(ContainerEntity)resolver.resolveOrNamespace(resolver.nameQualifier(name)));
+				QualifiedName qualName = new QualifiedName(name);
+				fmx = dico.ensureFamixType(bnd, qualName.unqualifiedName(), /*owner*/(ContainerEntity)resolver.resolveOrNamespace(qualName.nameQualifiers().toString()));
 			}
 		}
 
@@ -201,7 +203,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	private Type referedParameterTypeInstance(IBinding bnd, IASTName name) {
 		String strName = name.toString();
 		int i = strName.indexOf('<');
-		String typName = resolver.unqualifiedName(strName.substring(0, i));
+		String typName = new QualifiedName(strName.substring(0, i)).unqualifiedName();
 
 		ParameterizedType fmx = null;
 		ParameterizableClass generic = null;
@@ -212,7 +214,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			// create a ParameterizedType for an unknown generic
 			// 'generic' var. remains null
 		}
-		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, (ContainerEntity)resolver.resolveOrNamespace(resolver.nameQualifier(name)));
+		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, (ContainerEntity)resolver.resolveOrNamespace(new QualifiedName(name).nameQualifiers().toString()));
 
 		for (String typArg : strName.substring(i+1, strName.length()-1).split(",")) {
 			typArg = typArg.trim();

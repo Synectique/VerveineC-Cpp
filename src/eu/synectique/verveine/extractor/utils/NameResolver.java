@@ -79,9 +79,11 @@ public class NameResolver {
 
 	public <T extends NamedEntity> IBinding mkStubKey(String name, ContainerEntity parent, java.lang.Class<T> entityType) {
 		String simpleName = null;
-		if (isFullyQualified(name)) {
-			parent = (ContainerEntity) resolveOrNamespace(nameQualifier(name));
-			simpleName = unqualifiedName(name);
+		QualifiedName qualName = new QualifiedName(name);
+
+		if (qualName.isFullyQualified()) {
+			parent = (ContainerEntity) resolveOrNamespace(qualName.nameQualifiers().toString());
+			simpleName = qualName.unqualifiedName();
 		}
 		else {
 			simpleName = name;
@@ -105,51 +107,6 @@ public class NameResolver {
 			sig += ")" ;
 		}
 		return sig;
-	}
-
-	public boolean isFullyQualified(IASTName name) {
-		return isFullyQualified(name.toString());
-	}
-
-	protected boolean isFullyQualified(String name) {
-		return name.indexOf(CDictionary.CPP_NAME_SEPARATOR) >= 0;
-	}
-
-	/**
-	 * Returns the last part of a fully qualified name
-	 */
-	public String unqualifiedName(IASTName name) {
-		
-		return unqualifiedName(name.toString());
-	}
-
-	public String unqualifiedName(String name) {
-		String str = name.toString();
-		int i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		if (i < 0) {
-			return name;
-		}
-		else {
-			return str.substring(i+2);
-		}
-	}
-
-	/**
-	 * "Opposite" of unqualifiedName, returns the qualifying part of a fully qualified name
-	 */
-	public String nameQualifier(IASTName name) {
-		return nameQualifier(name.toString());
-	}
-
-	public String nameQualifier(String name) {
-		String str = name.toString();
-		int i = str.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-		if (i < 0) {
-			return "";
-		}
-		else {
-			return str.substring(0, i);
-		}
 	}
 
 	protected boolean isStubBinding(IBinding bnd) {
@@ -199,7 +156,7 @@ public class NameResolver {
 				fullName = fullName.substring(0, i);
 			}
 
-			String[] parts = fullName.split(CDictionary.CPP_NAME_SEPARATOR);
+			String[] parts = fullName.split(QualifiedName.CPP_NAME_SEPARATOR);
 			
 			i = parts.length;
 			if (i < 2) {
@@ -216,7 +173,7 @@ public class NameResolver {
 		}
 		if (isStubBinding(bnd)) {
 			// simplified test. Could look at the name of the class as in isConstructorBinding(bnd)
-			return unqualifiedName(((StubBinding)bnd).getEntityName()).charAt(0) == '~';
+			return new QualifiedName(((StubBinding)bnd).getEntityName()).unqualifiedName().charAt(0) == '~';
 		}
 		return false;
 	}
@@ -252,8 +209,9 @@ public class NameResolver {
 
 			// need to find the parent here (although mkStubKey can do it for us)
 			// because need to know whether it is a method or a function
-			if (isFullyQualified(name)) {
-				parent = (ContainerEntity) resolveOrNamespace(nameQualifier(name));
+			QualifiedName qualName = new QualifiedName(name);
+			if (qualName.isFullyQualified()) {
+				parent = (ContainerEntity) resolveOrNamespace(qualName.nameQualifiers().toString());
 			}
 			else {
 				parent = context.getTopCppNamespace();
@@ -306,11 +264,11 @@ public class NameResolver {
 			fmx = (BehaviouralEntity) findInParent(mthSig, parent, false);
 			// ... create it if failed
 			if (fmx == null) {
-				fmx = dico.ensureFamixMethod(bnd, unqualifiedName(name.toString()), mthSig, /*owner*/parent);
+				fmx = dico.ensureFamixMethod(bnd, new QualifiedName(name).unqualifiedName(), mthSig, /*owner*/parent);
 			}
 		}
 		else {                    //   C function or may be a stub ?
-			fmx = dico.ensureFamixFunction(bnd, unqualifiedName(name), computeSignatureFromAST(node), (ContainerEntity)context.top());
+			fmx = dico.ensureFamixFunction(bnd, new QualifiedName(name).unqualifiedName(), computeSignatureFromAST(node), (ContainerEntity)context.top());
 		}
 		return fmx;
 	}
@@ -460,89 +418,60 @@ public class NameResolver {
 	 * If not found, tries to create it with the correct type (Namespace being the default)
 	 */
 	public NamedEntity resolveOrNamespace( String name) {
-		NamedEntity tmp;
-		IBinding bnd;
+		return resolveOrNamespace(new QualifiedName(name));
+	}
 
-		if (name.equals("")) {
+	public NamedEntity resolveOrNamespace( QualifiedName name) {
+		NamedEntity tmp;
+		String simpleName;
+		ContainerEntity parent = null;
+		boolean recursive;
+
+		if (name.isEmpty()) {
 			return null;
 		}
 
-		// solves the case of a name containing only one component (no "::") -----
-		if (! isFullyQualified(name)) {
-			tmp = findInParent(name, context.top(), /*recursive*/true);
+		simpleName = name.unqualifiedName();
 
-			if (tmp == null) {
-				// create as a stub at top level. May be should create it in current context?
-				bnd = mkStubKey(name, /*container*/null, Namespace.class);
-				tmp = dico.ensureFamixNamespace(bnd, name, /*parent*/null);
+		if (name.isFullyQualified()) {
+			// parent is described by nameQualifiers, no recursive search in it
+			parent = (ContainerEntity)resolveOrNamespace(name.nameQualifiers());
+			recursive = false;
+		}
+		else {			
+			if (name.isAbsoluteQualified()) {
+				// parent is root, no recursive search
+				parent = null;
+				recursive = false;
 			}
-			return tmp;
-		}
-
-		// case of a fully qualified name composed of several names -----
-
-		NamedEntity parent = null;
-		String str = name;
-		int i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
-
-		if (i == 0) {
-			// special case of names ::google::xyz::www
-			str = name.substring(CDictionary.CPP_NAME_SEPARATOR.length());
-			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
-			tmp = findAtTopLevel( str.substring(0, i) );
-		}
-		else {
-			// looks for the first component in the fully qualified name
-			// it can be in any scope starting from context.top() up to toplevel	
-			tmp = findInParent(name.substring(0, i), context.top(), /*recursive*/true);
-		}
-
-		// try to find the next component(s) name(s) within the one already found (search is no longer recursive in the stack of contexts)
-		if (tmp != null) {
-			str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
-			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
-
-			while ( (tmp != null) && (i > 0) ) {
-				parent = tmp;
-				tmp = findInParent(str.substring(0, i), parent, /*recursive*/false);  // Note: not recursive, we must find in the parent
-				str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
-				i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
-			}
-
-			// look for the last component in the fully qualified name
-			if (tmp != null) {
-				parent = tmp;
-				tmp = findInParent(str, parent, /*recursive*/false);
-				if (tmp != null) {
-					return tmp;
-				}
+			else {
+				// parent is current stack context, recursive search in it
+				parent = (ContainerEntity) context.top();
+				recursive = true;
 			}
 		}
 
+		tmp = findInParent(simpleName, parent, recursive);
 
-		// here, we are sure that the last remaining component in "str" was not found
-		// it is possibly preceded by other components
+		if (tmp == null) {
+			IBinding bnd;
 
-		// create last components (not found) as namespaces
-		while (i > 0) {
-			bnd = mkStubKey(str.substring(0, i), (ContainerEntity)parent, Namespace.class);
-			parent = dico.ensureFamixNamespace(bnd, str.substring(0, i), (ScopingEntity) parent);
-
-			str = str.substring(i + CDictionary.CPP_NAME_SEPARATOR.length());
-			i = str.indexOf(CDictionary.CPP_NAME_SEPARATOR);
-		}
-
-		// and finally the last composant of the fully qualified name
-		// first compute the type of this composant
-		// rule of the thumb: if parent is not a namespace (probably a class or method), then we create a Class
-		// because we can't have a namespace inside a class or method
-		if ( (parent == null) || (parent instanceof Namespace) ) {
-			bnd = mkStubKey(str, (ContainerEntity) parent, Namespace.class);
-			tmp = dico.ensureFamixNamespace(bnd, str, (ScopingEntity) parent);
-		}
-		else {
-			bnd = mkStubKey(str, (ContainerEntity) parent, eu.synectique.verveine.core.gen.famix.Class.class);
-			tmp = dico.ensureFamixClass(bnd, str, (ContainerEntity) parent);
+			if (recursive || (parent == null) ) {
+				// if recursive true, we were looking for an unqualified name and did not find it, so we create a namespace at toplevel
+				// if parent == null, we are at top level so it is similar
+				bnd = mkStubKey(simpleName, /*parent*/null, Namespace.class);
+				tmp = dico.ensureFamixNamespace(bnd, simpleName, /*owner*/null);
+			}
+			else if (parent instanceof Namespace) {
+				// default case
+				bnd = mkStubKey(simpleName, parent, Namespace.class);
+				tmp = dico.ensureFamixNamespace(bnd, simpleName, (ScopingEntity) parent);
+			}
+			else {
+				// otherwise, if parent is not a namespace (probably a class or method), then we create a Class because we can't have a namespace inside a class or method
+				bnd = mkStubKey(simpleName, parent, eu.synectique.verveine.core.gen.famix.Class.class);
+				tmp = dico.ensureFamixClass(bnd, simpleName, parent);
+			}
 		}
 
 		return tmp;
@@ -553,24 +482,49 @@ public class NameResolver {
 	 * Deals with fully qualified class name and not qualified class name
 	 */
 	public Type resolveOrClass(String name) {
-		ContainerEntity parent = null;
-		Type typ;
+		return resolveOrClass(new QualifiedName(name));
+	}
 
-		if (isFullyQualified(name)) {
-			// looks for the parent of the class	
-			parent = (ContainerEntity) resolveOrNamespace(nameQualifier(name));
-			name = unqualifiedName(name);
+	public Type resolveOrClass(QualifiedName name) {
+		Type tmp;
+		String simpleName;
+		ContainerEntity parent = null;
+		boolean recursive;
+
+		if (name.isEmpty()) {
+			return null;
 		}
-		
-		// sometimes the "Class" happens to have been created as a Type before, so becareful when casting ...
-		// parent can be null and will look at top level
-		typ = (Type) findInParent(name, parent, /*recursive*/false);
-		
-		if (typ == null) {
-			IBinding classBnd = mkStubKey(name, parent, eu.synectique.verveine.core.gen.famix.Class.class);
-			typ = dico.ensureFamixClass(classBnd, name, parent);
+
+		simpleName = name.unqualifiedName();
+
+		if (name.isFullyQualified()) {
+			// parent is described by nameQualifiers, no recursive search in it
+			parent = (ContainerEntity)resolveOrNamespace(name.nameQualifiers());
+			recursive = false;
 		}
-		return typ;
+		else {			
+			if (name.isAbsoluteQualified()) {
+				// parent is root, no recursive search
+				parent = null;
+				recursive = false;
+			}
+			else {
+				// parent is current stack context, recursive search in it
+				parent = (ContainerEntity) context.top();
+				recursive = true;
+			}
+		}
+
+		tmp = (Type) findInParent(simpleName, parent, recursive);
+
+		if (tmp == null) {
+			IBinding bnd;
+
+			bnd = mkStubKey(simpleName, parent, eu.synectique.verveine.core.gen.famix.Class.class);
+			tmp = dico.ensureFamixClass(bnd, simpleName, parent);
+		}
+
+		return tmp;
 	}
 
 	protected String computeSignatureFromAST(IASTFunctionDeclarator node) {
@@ -583,11 +537,11 @@ public class NameResolver {
 	}
 
 	protected String extractSignatureFromMethodFullname(String fullname) {
-		if (isFullyQualified(fullname)) {
+		if (QualifiedName.isFullyQualified(fullname)) {
 			int i;
 			i = fullname.indexOf('(');
-			i = fullname.substring(0, i).lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
-			return fullname.substring(i+CDictionary.CPP_NAME_SEPARATOR.length());
+			i = fullname.substring(0, i).lastIndexOf(QualifiedName.CPP_NAME_SEPARATOR);
+			return fullname.substring(i+QualifiedName.CPP_NAME_SEPARATOR.length());
 		}
 		else {
 			return fullname;
@@ -601,13 +555,13 @@ public class NameResolver {
 			fullname = fullname.substring(0, i);
 		}
 
-		i = fullname.lastIndexOf(CDictionary.CPP_NAME_SEPARATOR);
+		i = fullname.lastIndexOf(QualifiedName.CPP_NAME_SEPARATOR);
 		return fullname.substring(0, i);
 	}
 
 	protected Type getMethodParentFromBindingOrContext(IBinding bnd, IASTName name) {
 		Type parent;
-		if (isFullyQualified(name)) {
+		if (QualifiedName.isFullyQualified(name)) {
 			parent = (Type) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
 			if (parent == null) {
 				// happened once in a badly coded case
@@ -621,7 +575,7 @@ public class NameResolver {
 	}
 
 	protected Type getParentTypeFromNameOrContext(String name) {
-		if (isFullyQualified(name)) {
+		if (QualifiedName.isFullyQualified(name)) {
 			return resolveOrClass( extractParentNameFromMethodFullname(name) );
 		}
 		else {

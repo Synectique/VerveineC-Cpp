@@ -50,14 +50,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	/**
 	 * Separator in fully qualified package name
 	 */
-	public static final String CPP_NAME_SEPARATOR = "::";
-
-	/**
-	 * Separator in fully qualified package name
-	 */
 	public static final String MOOSE_NAME_SEPARATOR = "::";
-
-	public final static String DESTRUCTOR_KIND_MARKER = "destructor";
 
 	/*
 	 * names for primitive types
@@ -70,6 +63,8 @@ public class CDictionary extends Dictionary<IBinding> {
 	private static final String PRIM_T_UNKNOWN = "unknownPrimitiveType";
 
 	protected Map<IBinding,CFile> nameToFile;
+
+	public final static String DESTRUCTOR_KIND_MARKER = "destructor";
 	
  	public CDictionary(Repository famixRepo) {
 		super(famixRepo);

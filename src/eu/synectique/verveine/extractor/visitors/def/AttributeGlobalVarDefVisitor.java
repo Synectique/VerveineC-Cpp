@@ -24,6 +24,7 @@ import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.QualifiedName;
 
 public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 
@@ -100,7 +101,7 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 		VariableKind kind;
 
 		nodeName = node.getName();
-		if (resolver.isFullyQualified(nodeName)) {
+		if (QualifiedName.isFullyQualified(nodeName)) {
 			parent = (ContainerEntity) resolver.resolveOrNamespace( resolver.extractParentNameFromMethodFullname(nodeName.toString()));
 		}
 		else {

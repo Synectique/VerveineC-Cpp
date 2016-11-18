@@ -14,7 +14,9 @@ import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 
+
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.QualifiedName;
 
 /**
  * A visitor specialized in reconstructing the signature of a method/function.
@@ -70,7 +72,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	@Override
 	protected int visit(IASTStandardFunctionDeclarator node) {
 		// name
-		signature = resolver.unqualifiedName(node.getName().toString());
+		signature = new QualifiedName(node.getName()).unqualifiedName();
 		// parameters
 		visitParameters(node.getParameters());
 		// return type
@@ -82,7 +84,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	@Override
 	protected int visit(ICASTKnRFunctionDeclarator node) {
 		// name
-		signature = resolver.unqualifiedName(node.getName().toString());
+		signature = new QualifiedName(node.getName()).unqualifiedName();
 		// parameters
 		visitParameters(node.getParameterDeclarations());
 		// return type
