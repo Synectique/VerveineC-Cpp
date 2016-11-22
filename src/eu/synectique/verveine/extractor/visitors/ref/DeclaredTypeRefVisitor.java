@@ -1,5 +1,7 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
+import java.util.Arrays;
+
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
@@ -113,8 +115,14 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		}
 
 		fmx = (StructuralEntity) dico.getEntityByKey(nodeBnd);
-		fmx.setDeclaredType(referredType);
-
+		if (fmx != null) {
+			fmx.setDeclaredType(referredType);
+		}
+		else {
+		// else forget about it all
+		// may happen for example in that case of an argument of a Macro "call", could test that ... ?
+		}
+		
 		return PROCESS_SKIP;
 	}
 

@@ -82,7 +82,12 @@ public class NameResolver {
 		QualifiedName qualName = new QualifiedName(name);
 
 		if (qualName.isFullyQualified()) {
-			parent = (ContainerEntity) resolveOrNamespace(qualName.nameQualifiers().toString());
+			if ( (entityType == Attribute.class) || (entityType == Method.class) ) {
+				parent = (ContainerEntity) resolveOrClass(qualName.nameQualifiers());
+			}
+			else {
+				parent = (ContainerEntity) resolveOrNamespace(qualName.nameQualifiers());
+			}
 			simpleName = qualName.unqualifiedName();
 		}
 		else {
@@ -211,7 +216,7 @@ public class NameResolver {
 			// because need to know whether it is a method or a function
 			QualifiedName qualName = new QualifiedName(name);
 			if (qualName.isFullyQualified()) {
-				parent = (ContainerEntity) resolveOrClass(qualName.nameQualifiers());
+				parent = (ContainerEntity) resolveOrNamespace(qualName.nameQualifiers());
 			}
 			else {
 				parent = context.getTopCppNamespace();
@@ -254,6 +259,11 @@ public class NameResolver {
 				String fullname = ((StubBinding)bnd).getEntityName();
 				mthSig = extractSignatureFromMethodFullname(fullname);
 				parent = getParentTypeFromNameOrContext(fullname);
+				/**
+				 * filename = brokerage/BlankingSectorsControlImpl.cpp
+				 * mthSig = lankingSectorsControlImpl(PortableServer::POA_ptr)->unspecified
+				 * fullname = BlankingSectorsControlImpl(PortableServer::POA_ptr)->unspecified
+				 */
 			}
 			else {
 				mthSig = computeSignatureFromAST(node);
@@ -515,7 +525,8 @@ public class NameResolver {
 			}
 		}
 
-		tmp = (Type) findInParent(simpleName, parent, recursive);
+		NamedEntity debug = findInParent(simpleName, parent, recursive); 
+		tmp = (Type) debug;
 
 		if (tmp == null) {
 			IBinding bnd;
@@ -565,7 +576,7 @@ public class NameResolver {
 			parent = (Type) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
 			if (parent == null) {
 				// happened once in a badly coded case
-				parent = (Type) resolveOrClass(extractParentNameFromMethodFullname(name.toString()));
+				parent = resolveOrClass(extractParentNameFromMethodFullname(name.toString()));
 			}
 		}
 		else {

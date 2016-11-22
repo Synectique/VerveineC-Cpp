@@ -12,7 +12,7 @@ public class QualifiedNameTest {
 		testQualifiedAbsolute();
 		testForeach();
 		testNameQualifiers();
-
+		testQualifiedTemplate();
 	}
 
 	protected static void testEmpty() {
@@ -131,5 +131,21 @@ public class QualifiedNameTest {
 			i++;
 		}
 	}
-	
+
+	protected static void testQualifiedTemplate() {
+		QualifiedName qual = new QualifiedName("toto::titi<bla::blih>");
+		if (! qual.isFullyQualified()) {
+			throw new Error("Should be qualified");
+		}
+		if (qual.nbParts() != 2) {
+			throw new Error("Wrong part count: "+qual.nbParts());
+		}
+		if (! "titi<bla::blih>".equals(qual.unqualifiedName())) {
+			throw new Error("Wrong unqualified name: "+qual.unqualifiedName());
+		}
+		if (! "toto::titi<bla::blih>".equals(qual.toString())) {
+			throw new Error("Wrong unqualified name: "+qual.toString());
+		}
+	}
+
 }

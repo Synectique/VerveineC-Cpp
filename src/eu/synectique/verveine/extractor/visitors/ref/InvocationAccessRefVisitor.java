@@ -18,6 +18,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.internal.core.util.MementoTokenizer;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Access;
@@ -28,8 +29,10 @@ import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
+import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.QualifiedName;
 
 public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
@@ -131,7 +134,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 				}
 			}
 		}
-		
+
 		return PROCESS_SKIP;
 	}
 
@@ -141,8 +144,22 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	@Override
 	protected int visit(ICPPASTConstructorChainInitializer node) {
 		IASTName memberName = node.getMemberInitializerId();
-		returnedEntity = null;
 		nodeBnd = resolver.getBinding(memberName);
+		returnedEntity = dico.getEntityByKey(nodeBnd);
+		if (returnedEntity == null) {
+			Type parent = null;
+			// top of context stack should be the constructor method that is ChainInitialized
+			if (resolver.getContext().topMethod() != null) {
+				parent = resolver.getContext().topMethod().getParentType();
+			}
+			// just in case, we look if the class of the constructor is not in the context stack ...
+			else if (resolver.getContext().topType() != null) {
+				parent = resolver.getContext().topType();
+			}
+			if (parent != null) {
+				returnedEntity = resolver.findInParent(memberName.toString(), parent, /*recursive*/true);
+			}
+		}
 		node.getInitializer().accept(this);
 
 		return PROCESS_SKIP;
@@ -153,7 +170,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		IASTImplicitNameOwner parent = (IASTImplicitNameOwner)node.getParent() ;
 		NamedEntity fmx = null;
 
-		// if this is an implicit call to a constructor (through attribute initialization call)
+		// if this is an implicit call to a constructor
 		for (IASTImplicitName candidate : parent.getImplicitNames()) {
 			IBinding constBnd = null; 
 
@@ -170,17 +187,20 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 		// if we could not get it, try to create a meaningful stub
 		if (fmx == null) {
-			// get the name of the called constructor
+			// get the name of the called constructor (or attribute initialized)
 			String mthName = null;
 			if (parent.getImplicitNames().length > 0) {
 				mthName = parent.getImplicitNames()[0].toString();
 			}
 			else if (parent instanceof ICPPASTConstructorChainInitializer) {
-				if ( returnedEntity instanceof Attribute ) {   // set by visit(ICPPASTConstructorChainInitializer)
+				// FIXME what if returnedType == null but should be Attribute ... ?
+				if ( returnedEntity instanceof Attribute ) {    // hopefully set in visit(ICPPASTConstructorChainInitializer)
 					mthName = ((Attribute)returnedEntity).getDeclaredType().getName();
 				}
 				else {
-					mthName = ((ICPPASTConstructorChainInitializer)parent).getMemberInitializerId().toString();
+					// Constructor name is the name of its class (possibly fully qualified) + name of the class (unqualified) 
+					QualifiedName qualName = new QualifiedName( ((ICPPASTConstructorChainInitializer)parent).getMemberInitializerId().toString() );
+					mthName = qualName.toString() + QualifiedName.CPP_NAME_SEPARATOR + qualName.unqualifiedName();
 				}
 			}
 			// create the constructor

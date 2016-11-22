@@ -32,34 +32,53 @@ public class QualifiedName implements Iterable<String> {
 	}
 	
 	protected void parse(String fullname) {
-		int i;
+		int i=0;
 		int iSeparator = 0;
 		int partStart = 0;
 		
-		for (i=0; i < fullname.length(); i++) {
+		while (i < fullname.length()) {
 			char c = fullname.charAt(i);
-	
+			i++;
+
 			if (c == CPP_NAME_SEPARATOR.charAt(iSeparator)) {
 				iSeparator++;
 				if (iSeparator >= CPP_NAME_SEPARATOR.length()) {
-					if (iSeparator == i+1) {
+					if (iSeparator == i) {
 						isAbsolute = true;
 					}
 					else {
-						nameParts.add(fullname.substring(partStart, i-CPP_NAME_SEPARATOR.length()+1));
+						nameParts.add(fullname.substring(partStart, i-CPP_NAME_SEPARATOR.length()));
 					}
-					partStart = i+1;
+					partStart = i;
 					iSeparator = 0;
 				}
 			}
 			else {
 				iSeparator = 0;
+				switch (c) {
+				case '<': i = parseSkip(fullname, i, '>');  break;
+				case '(': i = parseSkip(fullname, i, ')');  break;
+				case '[': i = parseSkip(fullname, i, ']');  break;
+				}
 			}
 		}
 		if (i > 0) { // i.e. fullname was not empty
 			nameParts.add(fullname.substring(partStart, i));
 		}
 
+	}
+
+	protected int parseSkip(String fullname, int i, char end) {
+		while ( (i < fullname.length()) && (fullname.charAt(i) != end) ) {
+			char c = fullname.charAt(i);
+			i++;
+			switch (c) {
+			case '<': i = parseSkip(fullname, i, '>');  break;
+			case '(': i = parseSkip(fullname, i, ')');  break;
+			case '[': i = parseSkip(fullname, i, ']');  break;
+			}
+		}
+		return i;
 	}
 
 	public int nbParts() {

@@ -201,7 +201,6 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 		nodeBnd = null;
 		nodeName = node.getName();
 		if (nodeBnd == null) {
-			nodeBnd = resolver.mkStubKey(nodeName.toString(), EnumValue.class);
 		}
 		fmx = dico.ensureFamixEnumValue(nodeBnd, nodeName.toString(), (Enum)getContext().top(), /*persistIt*/true);
 		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
