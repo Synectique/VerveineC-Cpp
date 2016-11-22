@@ -306,8 +306,13 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		if (fmx instanceof StructuralEntity) {
 			assoc = accessToVar((StructuralEntity) fmx);
 		}
-		else if ( (fmx instanceof BehaviouralEntity) && (! inAmpersandUnaryExpression) ) {
-			assoc = invocationOfBehavioural((BehaviouralEntity) fmx);
+		else if (fmx instanceof BehaviouralEntity) { //&& (! inAmpersandUnaryExpression) ) {
+			if (inAmpersandUnaryExpression) {
+				return behaviouralPointer((BehaviouralEntity) fmx);
+			}
+			else {
+				assoc = invocationOfBehavioural((BehaviouralEntity) fmx);
+			}
 		}
 		if (assoc != null) {
 			dico.addSourceAnchor(assoc, filename, nodeParent.getFileLocation());
