@@ -1,7 +1,5 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
-import java.util.Arrays;
-
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
@@ -158,10 +156,10 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 
 	protected void processFunctionDeclarator(IASTFunctionDeclarator node) {
 		BehaviouralEntity fmx;
-		super.visit(node);  // calls getBehavioural(IASTFunctionDeclarator)
+		super.visit(node);  // gets the behavioural
 		fmx = (BehaviouralEntity) returnedEntity;
 
-		if ( (! resolver.isConstructor(fmx)) && (! resolver.isDestructor(fmx)) ) {
+		if ( (fmx != null) && (! resolver.isConstructor(fmx)) && (! resolver.isDestructor(fmx)) ) {
 			fmx.setDeclaredType(referredType);
 		}
 	}

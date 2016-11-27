@@ -1,8 +1,10 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
+import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitName;
 import org.eclipse.cdt.core.dom.ast.IASTImplicitNameOwner;
@@ -18,7 +20,7 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTLiteralExpression;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTUnaryExpression;
 import org.eclipse.cdt.core.index.IIndex;
-import org.eclipse.cdt.internal.core.util.MementoTokenizer;
+import org.eclipse.cdt.core.model.ITranslationUnit;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.Access;
@@ -42,7 +44,9 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	/**
 	 * set in visit(IASTUnaryExpression) to be used when visiting the operand
 	 */
-	private boolean inAmpersandUnaryExpression = false;
+	private boolean inAmpersandUnaryExpression;
+
+	protected boolean inCastExpression;
 
 	public InvocationAccessRefVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
@@ -53,6 +57,18 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		return "recording accesses to variables and invocations to methods/functions";
 	}
 
+	/**
+	 * Overriden to initialize {@link #inAmpersandUnaryExpression} and  {@link #inCastExpr} to <code>false</code>
+	 * (e.g. at the begining of a .c file) 
+	 */
+	@Override
+	public void visit(ITranslationUnit elt) {
+		super.visit(elt);
+
+		inAmpersandUnaryExpression = false;
+		inCastExpression = false;
+	}
+
 	@Override
 	protected int visit(IASTSimpleDeclaration node) {
 		if (declarationIsTypedef(node)) {
@@ -61,6 +77,16 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		else {
 			return super.visit(node);
 		}
+	}
+
+	@Override
+	protected int visit(IASTFunctionDeclarator node) {
+		if (! inCastExpression) {
+			super.visit(node);
+		}
+		// else this is something like a cast to a fnction pointer type: do not handle it
+		
+		return PROCESS_SKIP;
 	}
 
 	@Override
@@ -288,7 +314,15 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		return PROCESS_SKIP;
 	}
 
+	@Override
+	protected int visit(IASTCastExpression node) {
+		inCastExpression = true;
+		node.getTypeId().accept(this);
+		inCastExpression = false;
+		node.getOperand().accept(this);
 
+		return PROCESS_SKIP;
+	}
 
 	protected Association associationToName(IASTName nodeName, IASTNode nodeParent) {
 		NamedEntity fmx = null;

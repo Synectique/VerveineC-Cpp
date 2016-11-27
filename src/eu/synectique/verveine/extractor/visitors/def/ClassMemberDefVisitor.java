@@ -1,5 +1,6 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
+import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
@@ -16,7 +17,7 @@ import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 public abstract class ClassMemberDefVisitor extends AbstractVisitor {
 
 	protected Visibility currentVisibility;
-
+	
 	public ClassMemberDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
 	}
@@ -68,6 +69,13 @@ public abstract class ClassMemberDefVisitor extends AbstractVisitor {
 			decl.accept(this);
 		}
 		returnedEntity = getContext().pop();
+
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTCastExpression node) {
+		node.getOperand().accept(this);
 
 		return PROCESS_SKIP;
 	}

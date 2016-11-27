@@ -17,6 +17,7 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
+import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
@@ -84,8 +85,14 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 		// get node name and bnd
 		super.visit( node);
-		fmx = initializeBehavioural(node);
-		visitParameters(node.getParameters(), fmx);
+		if (nodeBnd instanceof IVariable) {
+			// declaration of a function pointer such as var in "int (*var)(int param1, char param2)"
+			fmx = null;
+		}
+		else {
+			fmx = initializeBehavioural(node);
+			visitParameters(node.getParameters(), fmx);
+		}
 		returnedEntity = fmx;
 
 		return PROCESS_SKIP;

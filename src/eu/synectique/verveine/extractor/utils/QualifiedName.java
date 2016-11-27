@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.eclipse.cdt.core.dom.ast.IASTName;
 
+import eu.synectique.verveine.extractor.visitors.SignatureBuilderVisitor;
+
 public class QualifiedName implements Iterable<String> {
 
 	/**
@@ -33,28 +35,36 @@ public class QualifiedName implements Iterable<String> {
 	
 	protected void parse(String fullname) {
 		int i=0;
-		int iSeparator = 0;
+		int iNameSeparator = 0;
+		int iFctReturnSeparator = 0;
 		int partStart = 0;
 		
-		while (i < fullname.length()) {
+		while ( (i < fullname.length()) && (iFctReturnSeparator < SignatureBuilderVisitor.CPP_FCT_RETURN_SEPARATOR.length()) ){
 			char c = fullname.charAt(i);
 			i++;
 
-			if (c == CPP_NAME_SEPARATOR.charAt(iSeparator)) {
-				iSeparator++;
-				if (iSeparator >= CPP_NAME_SEPARATOR.length()) {
-					if (iSeparator == i) {
+			if (c == CPP_NAME_SEPARATOR.charAt(iNameSeparator)) {
+				iNameSeparator++;
+				iFctReturnSeparator = 0;
+				if (iNameSeparator >= CPP_NAME_SEPARATOR.length()) {
+					if (iNameSeparator == i) {
 						isAbsolute = true;
 					}
 					else {
 						nameParts.add(fullname.substring(partStart, i-CPP_NAME_SEPARATOR.length()));
 					}
 					partStart = i;
-					iSeparator = 0;
+					iNameSeparator = 0;
+					iFctReturnSeparator = 0;
 				}
 			}
+			else if (c == SignatureBuilderVisitor.CPP_FCT_RETURN_SEPARATOR.charAt(iFctReturnSeparator)) {
+				iFctReturnSeparator++;
+				iNameSeparator = 0;
+			}
 			else {
-				iSeparator = 0;
+				iNameSeparator = 0;
+				iFctReturnSeparator = 0;
 				switch (c) {
 				case '<': i = parseSkip(fullname, i, '>');  break;
 				case '(': i = parseSkip(fullname, i, ')');  break;
@@ -63,6 +73,9 @@ public class QualifiedName implements Iterable<String> {
 			}
 		}
 		if (i > 0) { // i.e. fullname was not empty
+			if (iFctReturnSeparator >= SignatureBuilderVisitor.CPP_FCT_RETURN_SEPARATOR.length()) {
+				i -= iFctReturnSeparator;
+			}
 			nameParts.add(fullname.substring(partStart, i));
 		}
 

@@ -13,6 +13,8 @@ public class QualifiedNameTest {
 		testForeach();
 		testNameQualifiers();
 		testQualifiedTemplate();
+		testUnqualifiedFct();
+		testQualifiedFct();
 	}
 
 	protected static void testEmpty() {
@@ -46,7 +48,7 @@ public class QualifiedNameTest {
 			throw new Error("Wrong unqualified name: "+qual.unqualifiedName());
 		}
 		if (! "toto".equals(qual.toString())) {
-			throw new Error("Wrong unqualified name: "+qual.toString());
+			throw new Error("Wrong toString: "+qual.toString());
 		}
 	}
 
@@ -65,7 +67,7 @@ public class QualifiedNameTest {
 			throw new Error("Wrong unqualified name: "+qual.unqualifiedName());
 		}
 		if (! "toto::titi::tutu()".equals(qual.toString())) {
-			throw new Error("Wrong unqualified name: "+qual.toString());
+			throw new Error("Wrong toString: "+qual.toString());
 		}
 	}
 
@@ -84,7 +86,7 @@ public class QualifiedNameTest {
 			throw new Error("Wrong unqualified name: "+qual.unqualifiedName());
 		}
 		if (! "::toto::titi".equals(qual.toString())) {
-			throw new Error("Wrong unqualified name: "+qual.toString());
+			throw new Error("Wrong toString: "+qual.toString());
 		}
 	}
 
@@ -97,7 +99,7 @@ public class QualifiedNameTest {
 			throw new Error("Wrong part count: "+qual.nbParts());
 		}
 		if (! "toto::titi".equals(qual.toString())) {
-			throw new Error("Wrong unqualified name: "+qual.toString());
+			throw new Error("Wrong toString: "+qual.toString());
 		}
 		if (qual.isAbsoluteQualified()) {
 			throw new Error("Should not be absolute qualified");
@@ -144,7 +146,42 @@ public class QualifiedNameTest {
 			throw new Error("Wrong unqualified name: "+qual.unqualifiedName());
 		}
 		if (! "toto::titi<bla::blih>".equals(qual.toString())) {
-			throw new Error("Wrong unqualified name: "+qual.toString());
+			throw new Error("Wrong toString: "+qual.toString());
+		}
+	}
+
+	protected static void testUnqualifiedFct() {
+		QualifiedName qual = new QualifiedName("toto()->int");
+		if (qual.isFullyQualified()) {
+			throw new Error("Should not be qualified");
+		}
+		if (qual.nbParts() != 1) {
+			throw new Error("Wrong part count: "+qual.nbParts());
+		}
+		if (! "toto()".equals(qual.unqualifiedName())) {
+			throw new Error("Wrong unqualified name: "+qual.unqualifiedName());
+		}
+		if (! "toto()".equals(qual.toString())) {
+			throw new Error("Wrong toString: "+qual.toString());
+		}
+	}
+
+	protected static void testQualifiedFct() {
+		QualifiedName qual = new QualifiedName("toto::titi::tutu()->int");
+		if (! qual.isFullyQualified()) {
+			throw new Error("Should be qualified");
+		}
+		if (qual.isAbsoluteQualified()) {
+			throw new Error("Should not be absolute qualified");
+		}
+		if (qual.nbParts() != 3) {
+			throw new Error("Wrong part count: "+qual.nbParts());
+		}
+		if (! "tutu()".equals(qual.unqualifiedName())) {
+			throw new Error("Wrong unqualified name: "+qual.unqualifiedName());
+		}
+		if (! "toto::titi::tutu()".equals(qual.toString())) {
+			throw new Error("Wrong toString: "+qual.toString());
 		}
 	}
 

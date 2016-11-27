@@ -52,6 +52,8 @@ import eu.synectique.verveine.extractor.utils.QualifiedName;
  */
 public class SignatureBuilderVisitor extends AbstractVisitor {
 
+	public static final String CPP_FCT_RETURN_SEPARATOR = "->";
+
 	protected String signature;
 
 	public SignatureBuilderVisitor(CDictionary dico) {
@@ -100,7 +102,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	 * In this method, we remove this risk by allowing only those parents that we now we can deal with
 	 */
 	protected void visitParent(IASTNode parent) {
-		signature += "->";
+		signature += CPP_FCT_RETURN_SEPARATOR;
 		
 		if (parent instanceof IASTSimpleDeclaration) {
 			((IASTSimpleDeclaration)parent).getDeclSpecifier().accept(this);

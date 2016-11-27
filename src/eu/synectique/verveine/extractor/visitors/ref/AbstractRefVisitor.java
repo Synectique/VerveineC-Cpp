@@ -14,6 +14,7 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
@@ -120,7 +121,13 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	protected int visit(IASTFunctionDeclarator node) {
 		// get node name and bnd
 		super.visit(node);
-		returnedEntity = resolver.ensureBehavioural(node, nodeBnd, nodeName);
+		if (nodeBnd instanceof IVariable) {
+			// declaration of a function pointer such as var in "int (*var)(int param1, char param2)"
+			returnedEntity = null;
+		}
+		else {
+			returnedEntity = resolver.ensureBehavioural(node, nodeBnd, nodeName);
+		}
 
 		return PROCESS_SKIP;
 	}

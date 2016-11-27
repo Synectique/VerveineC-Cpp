@@ -5,9 +5,12 @@ import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.index.IIndex;
@@ -61,10 +64,17 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 
 	/*
 	 * to avoid parameter or local variable declarations
-	 * May miss anonymous class definition ... (but unlikely to have attributes)
+	 * May miss anonymous class definition ... (but they are less likely to have attributes)
 	 */
 	@Override
 	protected int visit(IASTFunctionDeclarator node) {
+		// get node name and bnd in case we have a function pointer such as var in "int (*var)(int param1, char param2)"
+		super.visit( node);
+		if (nodeBnd instanceof IVariable) {
+			nodeName = node.getNestedDeclarator().getName();
+			ensureVariableKind(nodeBnd, nodeName);
+		}
+
 		return PROCESS_SKIP;
 	}
 
@@ -96,13 +106,31 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 	 */
 	@Override
 	public int visitInternal(IASTDeclarator node) {
-		StructuralEntity fmx = null;
+		nodeName = node.getName();
+		nodeBnd = resolver.getBinding(nodeName);
+		StructuralEntity fmx;
+
+		fmx = ensureVariableKind(nodeBnd, nodeName);
+		dico.setVisibility(fmx, currentVisibility);
+
+		/* For attributes (ICPPASTDeclarator) the location is that of the parent AST node, i.e. the declaration
+		 * For example, in "int a,b;" the declaration starts at "int" whereas there are 2 declarators: a and b
+		 */
+		dico.addSourceAnchor(fmx, filename, node.getParent().getFileLocation());
+
+		return PROCESS_SKIP;
+	}
+
+	/**
+	 * ensure proper kind of StructuralEntity (GlobalVariable, Attribute, UnknownVariable) 
+	 */
+	protected StructuralEntity ensureVariableKind(IBinding bnd, IASTName name) {
 		ContainerEntity parent;
 		VariableKind kind;
+		StructuralEntity fmx = null;
 
-		nodeName = node.getName();
-		if (QualifiedName.isFullyQualified(nodeName)) {
-			parent = (ContainerEntity) resolver.resolveOrNamespace( resolver.extractParentNameFromMethodFullname(nodeName.toString()));
+		if (QualifiedName.isFullyQualified(name)) {
+			parent = (ContainerEntity) resolver.resolveOrNamespace( resolver.extractParentNameFromMethodFullname(name.toString()));
 		}
 		else {
 			parent = (ContainerEntity) getContext().top();
@@ -119,43 +147,35 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 			kind = VariableKind.UNKNOWN;
 		}
 
-		nodeBnd = resolver.getBinding(nodeName);
-		if (nodeBnd == null) {
+		if (bnd == null) {
 			switch (kind) {
 			case GLOBAL:
-				nodeBnd = resolver.mkStubKey(nodeName, GlobalVariable.class);
+				bnd = resolver.mkStubKey(name, GlobalVariable.class);
 				break;
 			case ATTRIBUTE:
-				nodeBnd = resolver.mkStubKey(nodeName, Attribute.class);
+				bnd = resolver.mkStubKey(name, Attribute.class);
 				break;
 			case UNKNOWN:
-				nodeBnd = resolver.mkStubKey(nodeName, UnknownVariable.class);
+				bnd = resolver.mkStubKey(name, UnknownVariable.class);
 				break;
 			}
 		}
 
-	
 		switch (kind) {
 		case GLOBAL:
-			fmx = dico.ensureFamixGlobalVariable(nodeBnd, nodeName.toString(), (ScopingEntity) parent);
+			fmx = dico.ensureFamixGlobalVariable(bnd, name.toString(), (ScopingEntity) parent);
 			break;
 		case ATTRIBUTE:
-			fmx = dico.ensureFamixAttribute(nodeBnd, nodeName.toString(), (Type) parent);
+			fmx = dico.ensureFamixAttribute(bnd, name.toString(), (Type) parent);
 			break;
 		case UNKNOWN:
-			fmx = dico.ensureFamixUnknownVariable(nodeBnd, nodeName.toString(), (Package) parent);
+			fmx = dico.ensureFamixUnknownVariable(bnd, name.toString(), (Package) parent);
 			break;
 		}
-		
+
 		fmx.setIsStub(false);
-		dico.setVisibility(fmx, currentVisibility);
 
-		/* For attributes (ICPPASTDeclarator) the location is that of the parent AST node, i.e. the declaration
-		 * For example, in "int a,b;" the declaration starts at "int" whereas there are 2 declarators: a and b
-		 */
-		dico.addSourceAnchor(fmx, filename, node.getParent().getFileLocation());
-
-		return PROCESS_SKIP;
+		return fmx;
 	}
 
 	@Override
@@ -203,6 +223,7 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 		if (nodeBnd == null) {
 		}
 		fmx = dico.ensureFamixEnumValue(nodeBnd, nodeName.toString(), (Enum)getContext().top(), /*persistIt*/true);
+		fmx.setIsStub(false);
 		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 
 		return PROCESS_SKIP;

@@ -73,7 +73,16 @@ public class FileUtil {
 			copySourceFilesRecursive(project, project.getFolder(destDir), src, toLowerCase);
 		}
 		else {
-			copyFile(project, project.getFolder(destDir), src, toLowerCase);
+			try {
+				if (Files.isSymbolicLink(src.toPath()) && Files.readSymbolicLink(src.toPath()).toFile().isDirectory()) {
+					copySourceFilesRecursive(project, project.getFolder(destDir), src, toLowerCase);
+				}
+				else {
+					copyFile(project, project.getFolder(destDir), src, toLowerCase);
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 

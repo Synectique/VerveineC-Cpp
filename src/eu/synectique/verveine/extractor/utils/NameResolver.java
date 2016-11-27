@@ -48,8 +48,6 @@ public class NameResolver {
 		this.index = index;
 	}
 
-	
-
 	public CppEntityStack getContext() {
 		return context;
 	}
@@ -282,7 +280,6 @@ public class NameResolver {
 		}
 		return fmx;
 	}
-
 
 	/**
 	 * Search for a Namespace or Class at top level
