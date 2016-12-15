@@ -27,6 +27,7 @@ import eu.synectique.verveine.core.gen.famix.Access;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
+import eu.synectique.verveine.core.gen.famix.BehaviouralReference;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
 import eu.synectique.verveine.core.gen.famix.Invocation;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
@@ -91,8 +92,6 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 	@Override
 	public int visit(IASTFunctionCallExpression node) {
-		NamedEntity fmx = null;
-		Invocation invok = null;
 		nodeBnd = null;
 		nodeName = null;
 		returnedEntity = null;
@@ -103,9 +102,46 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		}
 
 		// try to identify (or create if a stub) the Behavioural being invoked
-		IASTNode lastChild = children[children.length - 1];
-		if (lastChild instanceof IASTName) {
-			nodeName = (IASTName)lastChild;
+		Invocation invok = resolveInvokFromName(node, children[children.length - 1]);
+
+		// sometimes there is no function name in the node therefore, no fmx to invok
+		// this happens when the result of the call is casted, this creates 2 IASTFunctionCallExpression
+		// The parent holds the cast and has empty function name
+
+		visitInvocationArguments(node.getArguments(), invok);
+
+		return PROCESS_SKIP;
+	}
+
+	protected void visitInvocationArguments(IASTInitializerClause[] args, Invocation invok) {
+		for (IASTInitializerClause icl : args) {
+			icl.accept(this);
+
+			if (returnedEntity instanceof Association) {
+				if (invok != null) {
+					invok.addArguments((Association) returnedEntity);
+				}
+			}
+			else {
+				// so that the position of arguments match exactly their corresponding parameters
+				// we create fake associations for arguments that we could not resolve
+				IBinding fakeBnd = resolver.mkStubKey(EMPTY_ARGUMENT_NAME, UnknownVariable.class);
+				UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
+				Access acc = dico.addFamixAccess(getContext().topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null);
+				if (invok != null) {
+					invok.addArguments(acc);
+				}
+				dico.addSourceAnchor(acc, filename, icl.getFileLocation());
+			}
+		}
+	}
+
+	protected Invocation resolveInvokFromName(IASTFunctionCallExpression node, IASTNode invokNode) {
+		Invocation invok = null;
+		NamedEntity fmx = null;
+
+		if (invokNode instanceof IASTName) {
+			nodeName = (IASTName)invokNode;
 			nodeBnd = resolver.getBinding( nodeName );
 
 			if (nodeBnd != null) {
@@ -138,30 +174,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 			}
 		}
 
-		// sometimes there is no function name in the node therefore, no fmx to invok
-		// this happens when the result of the call is casted, this creates 2 IASTFunctionCallExpression
-		// The parent holds the cast and has empty function name
-		if (invok != null) {
-			// dealing with arguments
-			for (IASTInitializerClause icl : node.getArguments()) {
-				icl.accept(this);
-
-				if (returnedEntity instanceof Association) {
-					invok.addArguments((Association) returnedEntity);
-				}
-				else {
-					// so that the order of arguments match exactly their corresponding parameters
-					// we create a fake association for argument that we cannot resolve
-					IBinding fakeBnd = resolver.mkStubKey(EMPTY_ARGUMENT_NAME, UnknownVariable.class);
-					UnknownVariable fake = dico.ensureFamixUniqEntity(UnknownVariable.class, fakeBnd, EMPTY_ARGUMENT_NAME);
-					Access acc = dico.addFamixAccess(getContext().topBehaviouralEntity(), fake, /*isWrite*/false, /*prev*/null);
-					invok.addArguments(acc);
-					dico.addSourceAnchor(acc, filename, icl.getFileLocation());
-				}
-			}
-		}
-
-		return PROCESS_SKIP;
+		return invok;
 	}
 
 	/**
@@ -195,6 +208,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	protected int visit(ICPPASTConstructorInitializer node) {
 		IASTImplicitNameOwner parent = (IASTImplicitNameOwner)node.getParent() ;
 		NamedEntity fmx = null;
+		Invocation invok = null;
 
 		// if this is an implicit call to a constructor
 		for (IASTImplicitName candidate : parent.getImplicitNames()) {
@@ -236,13 +250,12 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		}
 
 		if (fmx != null) {
-			returnedEntity = invocationOfBehavioural((BehaviouralEntity) fmx);
+			invok = invocationOfBehavioural((BehaviouralEntity) fmx);
+			returnedEntity = invok;
 			dico.addSourceAnchor(returnedEntity, filename, node.getFileLocation());
 		}
 
-		for (IASTInitializerClause icl : node.getArguments()) {
-			icl.accept(this);
-		}
+		visitInvocationArguments(node.getArguments(), invok);
 
 		return PROCESS_SKIP;
 	}
