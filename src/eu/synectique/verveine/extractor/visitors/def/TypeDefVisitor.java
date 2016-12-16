@@ -109,12 +109,12 @@ public class TypeDefVisitor extends AbstractVisitor {
 					nodeBnd = resolver.mkStubKey(nodeName, Type.class);
 				}
 
-				declarator.accept(this);
-
 				aliasType = dico.ensureFamixTypeAlias(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top());
 				aliasType.setIsStub(false);
 				aliasType.setParentPackage(currentPackage);
 				aliasType.setAliasedType(concreteType);
+
+				declarator.accept(this);
 			}
 			
 			return PROCESS_SKIP;  // typedef already handled

@@ -49,9 +49,9 @@ import eu.synectique.verveine.extractor.visitors.ref.InvocationAccessRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.ReferenceRefVisitor;
 
 public class VerveineCParser extends VerveineParser {
-	static final public String WORKSPACE_NAME = "tempWS";
+	public static final String WORKSPACE_NAME = "tempWS";
 
-	static final public String DEFAULT_PROJECT_NAME = "tempProj";
+	public static final String DEFAULT_PROJECT_NAME = "tempProj";
 
 	private static final String SOURCE_ROOT_DIR = "src";
 
@@ -63,7 +63,7 @@ public class VerveineCParser extends VerveineParser {
 	/**
 	 * Default include paths for Linux
 	 */
-    static final public String[] LINUX_DEFAULT_INCLUDE = new String[] {
+    public static final String[] LINUX_DEFAULT_INCLUDE = new String[] {
 			 "/usr/include",
 			 "/usr/local/include" ,
 			 "/usr/include/c++/5" ,
