@@ -1,6 +1,10 @@
 package eu.synectique.verveine.extractor.plugin;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,15 +68,14 @@ public class VerveineCParser extends VerveineParser {
 	 * Default include paths for Linux
 	 */
     public static final String[] LINUX_DEFAULT_INCLUDE = new String[] {
-			 "/usr/include",
-			 "/usr/local/include" ,
-			 "/usr/include/c++/5" ,
-			 "/usr/include/c++/5/backward" ,
-			 "/usr/include/x86_64-linux-gnu" ,
-			 "/usr/include/x86_64-linux-gnu/c++/5" ,
-			 "/usr/lib/gcc/x86_64-linux-gnu/5/include" ,
-			 "/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed"
+			 "/usr/include" ,
+			 "/usr/local/include"
     };
+
+    /**
+     * Name of a file containing list of include dirs
+     */
+    protected String includeConfigFile;
 
 	/**
 	 * Temporary variable to gather include paths from the command line.
@@ -94,12 +97,12 @@ public class VerveineCParser extends VerveineParser {
 	/**
 	 * Eclipse CDT indexer
 	 */
-	private IIndex index;
+	private IIndex index = null;
 
 	/**
 	 * A tracer for debugging
 	 */
-	private ITracer tracer;
+	private ITracer tracer = null;
 
 	/**
 	 * flag telling whether we need to look for all possible include dir
@@ -115,7 +118,7 @@ public class VerveineCParser extends VerveineParser {
 	/**
 	 * Prefix to remove from file names
 	 */
-	protected String projectPrefix;
+	protected String projectPrefix = null;
 
 	public VerveineCParser() {
 		super();
@@ -124,6 +127,8 @@ public class VerveineCParser extends VerveineParser {
 		this.autoinclude = false;
 		this.windows = false;
 		this.cModel = false;
+		this.includeConfigFile = null;
+		this.userProjectDir = null;
 	}
 
 	public void parse() {
@@ -252,7 +257,7 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	private void configIndexer(ICProject proj) {
 		IPath projPath = proj.getPath();
-
+		List<String> includeFromConf=new ArrayList<>();
 		IPathEntry[] oldEntries=null;
 		try {			
 			oldEntries = proj.getRawPathEntries();
@@ -261,7 +266,16 @@ public class VerveineCParser extends VerveineParser {
 			return;
 		}
 
-		IPathEntry[] newEntries = new IPathEntry[oldEntries.length + LINUX_DEFAULT_INCLUDE.length + argIncludes.size() + argDefined.size()];
+		if (includeConfigFile != null) {
+			readIncludeConf(includeConfigFile, includeFromConf);
+		}
+		
+		IPathEntry[] newEntries = new IPathEntry[
+		                                         oldEntries.length +
+		                                         LINUX_DEFAULT_INCLUDE.length +
+		                                         argIncludes.size() +
+		                                         includeFromConf.size() +
+		                                         argDefined.size()];
 		int i;
 
 		/* include paths */
@@ -278,6 +292,11 @@ public class VerveineCParser extends VerveineParser {
 			newEntries[i] = CoreModel.newIncludeEntry(projPath, null, new Path(path), /*isSystemInclude*/false);
 			i++;
 		}
+		/* include paths */
+		for (String path : includeFromConf) {
+			newEntries[i] = CoreModel.newIncludeEntry(projPath, null, new Path(path), /*isSystemInclude*/false);
+			i++;
+		}
 		/* macros  defined */
 		for (Map.Entry<String, String> macro : argDefined.entrySet()) {
 			newEntries[i] = CoreModel.newMacroEntry(projPath, macro.getKey(), macro.getValue());
@@ -288,6 +307,35 @@ public class VerveineCParser extends VerveineParser {
 
 		} catch (CModelException e) {
 			e.printStackTrace();
+		}
+	}
+
+	private void readIncludeConf(String confFileName, List<String> lines) {
+		BufferedReader read = null;
+		try {
+			read = new BufferedReader( new FileReader(confFileName));
+		} catch (FileNotFoundException e) {
+			System.err.println("Could not read Include Paths configuration file: " + confFileName);
+			e.printStackTrace();
+		}
+
+		if (read != null) {
+			String line;
+			try {
+				while ( (line=read.readLine()) != null ) {
+					lines.add(line);
+				}
+			} catch (IOException e) {
+				System.err.println("Error reading Include Paths configuration file: " + confFileName);
+				e.printStackTrace();
+				lines = new ArrayList<>();
+			}
+		}
+
+		try {
+			read.close();
+		} catch (IOException e) {
+			// ignore
 		}
 	}
 
@@ -328,6 +376,9 @@ public class VerveineCParser extends VerveineParser {
 			}
 			else if (arg.equals("-autoinclude")) {
 				autoinclude = true;
+			}
+			else if (arg.equals("-includeconf")) {
+				includeConfigFile = args[i++].trim();
 			}
 			else if (arg.startsWith("-I")) {
 				argIncludes.add(arg.substring(2));
@@ -386,6 +437,7 @@ public class VerveineCParser extends VerveineParser {
 		System.err.println("      -o <output-file-name>: changes the name of the output file (default: output.mse)");
 		//System.err.println("      -D<macro>: defines a C/C++ macro");
 		System.err.println("      -I<include-dir>: adds a directory containing include files");
+		System.err.println("      -includeconf <config-file>: adds the directories listed in config-file in the include paths");
 		System.err.println("      -autoinclude: looks for _all_ directories containing .h/.hh files and add them in the include paths");
 		System.err.println("      <eclipse-Cproject-to-parse>: directory containing the C/C++ project to export in MSE");
 		System.exit(0);
