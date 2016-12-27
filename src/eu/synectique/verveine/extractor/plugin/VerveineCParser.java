@@ -5,7 +5,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,6 +123,11 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	protected String projectPrefix = null;
 
+	/**
+	 * Dictionary used to create all entities. Contains a Famix repository
+	 */
+	private CDictionary dico;
+
 	public VerveineCParser() {
 		super();
 		this.argIncludes = new ArrayList<String>();
@@ -129,11 +137,11 @@ public class VerveineCParser extends VerveineParser {
 		this.cModel = false;
 		this.includeConfigFile = null;
 		this.userProjectDir = null;
+
+		dico = new CDictionary(getFamixRepo());
 	}
 
 	public void parse() {
-		CDictionary dico;
-
 		tracer = new Tracer();
 		
 		tracer.msg("Copying source files in local project");
@@ -142,8 +150,6 @@ public class VerveineCParser extends VerveineParser {
 
         configIndexer(cproject);
 		computeIndex(cproject);
-
-		dico = new CDictionary(getFamixRepo());
 
         try {
     		runAllVisitors(dico, cproject);
@@ -155,14 +161,20 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	private void runAllVisitors(CDictionary dico, ICProject cproject) throws CoreException {
-		/*Having very specialized visitors helps because each one is dead simple
+		/*Having very specialized visitors helps because each one is simpler
 		 * so it is worth the impact on execution time
 		 * Note that the order is important, the visitors are not independent */
 
 		IncludeVisitor incVisitor;
 		incVisitor = new IncludeVisitor(dico, index, projectPrefix);
 		cproject.accept(incVisitor);
-        incVisitor.reportUnresolvedIncludes();        // statistics on unresolved includes
+
+        int nbUI = 0;
+        for (@SuppressWarnings("unused") String ui : incVisitor.getUnresolvedIncludes()) {
+        	nbUI++;
+        }
+        modelComment(nbUI + " unresolved includes:", incVisitor.getUnresolvedIncludes());
+		incVisitor.reportUnresolvedIncludes();
 
 		cproject.accept(new PackageDefVisitor(dico));
 		if (!cModel) {
@@ -364,6 +376,8 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	public void setOptions(String[] args) {
+		modelComment("Program call arguments:", Arrays.asList(args));
+
 		int i = 0;
 		while (i < args.length && args[i].trim().startsWith("-")) {
 		    String arg = args[i++].trim();
@@ -411,6 +425,14 @@ public class VerveineCParser extends VerveineParser {
 				}
 			}
 		}
+	}
+
+	private void modelComment(String title, Iterable<String> values) {
+		String cmt = title; 
+		for (String v : values) {
+			cmt += " " + v;
+		}
+		dico.createFamixComment(cmt);
 	}
 
 	private void parseMacroDefinition(String arg) {

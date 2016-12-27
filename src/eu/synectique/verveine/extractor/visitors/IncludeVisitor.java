@@ -1,5 +1,6 @@
 package eu.synectique.verveine.extractor.visitors;
 
+import java.io.PrintStream;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -82,12 +83,19 @@ public class IncludeVisitor extends AbstractVisitor {
 	}
 
 	public void reportUnresolvedIncludes() {
+		this.reportUnresolvedIncludes(System.err);
+	}
+	
+	public void reportUnresolvedIncludes(PrintStream st) {
 		if (nbUnresolvedIncludes() > 0) {
-			System.err.println("There were "+nbUnresolvedIncludes()+" unresolved includes");
+			st.println("There were "+nbUnresolvedIncludes()+" unresolved includes");
 			for (String str : unresolvedIncludes) {
-				System.err.println("  "+ str);
+				st.println("  "+ str);
 			}
 		}
 	}
 
+	public Iterable<String> getUnresolvedIncludes() {
+		return unresolvedIncludes;
+	}
 }

@@ -1,15 +1,16 @@
 package eu.synectique.verveine.extractor.utils;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
 public class IncludeConfs {
 
 	public static void main(String[] args) {
-		String s;
 
         try {
+        	/*
+        	 * trying to automatically configure include path by running cpp -v
+        	 */
             Process p = Runtime.getRuntime().exec("cpp -v");
             
             InputStreamReader stdInput = new //BufferedReader(new 
