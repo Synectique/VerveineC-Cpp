@@ -16,14 +16,14 @@ public class PackageDefVisitor extends AbstractDispatcherVisitor {
 
 	/**
 	 * Leading directory are the path of the project.
-	 * We do not create packages for these, so we must count how deep in the directory hierarchy we are,
+	 * We do not create packages for these, so we must remember how deep in the directory hierarchy we are,
 	 * to know when to create packages
 	 */
 	protected int nbOfLeadingDirectory;
 
 	public PackageDefVisitor(CDictionary dico) {
 		super(dico, null);
-		nbOfLeadingDirectory = 2;  // i.e. tempProj/tempProj
+		nbOfLeadingDirectory = 1;  // i.e. tempProj/
 	}
 
 	protected String msgTrace() {

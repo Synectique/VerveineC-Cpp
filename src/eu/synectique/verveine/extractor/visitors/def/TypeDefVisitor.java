@@ -55,7 +55,7 @@ public class TypeDefVisitor extends AbstractVisitor {
 	 */
 	@Override
 	public void visit(ICContainer elt) {
-		IBinding key = resolver.mkStubKey(elt.getElementName(), /*container*/null, Package.class);
+		IBinding key = resolver.mkStubKey(elt.getElementName(), currentPackage, Package.class);
 
 		currentPackage = (Package) dico.getEntityByKey(key);
 
