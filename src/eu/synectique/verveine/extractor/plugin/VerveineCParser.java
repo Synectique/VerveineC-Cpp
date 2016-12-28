@@ -141,11 +141,15 @@ public class VerveineCParser extends VerveineParser {
 		dico = new CDictionary(getFamixRepo());
 	}
 
-	public void parse() {
+	public boolean parse() {
 		tracer = new Tracer();
 		
 		tracer.msg("Copying source files in local project");
         ICProject cproject = createEclipseProject(DEFAULT_PROJECT_NAME, userProjectDir);
+        if (cproject == null) {
+        	// could not create the project :-(
+        	return false;
+        }
         projectPrefix = cproject.getLocationURI().getPath() + File.separator + (windows ? SOURCE_ROOT_DIR.toLowerCase() : SOURCE_ROOT_DIR) + File.separator;
 
         configIndexer(cproject);
@@ -156,8 +160,10 @@ public class VerveineCParser extends VerveineParser {
 
 		} catch (CoreException e) {
 			e.printStackTrace();
+			return false;
 		}
 
+        return true;
 	}
 
 	private void runAllVisitors(CDictionary dico, ICProject cproject) throws CoreException {
@@ -258,7 +264,12 @@ public class VerveineCParser extends VerveineParser {
 		ICProjectDescription cProjectDesc = CoreModel.getDefault().getProjectDescription(project, true);
 		cProjectDesc.setCdtProjectCreated();
 
-		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, new File(sourcePath), /*toLowerCase*/windows);
+		File projSrc = new File(sourcePath);
+		if (! projSrc.exists()) {
+			System.err.println("Project directory "+sourcePath+ " not found !");
+			return null;
+		}
+		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, projSrc, /*toLowerCase*/windows);
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
         try {
 			descManager.updateProjectDescriptions(new IProject[] { project }, Constants.NULL_PROGRESS_MONITOR);

@@ -14,8 +14,12 @@ public class PluginApplication implements IApplication {
 		VerveineCParser verveine = new VerveineCParser();
 
 		verveine.setOptions(appArgs);
-		verveine.parse();
-		verveine.emitMSE();
+		if (verveine.parse()) {
+			verveine.emitMSE();
+		}
+		else {
+			System.err.println("Error in model creation, aborting");
+		}
 		return null;
 	}
 
