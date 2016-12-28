@@ -130,7 +130,7 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 		StructuralEntity fmx = null;
 
 		if (QualifiedName.isFullyQualified(name)) {
-			parent = (ContainerEntity) resolver.resolveOrNamespace( resolver.extractParentNameFromMethodFullname(name.toString()));
+			parent = (ContainerEntity) resolver.resolveOrContainer( QualifiedName.parentNameFromEntityFullname(name.toString()), /*mustBeClass*/false);
 		}
 		else {
 			parent = (ContainerEntity) getContext().top();

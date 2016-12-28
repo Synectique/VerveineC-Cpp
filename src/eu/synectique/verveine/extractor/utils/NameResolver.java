@@ -81,10 +81,10 @@ public class NameResolver {
 
 		if (qualName.isFullyQualified()) {
 			if ( (entityType == Attribute.class) || (entityType == Method.class) ) {
-				parent = (ContainerEntity) resolveOrClass(qualName.nameQualifiers());
+				parent = (ContainerEntity) resolveOrContainer(qualName.nameQualifiers(), /*mustBeClass*/true);
 			}
 			else {
-				parent = (ContainerEntity) resolveOrNamespace(qualName.nameQualifiers());
+				parent = (ContainerEntity) resolveOrContainer(qualName.nameQualifiers(), /*mustBeClass*/false);
 			}
 			simpleName = qualName.unqualifiedName();
 		}
@@ -208,13 +208,13 @@ public class NameResolver {
 
 		if (bnd == null) {
 			ContainerEntity parent = null;
-			String behavName = computeSignatureFromAST(node);
+			String behavName = SignatureBuilderVisitor.signatureFromAST(node);
 
 			// need to find the parent here (although mkStubKey can do it for us)
 			// because need to know whether it is a method or a function
 			QualifiedName qualName = new QualifiedName(name);
 			if (qualName.isFullyQualified()) {
-				parent = (ContainerEntity) resolveOrNamespace(qualName.nameQualifiers());
+				parent = (ContainerEntity) resolveOrContainer(qualName.nameQualifiers(), /*mustBeClass*/false);
 			}
 			else {
 				parent = context.getTopCppNamespace();
@@ -248,36 +248,36 @@ public class NameResolver {
 	}
 
 	public BehaviouralEntity ensureBehaviouralFromName(IASTFunctionDeclarator node, IBinding bnd, IASTName name) {
-		String mthSig;
-		Type parent;
+		String sig;
+		ContainerEntity parent;
 		BehaviouralEntity fmx;
-		if (isMethodBinding(bnd)) {
-			// get method name and parent
-			if (bnd instanceof StubBinding) {
-				String fullname = ((StubBinding)bnd).getEntityName();
-				mthSig = extractSignatureFromMethodFullname(fullname);
-				parent = getParentTypeFromNameOrContext(fullname);
-				/**
-				 * filename = brokerage/BlankingSectorsControlImpl.cpp
-				 * mthSig = lankingSectorsControlImpl(PortableServer::POA_ptr)->unspecified
-				 * fullname = BlankingSectorsControlImpl(PortableServer::POA_ptr)->unspecified
-				 */
+
+		// get behavioural name and parent
+		if (bnd instanceof StubBinding) {
+			String fullname = ((StubBinding)bnd).getEntityName();
+			sig = QualifiedName.signatureFromBehaviouralFullname(fullname);
+
+			parent = behaviouralParentFromNameOrContext(fullname);
+		}
+		else {
+			sig = SignatureBuilderVisitor.signatureFromAST(node);
+
+			parent = behaviouralParentFromBindingOrContext(bnd, name);
+		}
+
+		// last try to recover behavioural ...
+		fmx = (BehaviouralEntity) findInParent(sig, parent, /*recursive*/false);
+
+		// ... create it if failed
+		if (fmx == null) {
+			if (isMethodBinding(bnd)) {
+				fmx = dico.ensureFamixMethod(bnd, new QualifiedName(name).unqualifiedName(), sig, /*owner*/(Type)parent);
 			}
-			else {
-				mthSig = computeSignatureFromAST(node);
-				parent = getMethodParentFromBindingOrContext(bnd, name);
-			}
-			
-			// last try to recover method ...
-			fmx = (BehaviouralEntity) findInParent(mthSig, parent, false);
-			// ... create it if failed
-			if (fmx == null) {
-				fmx = dico.ensureFamixMethod(bnd, new QualifiedName(name).unqualifiedName(), mthSig, /*owner*/parent);
+			else {                    //   C function or may be a stub ?
+				fmx = dico.ensureFamixFunction(bnd, new QualifiedName(name).unqualifiedName(), SignatureBuilderVisitor.signatureFromAST(node), (ContainerEntity)context.top());
 			}
 		}
-		else {                    //   C function or may be a stub ?
-			fmx = dico.ensureFamixFunction(bnd, new QualifiedName(name).unqualifiedName(), computeSignatureFromAST(node), (ContainerEntity)context.top());
-		}
+
 		return fmx;
 	}
 
@@ -422,13 +422,17 @@ public class NameResolver {
 
 	/**
 	 * Tries to find an entity within the current context, from it's fully qualified name.
-	 * If not found, tries to create it with the correct type (Namespace being the default)
+	 * If not found, creates it as a ContainerEntity (Namespace being the default)
 	 */
-	public NamedEntity resolveOrNamespace( String name) {
-		return resolveOrNamespace(new QualifiedName(name));
+	public NamedEntity resolveOrContainer( String name, boolean mustBeClass) {
+		return resolveOrContainer(new QualifiedName(name), mustBeClass);
 	}
 
-	public NamedEntity resolveOrNamespace( QualifiedName name) {
+	/**
+	 * Tries to find an entity within the current context, from it's fully qualified name.
+	 * If not found, creates it as a ContainerEntity (Namespace being the default)
+	 */
+	public NamedEntity resolveOrContainer( QualifiedName name, boolean mustBeClass) {
 		NamedEntity tmp;
 		String simpleName;
 		ContainerEntity parent = null;
@@ -442,7 +446,7 @@ public class NameResolver {
 
 		if (name.isFullyQualified()) {
 			// parent is described by nameQualifiers, no recursive search in it
-			parent = (ContainerEntity)resolveOrNamespace(name.nameQualifiers());
+			parent = (ContainerEntity)resolveOrContainer(name.nameQualifiers(), /*mustBeClass*/false);
 			recursive = false;
 		}
 		else {			
@@ -463,133 +467,64 @@ public class NameResolver {
 		if (tmp == null) {
 			IBinding bnd;
 
-			if (recursive || (parent == null) ) {
-				// if recursive true, we were looking for an unqualified name and did not find it, so we create a namespace at toplevel
-				// if parent == null, we are at top level so it is similar
-				bnd = mkStubKey(simpleName, /*parent*/null, Namespace.class);
-				tmp = dico.ensureFamixNamespace(bnd, simpleName, /*owner*/null);
+			if ( (parent != null) && (! (parent instanceof Namespace)) ) {
+				// if parent is not a Namespace (probably a class or method), create a Class because can't have a namespace inside a class or a method
+				mustBeClass = true;
 			}
-			else if (parent instanceof Namespace) {
-				// default case
-				bnd = mkStubKey(simpleName, parent, Namespace.class);
-				tmp = dico.ensureFamixNamespace(bnd, simpleName, (ScopingEntity) parent);
-			}
-			else {
-				// otherwise, if parent is not a namespace (probably a class or method), then we create a Class because we can't have a namespace inside a class or method
+
+			if (mustBeClass) {
 				bnd = mkStubKey(simpleName, parent, eu.synectique.verveine.core.gen.famix.Class.class);
 				tmp = dico.ensureFamixClass(bnd, simpleName, parent);
 			}
+			else {
+				bnd = mkStubKey(simpleName, parent, Namespace.class);
+				tmp = dico.ensureFamixNamespace(bnd, simpleName, (ScopingEntity) parent);
+			}
+				
 		}
 
 		return tmp;
 	}
 
 	/**
-	 * Ensures a (stub) type/class and its parent (a namespace).
-	 * Deals with fully qualified class name and not qualified class name
+	 * Assumes binding is not a StubBinding
 	 */
-	public Type resolveOrClass(String name) {
-		return resolveOrClass(new QualifiedName(name));
-	}
+	protected ContainerEntity behaviouralParentFromBindingOrContext(IBinding bnd, IASTName name) {
+		ContainerEntity parent;
 
-	public Type resolveOrClass(QualifiedName name) {
-		Type tmp;
-		String simpleName;
-		ContainerEntity parent = null;
-		boolean recursive;
-
-		if (name.isEmpty()) {
-			return null;
-		}
-
-		simpleName = name.unqualifiedName();
-
-		if (name.isFullyQualified()) {
-			// parent is described by nameQualifiers, no recursive search in it
-			parent = (ContainerEntity)resolveOrNamespace(name.nameQualifiers());
-			recursive = false;
-		}
-		else {			
-			if (name.isAbsoluteQualified()) {
-				// parent is root, no recursive search
-				parent = null;
-				recursive = false;
-			}
-			else {
-				// parent is current stack context, recursive search in it
-				parent = (ContainerEntity) context.top();
-				recursive = true;
-			}
-		}
-
-		NamedEntity debug = findInParent(simpleName, parent, recursive); 
-		tmp = (Type) debug;
-
-		if (tmp == null) {
-			IBinding bnd;
-
-			bnd = mkStubKey(simpleName, parent, eu.synectique.verveine.core.gen.famix.Class.class);
-			tmp = dico.ensureFamixClass(bnd, simpleName, parent);
-		}
-
-		return tmp;
-	}
-
-	protected String computeSignatureFromAST(IASTFunctionDeclarator node) {
-		String behavName;
-		// for behavioral, we put the full signature in the key to have better chance of recovering it
-		SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor(dico);
-		node.accept(sigVisitor);
-		behavName = sigVisitor.getSignature();
-		return behavName;
-	}
-
-	protected String extractSignatureFromMethodFullname(String fullname) {
-		if (QualifiedName.isFullyQualified(fullname)) {
-			int i;
-			i = fullname.indexOf('(');
-			i = fullname.substring(0, i).lastIndexOf(QualifiedName.CPP_NAME_SEPARATOR);
-			return fullname.substring(i+QualifiedName.CPP_NAME_SEPARATOR.length());
-		}
-		else {
-			return fullname;
-		}
-	}
-
-	public String extractParentNameFromMethodFullname(String fullname) {
-		int i;
-		i = fullname.indexOf('(');
-		if (i > 0) {
-			fullname = fullname.substring(0, i);
-		}
-
-		i = fullname.lastIndexOf(QualifiedName.CPP_NAME_SEPARATOR);
-		return fullname.substring(0, i);
-	}
-
-	protected Type getMethodParentFromBindingOrContext(IBinding bnd, IASTName name) {
-		Type parent;
-		if (QualifiedName.isFullyQualified(name)) {
-			parent = (Type) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
+		if (isMethodBinding(bnd)) {
+			parent = (ContainerEntity) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
 			if (parent == null) {
 				// happened once in a badly coded case
-				parent = resolveOrClass(extractParentNameFromMethodFullname(name.toString()));
+				if (QualifiedName.isFullyQualified(name)) {
+					parent = (ContainerEntity) resolveOrContainer( QualifiedName.parentNameFromEntityFullname(name.toString()), /*mustBeClass*/true );
+				}
+				else {
+					parent = (ContainerEntity) context.top();
+				}
 			}
 		}
 		else {
-			parent = context.topType();
+			if (QualifiedName.isFullyQualified(name)) {
+				parent = (ContainerEntity) resolveOrContainer( QualifiedName.parentNameFromEntityFullname(name.toString()), /*mustBeClass*/false );
+			}
+			else {
+				parent = (ContainerEntity) context.top();
+			}
 		}
 		return parent;
 	}
 
-	protected Type getParentTypeFromNameOrContext(String name) {
+	protected ContainerEntity behaviouralParentFromNameOrContext(String name) {
+		ContainerEntity parent;
 		QualifiedName qualName = new QualifiedName(name);
 		if (qualName.isFullyQualified()) {
-			return resolveOrClass( qualName.nameQualifiers() );
+			parent = (ContainerEntity) resolveOrContainer( qualName.nameQualifiers(), /*mustBeClass*/true);
 		}
 		else {
-			return context.topType();
+			parent = (ContainerEntity) context.top();
 		}
+		return parent;
 	}
 
 }

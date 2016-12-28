@@ -181,7 +181,12 @@ public class VerveineCParser extends VerveineParser {
 			cproject.accept(new NamespaceDefVisitor(dico, index, projectPrefix));
 		}
 		cproject.accept(new TypeDefVisitor(dico, index, projectPrefix));
-		cproject.accept(new BehaviouralDefVisitor(dico, index, projectPrefix));		// must be after class definitions
+		
+		BehaviouralDefVisitor behavVisitor = new BehaviouralDefVisitor(dico, index, projectPrefix);		// must be after class definitions
+		behavVisitor.setHeaderFiles(true);
+		cproject.accept(behavVisitor);
+		behavVisitor.setHeaderFiles(false);
+		cproject.accept(behavVisitor);
 		if (!cModel) {
 			cproject.accept(new TemplateParameterDefVisitor(dico, index, projectPrefix));	// must be after method definitions (possible template)
 		}

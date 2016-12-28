@@ -19,6 +19,8 @@ public class QualifiedName implements Iterable<String> {
 	
 	protected boolean isAbsolute;
 
+	// CONSTRUCTION
+
 	public QualifiedName(String name) {
 		nameParts = new ArrayList<String>();
 		isAbsolute = false;
@@ -94,9 +96,7 @@ public class QualifiedName implements Iterable<String> {
 		return i;
 	}
 
-	public int nbParts() {
-		return nameParts.size();
-	}
+	// STATIC UTILITIES
 
 	static public boolean isFullyQualified(String name) {
 		return name.indexOf(QualifiedName.CPP_NAME_SEPARATOR) >= 0;
@@ -104,6 +104,35 @@ public class QualifiedName implements Iterable<String> {
 
 	static public boolean isFullyQualified(IASTName name) {
 		return isFullyQualified(name.toString());
+	}
+
+	static public String signatureFromBehaviouralFullname(String fullname) {
+		if (QualifiedName.isFullyQualified(fullname)) {
+			int i;
+			i = fullname.indexOf('(');
+			i = fullname.substring(0, i).lastIndexOf(QualifiedName.CPP_NAME_SEPARATOR);
+			return fullname.substring(i+QualifiedName.CPP_NAME_SEPARATOR.length());
+		}
+		else {
+			return fullname;
+		}
+	}
+
+	static public String parentNameFromEntityFullname(String fullname) {
+		int i;
+		i = fullname.indexOf('(');
+		if (i > 0) {
+			fullname = fullname.substring(0, i);
+		}
+
+		i = fullname.lastIndexOf(QualifiedName.CPP_NAME_SEPARATOR);
+		return fullname.substring(0, i);
+	}
+
+	// OTHER METHODS
+	
+	public int nbParts() {
+		return nameParts.size();
 	}
 
 	public boolean isFullyQualified() {
