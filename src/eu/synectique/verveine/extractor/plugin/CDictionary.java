@@ -444,7 +444,7 @@ public class CDictionary extends Dictionary<IBinding> {
 
 	// UTILITIES =========================================================================================================================================
 
-	public String primitiveTypeName(int type) {
+	static public String primitiveTypeName(int type) {
 		String name;
 		switch (type) {
 		case IASTSimpleDeclSpecifier.t_void:
@@ -487,7 +487,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * {@link #mooseName(Package, String)}; or {@link #mooseName(Type, String)}
 	 * And this is required because at some point we need to call it with an unknown ContainerEntity :-(
 	 */
-	public String mooseName(ContainerEntity parent, String name) {
+	static public String mooseName(ContainerEntity parent, String name) {
 		if (parent instanceof Namespace) {
 			return mooseName((Namespace)parent, name);
 		}
@@ -512,7 +512,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * Computes moose name for a Namespace child.
 	 * MooseName is the concatenation of the moosename of the parent Namescape with the simple name of the child
 	 */
-	public String mooseName(Namespace parent, String name) {
+	static public String mooseName(Namespace parent, String name) {
 		String ret;
 		
 		if (parent != null) {
@@ -529,7 +529,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * Computes moose name for a Package child
 	 * MooseName is the concatenation of the moosename of the parent Package with the simple name of the child
 	 */
-	public String mooseName(Package parent, String name) {
+	static public String mooseName(Package parent, String name) {
 		if (parent != null) {
 			return concatMooseName( mooseName(parent.getParentPackage(), parent.getName()) , name);
 		}
@@ -542,7 +542,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * Computes moose name for a Method child.
 	 * MooseName is the concatenation of the moosename of the parent Mathod with the simple name of the child
 	 */
-	public String mooseName(Method parent, String name) {
+	static public String mooseName(Method parent, String name) {
 		if (parent != null) {
 			return concatMooseName( mooseName(parent.getParentType(), parent.getSignature()) , name);
 		}
@@ -555,7 +555,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * Computes moose name for a Function child.
 	 * MooseName is the concatenation of the moosename of the parent Function with the simple name of the child
 	 */
-	public String mooseName(Function parent, String name) {
+	static public String mooseName(Function parent, String name) {
 		if (parent != null) {
 			return concatMooseName( mooseName(parent.getContainer(), parent.getSignature()) , name);
 		}
@@ -568,7 +568,7 @@ public class CDictionary extends Dictionary<IBinding> {
 	 * Computes moose name for a Type.
 	 * MooseName is the concatenation of the moosename of the parent package with the simple name of the type
 	 */
-	public String mooseName(Type parent, String name) {
+	static public String mooseName(Type parent, String name) {
 		if (parent != null) {
 			return concatMooseName( mooseName(parent.getContainer(), parent.getName()) , name);
 		}
@@ -577,7 +577,7 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 	}
 
-	protected static String concatMooseName(String prefix, String name) {
+	static protected String concatMooseName(String prefix, String name) {
 		return prefix + MOOSE_NAME_SEPARATOR + name;
 	}
 

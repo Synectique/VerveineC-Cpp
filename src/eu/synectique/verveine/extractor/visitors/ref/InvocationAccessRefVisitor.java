@@ -28,7 +28,9 @@ import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.DereferencedInvocation;
+import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Invocation;
+import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
@@ -147,13 +149,15 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 				fmx = dico.getEntityByKey(nodeBnd);
 			}
 
-			if (fmx == null) {
-				// could not find it. Try to create a stub from the name (if we have one)
-				if (nodeName != null) {
-					fmx = makeStubBehavioural(nodeName.toString(), node.getArguments().length, /*isMethod*/false);
-				}
+			if ( (fmx == null) && (nodeName != null) ) {
+				fmx = resolver.resolveOrCreate(nodeName.toString(), /*mayBeNull*/true, /*mustBeClass*/false);
 			}
-			else if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
+
+			if ( (fmx == null) && (nodeName != null) ) {
+				fmx = makeStubBehavioural(nodeName.toString(), node.getArguments().length, /*isMethod*/false);
+			}
+
+			if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
 				// found a class instead of a behavioral. May happen, for example in the case of a "throw ClassName(...)"
 				fmx = makeStubBehavioural(fmx.getName(), node.getArguments().length, /*isMethod*/true);
 			}
@@ -380,6 +384,21 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		Access acc = dico.addFamixAccess(accessor, fmx, /*isWrite*/false, getContext().getLastAccess());
 		getContext().setLastAccess(acc);
 		return acc;
+	}
+
+	protected BehaviouralEntity makeStubBehavioural(String name, int nbArgs, boolean isMethod) {
+		BehaviouralEntity fmx;
+		String stubSig =  resolver.mkStubSig(name, nbArgs);
+		if (isMethod) {
+			fmx = dico.ensureFamixMethod(/*key*/resolver.mkStubKey(name+"__"+nbArgs, Method.class), name, stubSig, /*container*/null);
+		}
+		else {
+			fmx = dico.ensureFamixFunction(/*key*/resolver.mkStubKey(name+"__"+nbArgs, Function.class), name, stubSig, /*container*/null);
+		}
+		fmx.setNumberOfParameters(nbArgs);
+		// there are 2 ways to get the number of parameters of a BehaviouralEntity: getNumberOfParameters() and numberOfParameters()
+		// the first returns the attribute numberOfParameters (set here), the second computes the size of parameters
+		return fmx;
 	}
 
 }

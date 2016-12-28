@@ -62,7 +62,7 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 		supClass = (Type) dico.getEntityByKey(nodeBnd);
 
 		if (supClass == null) {
-			supClass = resolver.resolveOrClass( baseName.toString());
+			supClass = (Type) resolver.resolveOrCreate( baseName.toString(), false, /*mustBeClass*/true);
 		}
 
 		if (supClass != null) { 

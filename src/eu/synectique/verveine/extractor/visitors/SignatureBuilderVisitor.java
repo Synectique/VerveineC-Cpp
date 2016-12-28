@@ -3,6 +3,7 @@ package eu.synectique.verveine.extractor.visitors;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
@@ -56,8 +57,8 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 
 	protected String signature;
 
-	public SignatureBuilderVisitor(CDictionary dico) {
-		super(dico, null, null);
+	public SignatureBuilderVisitor() {
+		super(/*dico*/null, /*IIndex*/null, /*rootFolder*/null);
 		signature = "";
 	}
 
@@ -67,6 +68,15 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 
 	public String getSignature() {
 		return signature;
+	}
+
+	static public String signatureFromAST(IASTFunctionDeclarator node) {
+		String behavName;
+		// for behavioral, we put the full signature in the key to have better chance of recovering it
+		SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor();
+		node.accept(sigVisitor);
+		behavName = sigVisitor.getSignature();
+		return behavName;
 	}
 
 	//  MAIN ENTRY POINTS --------------------------------------------------------------------------------------------
@@ -174,7 +184,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 
 	@Override
 	public int visit(IASTSimpleDeclSpecifier node) {
-		String tname = dico.primitiveTypeName(node.getType());
+		String tname = CDictionary.primitiveTypeName(node.getType());
 		if (tname != null) {
 			signature += tname;
 		}

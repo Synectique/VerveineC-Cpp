@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Blah
+Bundle-Name: Verveine-C/Cpp
 Bundle-SymbolicName: verveine.extractor.Cpp;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: eu.synectique.verveine.extractor.plugin.Activator

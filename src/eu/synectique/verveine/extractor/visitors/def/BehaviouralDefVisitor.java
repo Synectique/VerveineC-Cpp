@@ -23,12 +23,14 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.model.ITranslationUnit;
 
 import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.FileUtil;
 
 /**
  * A visitor for Behavioural entities: Functions and methods.
@@ -67,14 +69,35 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	 * Needed because these parameters look like variable (or attribute) definition)
 	 */
 	private boolean inKnRParams;
+	
+	/**
+	 * Whether to visit only header files (h/hpp) or only c/cpp files
+	 */
+	private boolean headerFiles;
 
 	public BehaviouralDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
 		inKnRParams = false;
+		headerFiles = true;
 	}
 
 	protected String msgTrace() {
 		return "creating methods and functions";
+	}
+
+	public void setHeaderFiles(boolean head) {
+		this.headerFiles = head;
+	}
+
+	/**
+	 * Overridden to visit only .h or .c files
+	 */
+	@Override
+	public void visit(ITranslationUnit elt) {
+		// XOR operator: (headerFiles AND isHeader()) OR (!headerFiles AND !isHeader())
+		if (! (headerFiles ^ FileUtil.isHeader(elt)) ) {
+			super.visit(elt);
+		}
 	}
 
 	//  MAIN ENTRY POINTS --------------------------------------------------------------------------------------------
@@ -286,5 +309,6 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		// whereas it would seem more natural to store the anchor referent to the .H file ...
 		return fmx;
 	}
+
 
 }
