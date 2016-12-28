@@ -81,10 +81,10 @@ public class NameResolver {
 
 		if (qualName.isFullyQualified()) {
 			if ( (entityType == Attribute.class) || (entityType == Method.class) ) {
-				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), false, /*mustBeClass*/true);
+				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), /*mayBeNull*/false, /*mustBeClass*/true);
 			}
 			else {
-				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), false, /*mustBeClass*/false);
+				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), /*mayBeNull*/false, /*mustBeClass*/false);
 			}
 			simpleName = qualName.unqualifiedName();
 		}
@@ -214,7 +214,7 @@ public class NameResolver {
 			// because need to know whether it is a method or a function
 			QualifiedName qualName = new QualifiedName(name);
 			if (qualName.isFullyQualified()) {
-				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), false, /*mustBeClass*/false);
+				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), /*mayBeNull*/false, /*mustBeClass*/false);
 			}
 			else {
 				parent = context.getTopCppNamespace();
@@ -504,7 +504,7 @@ public class NameResolver {
 			if (parent == null) {
 				// happened once in a badly coded case
 				if (QualifiedName.isFullyQualified(name)) {
-					parent = (ContainerEntity) resolveOrCreate( QualifiedName.parentNameFromEntityFullname(name.toString()), false, /*mustBeClass*/true );
+					parent = (ContainerEntity) resolveOrCreate( QualifiedName.parentNameFromEntityFullname(name.toString()), /*mayBeNull*/false, /*mustBeClass*/true );
 				}
 				else {
 					parent = (ContainerEntity) context.top();
@@ -513,7 +513,7 @@ public class NameResolver {
 		}
 		else {
 			if (QualifiedName.isFullyQualified(name)) {
-				parent = (ContainerEntity) resolveOrCreate( QualifiedName.parentNameFromEntityFullname(name.toString()), false, /*mustBeClass*/false );
+				parent = (ContainerEntity) resolveOrCreate( QualifiedName.parentNameFromEntityFullname(name.toString()), /*mayBeNull*/false, /*mustBeClass*/false );
 			}
 			else {
 				parent = (ContainerEntity) context.top();
@@ -526,7 +526,7 @@ public class NameResolver {
 		ContainerEntity parent;
 		QualifiedName qualName = new QualifiedName(name);
 		if (qualName.isFullyQualified()) {
-			parent = (ContainerEntity) resolveOrCreate( qualName.nameQualifiers(), false, /*mustBeClass*/true);
+			parent = (ContainerEntity) resolveOrCreate( qualName.nameQualifiers(), /*mayBeNull*/false, /*mustBeClass*/true);
 		}
 		else {
 			parent = (ContainerEntity) context.top();

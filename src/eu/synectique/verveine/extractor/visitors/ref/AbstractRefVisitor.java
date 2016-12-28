@@ -196,7 +196,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			}
 			else {
 				QualifiedName qualName = new QualifiedName(name);
-				fmx = dico.ensureFamixType(bnd, qualName.unqualifiedName(), /*owner*/(ContainerEntity)resolver.resolveOrCreate(qualName.nameQualifiers().toString(), false, /*mustBeClass*/false));
+				fmx = dico.ensureFamixType(bnd, qualName.unqualifiedName(), /*owner*/(ContainerEntity)resolver.resolveOrCreate(qualName.nameQualifiers().toString(), /*mayBeNull*/false, /*mustBeClass*/false));
 			}
 		}
 
@@ -221,7 +221,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 			// create a ParameterizedType for an unknown generic
 			// 'generic' var. remains null
 		}
-		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, (ContainerEntity)resolver.resolveOrCreate(new QualifiedName(name).nameQualifiers().toString(), false, /*mustBeClass*/false));
+		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, (ContainerEntity)resolver.resolveOrCreate(new QualifiedName(name).nameQualifiers().toString(), /*mayBeNull*/false, /*mustBeClass*/false));
 
 		for (String typArg : strName.substring(i+1, strName.length()-1).split(",")) {
 			typArg = typArg.trim();
