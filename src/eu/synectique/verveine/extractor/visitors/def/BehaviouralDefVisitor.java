@@ -107,36 +107,28 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 	@Override
 	protected int visit(IASTStandardFunctionDeclarator node) {
-		BehaviouralEntity fmx = null;
 
 		// get node name and bnd
 		super.visit( node);
 		if (nodeBnd instanceof IVariable) {
 			// declaration of a function pointer such as var in "int (*var)(int param1, char param2)"
-			fmx = null;
+			returnedEntity = null;
 		}
 		else {
-			fmx = visitFunctionDeclarator(node);
-			visitParameters(node.getParameters(), fmx);
+			returnedEntity = visitFunctionDeclarator(node, node.getParameters());
 		}
-		returnedEntity = fmx;
 
 		return PROCESS_SKIP;
 	}
 
 	@Override
 	protected int visit(ICASTKnRFunctionDeclarator node) {
-		BehaviouralEntity fmx = null;
-
 		// get node name and bnd
 		super.visit( node);
-		fmx = visitFunctionDeclarator(node);
 
 		inKnRParams = true;
-		visitParameters( node.getParameterDeclarations(), fmx);
+		returnedEntity = visitFunctionDeclarator(node, node.getParameterDeclarations());
 		inKnRParams = false;
-
-		returnedEntity = fmx;
 
 		return PROCESS_SKIP;
 	}
@@ -272,7 +264,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	// common parts to visiting IASTStandardFunctionDeclarator and ICASTKnRFunctionDeclarator
 
 
-	protected BehaviouralEntity visitFunctionDeclarator(IASTFunctionDeclarator node) {
+	protected BehaviouralEntity visitFunctionDeclarator(IASTFunctionDeclarator node, IASTNode[] params) {
 		BehaviouralEntity fmx;
 		Type classCtxt = null;
 
@@ -296,6 +288,8 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 			((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
+
+		visitParameters(params, fmx);
 
 		if (declarationIsFriend(node)) {
 			// friend function are outside the scope of the class

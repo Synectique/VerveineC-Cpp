@@ -64,7 +64,7 @@ public class NameResolver {
 	}
 
 	public <T extends NamedEntity> IBinding mkStubKey(String name, java.lang.Class<T> entityType) {
-		return mkStubKey( name, context.getTopCppNamespace(), entityType);
+		return mkStubKey( name, (ContainerEntity)context.top(), entityType);
 	}
 
 	/**
