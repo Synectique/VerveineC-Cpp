@@ -86,7 +86,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		if (! inCastExpression) {
 			super.visit(node);
 		}
-		// else this is something like a cast to a fnction pointer type: do not handle it
+		// else this is something like a cast to a function pointer type: do not handle it
 		
 		return PROCESS_SKIP;
 	}
