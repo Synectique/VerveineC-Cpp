@@ -2,6 +2,7 @@ package eu.synectique.verveine.extractor.visitors.def;
 
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
+import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTDefaultStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDoStatement;
@@ -18,6 +19,7 @@ import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTStatement;
 import org.eclipse.cdt.core.dom.ast.IASTWhileStatement;
 import org.eclipse.cdt.core.dom.ast.IVariable;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTRangeBasedForStatement;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTryBlockStatement;
@@ -29,6 +31,7 @@ import eu.synectique.verveine.core.Dictionary;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Parameter;
+import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 
@@ -113,7 +116,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 			fmx = null;
 		}
 		else {
-			fmx = initializeBehavioural(node);
+			fmx = visitFunctionDeclarator(node);
 			visitParameters(node.getParameters(), fmx);
 		}
 		returnedEntity = fmx;
@@ -127,7 +130,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 		// get node name and bnd
 		super.visit( node);
-		fmx = initializeBehavioural(node);
+		fmx = visitFunctionDeclarator(node);
 
 		inKnRParams = true;
 		visitParameters( node.getParameterDeclarations(), fmx);
@@ -182,7 +185,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 			return PROCESS_SKIP;
 		}
 
-		innerCreateParameter();
+		privateCreateParameter();
 
 		return PROCESS_SKIP;
 	}
@@ -223,7 +226,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 				nodeBnd = resolver.mkStubKey(nodeName, Parameter.class);
 			}
 
-			innerCreateParameter();
+			privateCreateParameter();
 		}
 
 		return PROCESS_SKIP;
@@ -269,8 +272,15 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	// common parts to visiting IASTStandardFunctionDeclarator and ICASTKnRFunctionDeclarator
 
 
-	protected BehaviouralEntity initializeBehavioural(IASTFunctionDeclarator node) {
+	protected BehaviouralEntity visitFunctionDeclarator(IASTFunctionDeclarator node) {
 		BehaviouralEntity fmx;
+		Type classCtxt = null;
+
+		if (declarationIsFriend(node)) {
+			// friend function are outside the scope of the class
+			// so remove the class from the context stack
+			classCtxt = (Type) getContext().pop();
+		}
 
 		fmx = resolver.ensureBehavioural(node, nodeBnd, nodeName);
 		dico.setVisibility(fmx, currentVisibility);
@@ -287,6 +297,12 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		}
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 
+		if (declarationIsFriend(node)) {
+			// friend function are outside the scope of the class
+			// push back the class in the context stack
+			getContext().push(classCtxt);
+		}
+
 		return fmx;
 	}
 
@@ -301,7 +317,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		super.visitParameters(params, fmx);
 	}
 
-	protected Parameter innerCreateParameter() {
+	protected Parameter privateCreateParameter() {
 		Parameter fmx;
 		fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), getContext().topBehaviouralEntity());
 		fmx.setIsStub(false);
@@ -310,5 +326,19 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		return fmx;
 	}
 
+
+	// UTILITIES ======================================================================================================
+
+	protected boolean declarationIsFriend(IASTFunctionDeclarator node) {
+		IASTNode parentDecl = node.getParent();
+		if (parentDecl instanceof IASTSimpleDeclaration) {
+			IASTDeclSpecifier spec = ((IASTSimpleDeclaration)parentDecl).getDeclSpecifier();
+			if (spec instanceof ICPPASTDeclSpecifier) {
+				return ((ICPPASTDeclSpecifier) spec).isFriend();
+			}
+		}
+
+		return false;
+	}
 
 }

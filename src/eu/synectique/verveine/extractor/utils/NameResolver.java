@@ -473,6 +473,13 @@ public class NameResolver {
 
 		if ( (tmp == null) && (! mayBeNull) ) {
 			IBinding bnd;
+			
+			if (recursive) {
+				// if search was recursive and we did not find, create new entity at top level
+				// this is the heuristic that gave the best results for now
+				// notably, it gives preferences to Namespace creation (over Class) in the following independant of the top context
+				parent = null;
+			}
 
 			if ( (parent != null) && (! (parent instanceof Namespace)) ) {
 				// if parent is not a Namespace (probably a class or method), create a Class because can't have a namespace inside a class or a method

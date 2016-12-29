@@ -12,7 +12,6 @@ import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 
 import eu.synectique.verveine.core.gen.famix.CFile;
-import eu.synectique.verveine.core.gen.famix.Module;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.plugin.VerveineCParser;
 import eu.synectique.verveine.extractor.utils.FileUtil;

@@ -446,7 +446,7 @@ public class VerveineCParser extends VerveineParser {
 		for (String v : values) {
 			cmt += " " + v;
 		}
-		dico.createFamixComment(cmt);
+		// TODO deactivated for now:   dico.createFamixComment(cmt);
 	}
 
 	private void parseMacroDefinition(String arg) {
