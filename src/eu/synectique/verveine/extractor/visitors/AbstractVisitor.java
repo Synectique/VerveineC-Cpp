@@ -18,8 +18,6 @@ import org.eclipse.cdt.core.model.ITranslationUnit;
 
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
-import eu.synectique.verveine.core.gen.famix.Function;
-import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;

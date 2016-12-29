@@ -91,7 +91,7 @@ public class NameResolver {
 		else {
 			simpleName = name;
 		}
-		return StubBinding.getInstance(entityType, dico.mooseName(parent, simpleName));
+		return StubBinding.getInstance(entityType, CDictionary.mooseName(parent, simpleName));
 	}
 
 	/**
