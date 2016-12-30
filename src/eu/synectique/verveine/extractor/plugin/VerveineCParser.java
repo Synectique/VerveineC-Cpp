@@ -120,10 +120,17 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	private CDictionary dico;
 
+	/**
+	 * whether to add a .h extension to the includes that do not specify one (e.g. <code>#include &lt;string&gt;</code>).
+	 * The idea is to help the include resolver
+	 */
+	private boolean forceIncludeH;
+
 	public VerveineCParser() {
 		super();
 		this.argIncludes = new ArrayList<String>();
 		this.argDefined = new HashMap<String,String>();
+		this.forceIncludeH = false;
 		this.autoinclude = false;
 		this.windows = false;
 		this.cModel = false;
@@ -259,7 +266,7 @@ public class VerveineCParser extends VerveineParser {
 			Activator.log(IStatus.ERROR, "Project directory "+sourcePath+ " not found !");
 			return null;
 		}
-		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, projSrc, /*toLowerCase*/windows);
+		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, projSrc, /*toLowerCase*/windows, /*addHExtension*/forceIncludeH);
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
         try {
 			descManager.updateProjectDescriptions(new IProject[] { project }, Constants.NULL_PROGRESS_MONITOR);
@@ -400,6 +407,9 @@ public class VerveineCParser extends VerveineParser {
 			else if (arg.equals("-includeconf")) {
 				includeConfigFile = args[i++].trim();
 			}
+			else if (arg.equals("-forceincludeH")) {
+				forceIncludeH = true;
+			}
 			else if (arg.startsWith("-I")) {
 				argIncludes.add(arg.substring(2));
 			}
@@ -469,6 +479,7 @@ public class VerveineCParser extends VerveineParser {
 				//"      -D<macro>: defines a C/C++ macro");
 				"      -I<include-dir>: adds a directory containing include files\n" +
 				"      -includeconf <config-file>: adds the directories listed in config-file in the include paths\n" +
+				"      -forceincludeH: when an include does not specify an extension (#include <string>) adds a .h to help include resolver\n" +
 				"      -autoinclude: looks for _all_ directories containing .h/.hh files and add them in the include paths\n" +
 				"      <eclipse-Cproject-to-parse>: directory containing the C/C++ project to export in MSE");
 		Activator.stop();

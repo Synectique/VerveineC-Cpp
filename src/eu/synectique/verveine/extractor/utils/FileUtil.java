@@ -66,22 +66,23 @@ public class FileUtil {
 	 * @param src -- A directory of file to copy to the project
 	 * @param destDir -- name of directory inside Eclipse project where to copy
 	 * @param toLowerCase -- convert all file names to lower case (in windows, case is not important and might be inconsistent)
+	 * @param addHExtension -- when an include does not specify an extension (#include <string>) adds a .h to help include resolver
 	 */
-	public static void copySourceFilesInProject(IProject project, String destDir, File src, boolean toLowerCase) {
+	public static void copySourceFilesInProject(IProject project, String destDir, File src, boolean toLowerCase, boolean addHExtension) {
 		if (toLowerCase) {
 			destDir = destDir.toLowerCase();
 		}
 
 		if (src.isDirectory()) {
-			copySourceFilesRecursive(project, project.getFolder(destDir), src, toLowerCase);
+			copySourceFilesRecursive(project, project.getFolder(destDir), src, toLowerCase, addHExtension);
 		}
 		else {
 			try {
 				if (Files.isSymbolicLink(src.toPath()) && Files.readSymbolicLink(src.toPath()).toFile().isDirectory()) {
-					copySourceFilesRecursive(project, project.getFolder(destDir), src, toLowerCase);
+					copySourceFilesRecursive(project, project.getFolder(destDir), src, toLowerCase, addHExtension);
 				}
 				else {
-					copyFile(project, project.getFolder(destDir), src, toLowerCase);
+					copyFile(project, project.getFolder(destDir), src, toLowerCase, addHExtension);
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -89,7 +90,7 @@ public class FileUtil {
 		}
 	}
 
-	private static void copySourceFilesRecursive(IProject project, IFolder destPath, File dir, boolean toLowerCase) {
+	private static void copySourceFilesRecursive(IProject project, IFolder destPath, File dir, boolean toLowerCase, boolean addHExtension) {
 		if (checkFileType(dir.getName()) == IGNORE_FILE) {
 			return;
 		}
@@ -103,10 +104,10 @@ public class FileUtil {
 				else {
 					childName = child.getName();
 				}
-				copySourceFilesRecursive(project, destPath.getFolder(childName), child, toLowerCase);
+				copySourceFilesRecursive(project, destPath.getFolder(childName), child, toLowerCase, addHExtension);
 			}
 			else {
-				copyFile(project, destPath, child, toLowerCase);
+				copyFile(project, destPath, child, toLowerCase, addHExtension);
 			}
 		}
 	}
@@ -119,7 +120,8 @@ public class FileUtil {
 	 * @param toLowerCase -- convert all file names to lower case (in windows, case is not important and might be inconsistent)
 	 * @param dest -- path within the project where to put the file
 	 */
-	private static void copyFile(IProject project, IFolder destPath, File orig, boolean toLowerCase) {
+	@SuppressWarnings("resource")
+	private static void copyFile(IProject project, IFolder destPath, File orig, boolean toLowerCase, boolean addHExtension) {
 		if (checkFileType(orig.getName()) != SOURCE_FILE) {
 			return;
 		}
@@ -140,11 +142,11 @@ public class FileUtil {
 			IFile file = destPath.getFile(destName);
 
 			if (toLowerCase) {
-				file.create(new IncludeToLowerInputStream(source), /*force*/true, Constants.NULL_PROGRESS_MONITOR);
+				source = new IncludeToLowerInputStream(source);
 			}
-			else {
-				file.create(source, /*force*/true, Constants.NULL_PROGRESS_MONITOR);
-			}
+
+			file.create(source, /*force*/true, Constants.NULL_PROGRESS_MONITOR);
+
 
 			file.refreshLocal(IResource.DEPTH_ZERO, Constants.NULL_PROGRESS_MONITOR);
 
