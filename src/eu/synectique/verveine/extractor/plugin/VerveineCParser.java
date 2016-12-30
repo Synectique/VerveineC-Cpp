@@ -442,11 +442,13 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	private void modelComment(String title, Iterable<String> values) {
+		/* TODO deactivated for now:
 		String cmt = title; 
 		for (String v : values) {
 			cmt += " " + v;
 		}
-		// TODO deactivated for now:   dico.createFamixComment(cmt);
+		dico.createFamixComment(cmt);
+		 */
 	}
 
 	private void parseMacroDefinition(String arg) {

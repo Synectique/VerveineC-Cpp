@@ -23,7 +23,7 @@ public class PackageDefVisitor extends AbstractDispatcherVisitor {
 
 	public PackageDefVisitor(CDictionary dico) {
 		super(dico, null);
-		nbOfLeadingDirectory = 1;  // i.e. tempProj/
+		nbOfLeadingDirectory = 2;  // i.e. tempProj/src
 	}
 
 	protected String msgTrace() {
