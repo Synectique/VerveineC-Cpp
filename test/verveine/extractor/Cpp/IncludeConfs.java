@@ -1,4 +1,4 @@
-package eu.synectique.verveine.extractor.utils;
+package verveine.extractor.Cpp;
 
 import java.io.IOException;
 import java.io.InputStreamReader;

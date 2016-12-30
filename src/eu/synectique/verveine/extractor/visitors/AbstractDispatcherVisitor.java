@@ -50,7 +50,9 @@ import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
 
+import eu.synectique.verveine.extractor.plugin.Activator;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 
 
@@ -90,7 +92,7 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		this.dico = dico;
 
 		if (msgTrace() != null ) {
-			System.err.println(msgTrace());
+			Activator.log(IStatus.INFO, msgTrace());
 		}
 	}
 
@@ -140,7 +142,7 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 			// ... then visit AST (ASTVisitor)
 			elt.getAST(index, ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT | ITranslationUnit.AST_SKIP_INDEXED_HEADERS).accept(this);
 		} catch (CoreException e) {
-			System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ elt.getElementName() );
+			Activator.log(IStatus.ERROR, "Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ elt.getElementName() );
 		}
 	}
 

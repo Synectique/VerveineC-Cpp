@@ -17,6 +17,9 @@ import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
+
+import eu.synectique.verveine.extractor.plugin.Activator;
 
 public class FileUtil {
 
@@ -231,7 +234,7 @@ public class FileUtil {
 		try {
 			br = new RandomAccessFile( filename, "r");
 		} catch (FileNotFoundException e) {
-			System.err.println("Error opening "+filename+" for reading");
+			Activator.log(IStatus.ERROR, "Error opening "+filename+" for reading");
 		}
 
 		return br;
@@ -243,7 +246,7 @@ public class FileUtil {
 			input.seek(start);
 			int ret = input.read(buffer);
 			if (ret < end-start+1) {
-				System.err.println("missing bytes, read "+ret+" instead of "+(end-start+1));
+				Activator.log(IStatus.ERROR, "missing bytes, read "+ret+" instead of "+(end-start+1));
 				return "";
 			}
 			return buffer.toString();

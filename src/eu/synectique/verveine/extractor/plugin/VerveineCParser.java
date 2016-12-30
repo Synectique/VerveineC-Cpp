@@ -29,6 +29,7 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 
 import eu.synectique.verveine.core.VerveineParser;
@@ -37,8 +38,6 @@ import eu.synectique.verveine.core.gen.famix.CppSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.utils.Constants;
 import eu.synectique.verveine.extractor.utils.FileUtil;
-import eu.synectique.verveine.extractor.utils.ITracer;
-import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.IncludeVisitor;
 import eu.synectique.verveine.extractor.visitors.def.AttributeGlobalVarDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
@@ -101,11 +100,6 @@ public class VerveineCParser extends VerveineParser {
 	private IIndex index = null;
 
 	/**
-	 * A tracer for debugging
-	 */
-	private ITracer tracer = null;
-
-	/**
 	 * flag telling whether we need to look for all possible include dir
 	 */
 	private boolean autoinclude;
@@ -140,9 +134,7 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	public boolean parse() {
-		tracer = new Tracer();
-		
-		tracer.msg("Copying source files in local project");
+		Activator.log(IStatus.INFO, "Copying source files in local project");
         ICProject cproject = createEclipseProject(DEFAULT_PROJECT_NAME, userProjectDir);
         if (cproject == null) {
         	// could not create the project :-(
@@ -213,7 +205,7 @@ public class VerveineCParser extends VerveineParser {
 		try {
 			workspace.setDescription(workspaceDesc);
 		} catch (CoreException exc) {
-			System.err.println("Error trying to set workspace description: " + exc.getMessage());
+			Activator.log(IStatus.ERROR, "Error trying to set workspace description: " + exc.getMessage());
 		}
 
 	}
@@ -234,7 +226,7 @@ public class VerveineCParser extends VerveineParser {
 				project.refreshLocal(IResource.DEPTH_INFINITE, Constants.NULL_PROGRESS_MONITOR);
 			}
 		} catch (Exception exc) {
-			System.err.println("project path=" + project.getFullPath().toString());
+			Activator.log(IStatus.ERROR, "Error deleting project path=" + project.getFullPath().toString());
 			exc.printStackTrace();
 		}
 
@@ -255,7 +247,7 @@ public class VerveineCParser extends VerveineParser {
 				project.open(Constants.NULL_PROGRESS_MONITOR);
 			}
 		} catch (Exception exc) {
-			System.err.println("Error ("+exc.getClass().getSimpleName()+") in Project creation: " + exc.getMessage());
+			Activator.log(IStatus.ERROR, "Error ("+exc.getClass().getSimpleName()+") in Project creation: " + exc.getMessage());
 			exc.printStackTrace();
 		}
 
@@ -264,7 +256,7 @@ public class VerveineCParser extends VerveineParser {
 
 		File projSrc = new File(sourcePath);
 		if (! projSrc.exists()) {
-			System.err.println("Project directory "+sourcePath+ " not found !");
+			Activator.log(IStatus.ERROR, "Project directory "+sourcePath+ " not found !");
 			return null;
 		}
 		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, projSrc, /*toLowerCase*/windows);
@@ -341,7 +333,7 @@ public class VerveineCParser extends VerveineParser {
 		try {
 			read = new BufferedReader( new FileReader(confFileName));
 		} catch (FileNotFoundException e) {
-			System.err.println("Could not read Include Paths configuration file: " + confFileName);
+			Activator.log(IStatus.WARNING, "Could not read Include Paths configuration file: " + confFileName);
 			e.printStackTrace();
 		}
 
@@ -352,7 +344,7 @@ public class VerveineCParser extends VerveineParser {
 					lines.add(line);
 				}
 			} catch (IOException e) {
-				System.err.println("Error reading Include Paths configuration file: " + confFileName);
+				Activator.log(IStatus.WARNING, "Problem reading Include Paths configuration file: " + confFileName);
 				e.printStackTrace();
 				lines = new ArrayList<>();
 			}
@@ -366,7 +358,7 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	private void computeIndex(ICProject cproject) {
-		tracer.msg("Indexing source files");
+		Activator.log(IStatus.INFO, "Indexing source files");
 
 		IIndexManager imanager = CCorePlugin.getIndexManager();
 		imanager.setIndexerId(cproject, "org.eclipse.cdt.core.fastIndexer");
@@ -424,7 +416,7 @@ public class VerveineCParser extends VerveineParser {
 					i--;         // 1 will be added at the beginning of the loop ("args[i++]")
 				}
 				else {
-					System.err.println("** Unrecognized option: " + arg);
+					Activator.log(IStatus.WARNING, "** Unrecognized option: " + arg);
 					usage();
 				}
 			}
@@ -467,16 +459,17 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	protected void usage() {
-		System.err.println("Usage: VerveineC [<options>] <eclipse-Cproject-to-parse>");
-		System.err.println("Recognized options:");
-		System.err.println("      -h: prints this message");
-		System.err.println("      -o <output-file-name>: changes the name of the output file (default: output.mse)");
-		//System.err.println("      -D<macro>: defines a C/C++ macro");
-		System.err.println("      -I<include-dir>: adds a directory containing include files");
-		System.err.println("      -includeconf <config-file>: adds the directories listed in config-file in the include paths");
-		System.err.println("      -autoinclude: looks for _all_ directories containing .h/.hh files and add them in the include paths");
-		System.err.println("      <eclipse-Cproject-to-parse>: directory containing the C/C++ project to export in MSE");
-		System.exit(0);
+		Activator.log(IStatus.INFO,
+				"Usage: VerveineC [<options>] <eclipse-Cproject-to-parse>\n" +
+				"Recognized options:\n" +
+				"      -h: prints this message\n" +
+				"      -o <output-file-name>: changes the name of the output file (default: output.mse)\n" +
+				//"      -D<macro>: defines a C/C++ macro");
+				"      -I<include-dir>: adds a directory containing include files\n" +
+				"      -includeconf <config-file>: adds the directories listed in config-file in the include paths\n" +
+				"      -autoinclude: looks for _all_ directories containing .h/.hh files and add them in the include paths\n" +
+				"      <eclipse-Cproject-to-parse>: directory containing the C/C++ project to export in MSE");
+		Activator.stop();
 	}
 
 }

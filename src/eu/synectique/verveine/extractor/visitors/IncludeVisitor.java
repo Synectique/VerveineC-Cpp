@@ -10,8 +10,10 @@ import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.core.runtime.IStatus;
 
 import eu.synectique.verveine.core.gen.famix.CFile;
+import eu.synectique.verveine.extractor.plugin.Activator;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.plugin.VerveineCParser;
 import eu.synectique.verveine.extractor.utils.FileUtil;
@@ -98,14 +100,10 @@ public class IncludeVisitor extends AbstractVisitor {
 	}
 
 	public void reportUnresolvedIncludes() {
-		this.reportUnresolvedIncludes(System.err);
-	}
-	
-	public void reportUnresolvedIncludes(PrintStream st) {
 		if (nbUnresolvedIncludes() > 0) {
-			st.println("There were "+nbUnresolvedIncludes()+" unresolved includes");
+			Activator.log(IStatus.WARNING, "There were "+nbUnresolvedIncludes()+" unresolved includes");
 			for (String str : unresolvedIncludes) {
-				st.println("  "+ str);
+				Activator.log(IStatus.WARNING, "  "+ str);
 			}
 		}
 	}
