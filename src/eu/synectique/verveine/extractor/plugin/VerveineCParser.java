@@ -126,10 +126,17 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	private CDictionary dico;
 
+	/**
+	 * whether to add a .h extension to the includes that do not specify one (e.g. <code>#include &lt;string&gt;</code>).
+	 * The idea is to help the include resolver
+	 */
+	private boolean forceIncludeH;
+
 	public VerveineCParser() {
 		super();
 		this.argIncludes = new ArrayList<String>();
 		this.argDefined = new HashMap<String,String>();
+		this.forceIncludeH = false;
 		this.autoinclude = false;
 		this.windows = false;
 		this.cModel = false;
@@ -267,7 +274,7 @@ public class VerveineCParser extends VerveineParser {
 			System.err.println("Project directory "+sourcePath+ " not found !");
 			return null;
 		}
-		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, projSrc, /*toLowerCase*/windows);
+		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, projSrc, /*toLowerCase*/windows, /*addHExtension*/forceIncludeH);
 		ICProjectDescriptionManager descManager = CoreModel.getDefault().getProjectDescriptionManager();
         try {
 			descManager.updateProjectDescriptions(new IProject[] { project }, Constants.NULL_PROGRESS_MONITOR);
@@ -407,6 +414,9 @@ public class VerveineCParser extends VerveineParser {
 			}
 			else if (arg.equals("-includeconf")) {
 				includeConfigFile = args[i++].trim();
+			}
+			else if (arg.equals("-forceincludeH")) {
+				forceIncludeH = true;
 			}
 			else if (arg.startsWith("-I")) {
 				argIncludes.add(arg.substring(2));
