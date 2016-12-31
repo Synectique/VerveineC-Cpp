@@ -9,24 +9,42 @@ import java.io.InputStream;
  */
 public abstract class AbstractIncludeFilterStream extends FilterInputStream {
 
+	private enum AbstractIncludeFilterStage {
+		SEARCHINCLUDE, ININCLUDE, SEARCHFILENAME, INFILENAME;
+	}
+
 	public static final String INCLUDE_MARKER = "#include";
 
-	private byte[] includeBuffer;
 	private int iBuf;
-	private boolean markerFound;
-	private boolean fileNameFound;
+	private AbstractIncludeFilterStage abstractIncludeFilterStatus;
+	private boolean giveBackSameChar;
+	private int lastByte;
 
 	public AbstractIncludeFilterStream(InputStream in) {
 		super(in);
-		includeBuffer = new byte[500];  // seems enough to store any realistic #include line
 		iBuf = 0;
-		markerFound = false;
-		fileNameFound = false;
+		abstractIncludeFilterStatus = AbstractIncludeFilterStage.SEARCHINCLUDE;
+		giveBackSameChar = false;
 	}
+
+	protected boolean isInFileName() {
+		return (abstractIncludeFilterStatus == AbstractIncludeFilterStage.INFILENAME);
+	}
+
+	protected void giveBackSameByte(boolean giveBack) {
+		giveBackSameChar = giveBack;
+	}
+
+	protected abstract int convertChar(int c);
 
 	@Override
 	public int read() throws IOException {
-		return myReadChar(super.read());
+		if (! giveBackSameChar) {
+			lastByte = super.read();
+			setStatus(lastByte);
+		}
+
+		return convertChar(lastByte);
 	}
 
 	@Override
@@ -36,99 +54,53 @@ public abstract class AbstractIncludeFilterStream extends FilterInputStream {
 
 	@Override
 	public int read(byte[] b, int off, int len) throws IOException {
-		int nb = super.read(b, off, len);
-		for (int i=0; i<nb; i++) {
-			b[i] = (byte) myReadChar(b[i]);
+		int read = this.read();
+		int i = 0;
+		while ( (read>=0) && (i<len) ) {
+			b[i] = (byte) read;
+			i++;
+			read = this.read();
 		}
-		return nb;
+		return i;
 	}
 
 	@Override
 	public long skip(long n) throws IOException {
-		iBuf = 0;
-		markerFound = false;
-		fileNameFound = false;
+		abstractIncludeFilterStatus= AbstractIncludeFilterStage.SEARCHINCLUDE;
 		return super.skip(n);
 	}
 
-	/**
-	 * Analyzes chars read as they come to detect presence of INCLUDE_MARKER string and
-	 * then transform them according to the specific concrete sub-class.<br>
-	 * Returns the transformed (or not) character
-	 */
-	protected int myReadChar(int c) {
-		if (! markerFound) {
-			return lookingForMarker(c);
+	protected void setStatus(int c) {
+		if ( (abstractIncludeFilterStatus == AbstractIncludeFilterStage.SEARCHINCLUDE) &&
+			 (c == INCLUDE_MARKER.charAt(0)) ) {   // i.e. '#'
+			iBuf = 1;
+			abstractIncludeFilterStatus = AbstractIncludeFilterStage.ININCLUDE;
+			return;
 		}
-		else {
-			return lookingForIncludedFile(c);
-		}
-	}
-
-
-	/**
-	 * Analyzes chars read as they come to detect the start of the included filename.
-	 * After this marker, passes the include file name to concrete convertChar(char)<br>
-	 * Returns the transformed (or not) character
-	 */
-	private int lookingForIncludedFile(int c) {
-		if (! fileNameFound) {
-			switch (c) {
-			case ' ' :
-			case '\t': return c;
-
-			case '<' :
-			case '"':
-				fileNameFound = true;
-				return c;
-			
-			default:
-				// cannot happen
-				return c;
-			}
-		}
-		else {
-			switch (c) {
-			case '>' :
-			case '"':
-				fileNameFound = false;
-				markerFound = false;
-				return c;
-			
-			default:
-				return convertChar(c);
-			}
-		}
-	}
-
-	protected abstract int convertChar(int c);
-
-
-	/**
-	 * Analyzes chars read as they come to detect presence of INCLUDE_MARKER string.
-	 * After this marker, passes the include file name to concrete convertChar(char)<br>
-	 * Returns the transformed (or not) character
-	 */
-	protected int lookingForMarker(int c) {
-		includeBuffer[iBuf] = (byte) c;
-		iBuf++;
-		if (! INCLUDE_MARKER.startsWith(new String(includeBuffer, 0, iBuf))) {
-			if (c == INCLUDE_MARKER.charAt(0)) {   // i.e. '#'
-				includeBuffer[0] = (byte) c;
-				iBuf = 1;
+		
+		if (abstractIncludeFilterStatus == AbstractIncludeFilterStage.ININCLUDE) {
+			if (c != INCLUDE_MARKER.charAt(iBuf)) {
+				abstractIncludeFilterStatus = AbstractIncludeFilterStage.SEARCHINCLUDE;
 			}
 			else {
-				iBuf = 0;
+				iBuf++;
+				if (iBuf == INCLUDE_MARKER.length()) {
+					abstractIncludeFilterStatus = AbstractIncludeFilterStage.SEARCHFILENAME;
+				}
 			}
+			return;
 		}
-		else
-			if (iBuf == INCLUDE_MARKER.length()) {
-				iBuf = 0;
-				markerFound = true;
-				fileNameFound = false;
+		
+		if ( (abstractIncludeFilterStatus == AbstractIncludeFilterStage.SEARCHFILENAME) &&
+			 ((c=='<') || (c=='"')) ) {
+				abstractIncludeFilterStatus = AbstractIncludeFilterStage.INFILENAME;
+				return;
 			}
 
-		return c;
+		if ( (abstractIncludeFilterStatus == AbstractIncludeFilterStage.INFILENAME) &&
+			 ((c=='>') || (c=='"')) ) {
+			abstractIncludeFilterStatus = AbstractIncludeFilterStage.SEARCHINCLUDE;
+		}
 	}
 
 }

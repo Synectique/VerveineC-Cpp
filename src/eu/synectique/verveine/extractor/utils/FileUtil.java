@@ -139,7 +139,7 @@ public class FileUtil {
 			IFile file = destPath.getFile(destName);
 
 			if (toLowerCase) {
-				source = new IncludeToLowerInputStream(source);
+				source = new IncludeToLowerFilterStream(source);
 			}
 
 			file.create(source, /*force*/true, Constants.NULL_PROGRESS_MONITOR);
