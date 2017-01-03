@@ -1,12 +1,9 @@
 package verveine.extractor.Cpp;
 
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringBufferInputStream;
-import java.nio.file.Files;
 
 import eu.synectique.verveine.extractor.utils.IncludeToLowerFilterStream;
 import eu.synectique.verveine.extractor.utils.IncludeWithHExtensionFilterStream;

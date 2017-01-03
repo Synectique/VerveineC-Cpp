@@ -90,7 +90,7 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		this.dico = dico;
 
 		if (msgTrace() != null ) {
-			System.err.println(msgTrace());
+			System.out.println(msgTrace());
 		}
 	}
 

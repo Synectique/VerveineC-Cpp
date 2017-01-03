@@ -37,8 +37,6 @@ import eu.synectique.verveine.core.gen.famix.CppSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.utils.Constants;
 import eu.synectique.verveine.extractor.utils.FileUtil;
-import eu.synectique.verveine.extractor.utils.ITracer;
-import eu.synectique.verveine.extractor.utils.Tracer;
 import eu.synectique.verveine.extractor.visitors.IncludeVisitor;
 import eu.synectique.verveine.extractor.visitors.def.AttributeGlobalVarDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
@@ -101,11 +99,6 @@ public class VerveineCParser extends VerveineParser {
 	private IIndex index = null;
 
 	/**
-	 * A tracer for debugging
-	 */
-	private ITracer tracer = null;
-
-	/**
 	 * flag telling whether we need to look for all possible include dir
 	 */
 	private boolean autoinclude;
@@ -147,9 +140,7 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	public boolean parse() {
-		tracer = new Tracer();
-		
-		tracer.msg("Copying source files in local project");
+		System.out.println("Copying source files in local project");
         ICProject cproject = createEclipseProject(DEFAULT_PROJECT_NAME, userProjectDir);
         if (cproject == null) {
         	// could not create the project :-(
@@ -373,7 +364,7 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	private void computeIndex(ICProject cproject) {
-		tracer.msg("Indexing source files");
+		System.out.println("Indexing source files");
 
 		IIndexManager imanager = CCorePlugin.getIndexManager();
 		imanager.setIndexerId(cproject, "org.eclipse.cdt.core.fastIndexer");

@@ -98,7 +98,7 @@ public class IncludeVisitor extends AbstractVisitor {
 	}
 
 	public void reportUnresolvedIncludes() {
-		this.reportUnresolvedIncludes(System.err);
+		this.reportUnresolvedIncludes(System.out);
 	}
 	
 	public void reportUnresolvedIncludes(PrintStream st) {
