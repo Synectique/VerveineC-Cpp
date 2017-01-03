@@ -55,6 +55,10 @@ public abstract class AbstractIncludeFilterStream extends FilterInputStream {
 	@Override
 	public int read(byte[] b, int off, int len) throws IOException {
 		int read = this.read();
+		if (read < 0) {
+			return read;
+		}
+
 		int i = 0;
 		while ( (read>=0) && (i<len) ) {
 			b[i] = (byte) read;

@@ -142,8 +142,12 @@ public class FileUtil {
 				source = new IncludeToLowerFilterStream(source);
 			}
 
-			file.create(source, /*force*/true, Constants.NULL_PROGRESS_MONITOR);
+			if (addHExtension) {
+				source = new IncludeWithHExtensionFilterStream(source);
+			}
 
+			file.create(source, /*force*/true, Constants.NULL_PROGRESS_MONITOR);
+			source.close();
 
 			file.refreshLocal(IResource.DEPTH_ZERO, Constants.NULL_PROGRESS_MONITOR);
 

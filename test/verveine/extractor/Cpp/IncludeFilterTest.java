@@ -1,9 +1,12 @@
 package verveine.extractor.Cpp;
 
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringBufferInputStream;
+import java.nio.file.Files;
 
 import eu.synectique.verveine.extractor.utils.IncludeToLowerFilterStream;
 import eu.synectique.verveine.extractor.utils.IncludeWithHExtensionFilterStream;
@@ -36,6 +39,7 @@ public class IncludeFilterTest {
 					"#include \"otherone.h\"\n" +
 					"void AndMore() {}";
 
+	
 	public static void main(String[] args) throws IOException {
 		byte[] srcBuf = new byte[SRC.length()+2];  // +2 to give room for added ext
 		InputStream input;
@@ -56,10 +60,10 @@ public class IncludeFilterTest {
 		input = new IncludeWithHExtensionFilterStream( new IncludeToLowerFilterStream( new StringBufferInputStream(SRC)));
 		byteRead = input.read(srcBuf);
 		reportError(byteRead, srcBuf,"to-lower then add-ext", TGT_BOTH);
-		
+		input.close();
+
 		System.out.println("Everything went as planned!");
 
-		input.close();  // useless but avoid warnings in Eclipse
 	}
 
 	protected static void reportError(int byteRead, byte[] srcBuf, String msg, String expected) {
