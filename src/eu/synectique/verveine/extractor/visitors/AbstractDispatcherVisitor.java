@@ -56,7 +56,7 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
 
 /**
  * The superclass of all visitors. These visitors visit an AST to create FAMIX entities.<BR>
- * This abstract class dispatches more finely the visits than what CDT's ASTVisitor normally do. 
+ * This abstract class dispatches more finely the visits than what CDT's ASTVisitor normally does. 
  * This visitor also merges two APIs: visit methods on AST (ASTVisitor) and visit methods on ICElements (ICElementVisitor).
  */
 public abstract class AbstractDispatcherVisitor extends ASTVisitor implements ICElementVisitor {

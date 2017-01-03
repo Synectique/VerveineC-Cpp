@@ -26,6 +26,12 @@ import eu.synectique.verveine.extractor.utils.CppEntityStack;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.NameResolver;
 
+/**
+ * Visitor that gets the {@link #nodeBnd} and {@link #nodeName} for the main entities.
+ * It manages the context stack and the current filename.
+ * It also tries to recover the FAMIX entities from the IBindings and
+ * it has a {@link #resolver} to further help recovering FAMIX entities from their name.
+ */
 public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 	/**

@@ -1,9 +1,6 @@
 package eu.synectique.verveine.extractor.visitors;
 
 import java.io.File;
-import java.io.PrintStream;
-import java.util.HashSet;
-import java.util.Set;
 
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.index.IIndex;
@@ -16,7 +13,7 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.plugin.VerveineCParser;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 
-public class IncludeVisitor extends AbstractVisitor {
+public class IncludeVisitor extends AbstractIssueReporterVisitor {
 
 	protected CFile currentFile;
 
@@ -26,26 +23,20 @@ public class IncludeVisitor extends AbstractVisitor {
 	protected String projectRootFolder;
 
 	/**
-	 * A set of all unresolved includes so that we report them only once
-	 */
-	protected Set<String> unresolvedIncludes;
-
-	/**
 	 * Full path of the project root
 	 */
 	private String projPath;
 
 	public IncludeVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
-		unresolvedIncludes = new HashSet<String>();
 		int i = rootFolder.indexOf(VerveineCParser.WORKSPACE_NAME);
 		if (i > 0) {		
 			this.projectRootFolder = rootFolder.substring(i+VerveineCParser.WORKSPACE_NAME.length());
 		}
 	}
 
-	protected String msgTrace() {
-		return "checking unresolved includes";
+	protected String issueMsgTrace() {
+		return "unresolved includes";
 	}
 
 	public void visit(ICProject project) {
@@ -82,9 +73,8 @@ public class IncludeVisitor extends AbstractVisitor {
 			includeStr = elt.isLocal() ? "\"" : "<";
 			includeStr += elt.getIncludeName();
 			includeStr += elt.isLocal() ? "\"" : ">";
-			if (! unresolvedIncludes.contains(includeStr)) {
-				unresolvedIncludes.add(includeStr);
-			}
+			addIssues(includeStr);
+
 			includedName = elt.getIncludeName();
 			key = resolver.mkStubKey(includedName, /*container*/null, CFile.class);
 		}
@@ -93,24 +83,4 @@ public class IncludeVisitor extends AbstractVisitor {
 		dico.addFamixInclude(currentFile, included);
 	}
 
-	public int nbUnresolvedIncludes() {
-		return unresolvedIncludes.size();
-	}
-
-	public void reportUnresolvedIncludes() {
-		this.reportUnresolvedIncludes(System.out);
-	}
-	
-	public void reportUnresolvedIncludes(PrintStream st) {
-		if (nbUnresolvedIncludes() > 0) {
-			st.println("There were "+nbUnresolvedIncludes()+" unresolved includes");
-			for (String str : unresolvedIncludes) {
-				st.println("  "+ str);
-			}
-		}
-	}
-
-	public Iterable<String> getUnresolvedIncludes() {
-		return unresolvedIncludes;
-	}
 }

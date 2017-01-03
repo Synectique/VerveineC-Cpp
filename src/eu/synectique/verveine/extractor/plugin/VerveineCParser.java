@@ -37,6 +37,7 @@ import eu.synectique.verveine.core.gen.famix.CppSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import eu.synectique.verveine.extractor.utils.Constants;
 import eu.synectique.verveine.extractor.utils.FileUtil;
+import eu.synectique.verveine.extractor.visitors.AbstractIssueReporterVisitor;
 import eu.synectique.verveine.extractor.visitors.IncludeVisitor;
 import eu.synectique.verveine.extractor.visitors.def.AttributeGlobalVarDefVisitor;
 import eu.synectique.verveine.extractor.visitors.def.BehaviouralDefVisitor;
@@ -167,23 +168,23 @@ public class VerveineCParser extends VerveineParser {
 		 * so it is worth the impact on execution time
 		 * Note that the order is important, the visitors are not independent */
 
-		IncludeVisitor incVisitor;
+		AbstractIssueReporterVisitor incVisitor;
 		incVisitor = new IncludeVisitor(dico, index, projectPrefix);
 		cproject.accept(incVisitor);
 
         int nbUI = 0;
-        for (@SuppressWarnings("unused") String ui : incVisitor.getUnresolvedIncludes()) {
+        for (@SuppressWarnings("unused") String ui : incVisitor.getIssues()) {
         	nbUI++;
         }
-        modelComment(nbUI + " unresolved includes:", incVisitor.getUnresolvedIncludes());
-		incVisitor.reportUnresolvedIncludes();
+        modelComment(nbUI + " unresolved includes:", incVisitor.getIssues());
+		incVisitor.reportIssues();
 
 		cproject.accept(new PackageDefVisitor(dico));
 		if (!cModel) {
 			cproject.accept(new NamespaceDefVisitor(dico, index, projectPrefix));
 		}
 		cproject.accept(new TypeDefVisitor(dico, index, projectPrefix));
-		
+
 		BehaviouralDefVisitor behavVisitor = new BehaviouralDefVisitor(dico, index, projectPrefix);		// must be after class definitions
 		behavVisitor.setHeaderFiles(true);
 		cproject.accept(behavVisitor);
