@@ -9,7 +9,7 @@ import eu.synectique.verveine.extractor.plugin.CDictionary;
 public class ErrorVisitor extends AbstractIssueReporterVisitor {
 
 	public ErrorVisitor(CDictionary dico, IIndex index, String rootFolder) {
-		super(dico, index, rootFolder);
+		super(dico, index);
 	}
 
 	@Override

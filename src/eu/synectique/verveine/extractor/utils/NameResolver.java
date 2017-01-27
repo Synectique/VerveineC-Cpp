@@ -15,6 +15,8 @@ import eu.synectique.verveine.core.gen.famix.Function;
 import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.ParameterizableClass;
+import eu.synectique.verveine.core.gen.famix.ParameterizedType;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
@@ -72,7 +74,7 @@ public class NameResolver {
 	 * If  <code>name</code> is (fully)qualified, ignores <code>parent</code>.
 	 */
 	protected <T extends NamedEntity> IBinding mkStubKey(IASTName name, ContainerEntity parent, java.lang.Class<T> entityType) {
-		return mkStubKey(name, parent, entityType);
+		return mkStubKey(name.toString(), parent, entityType);
 	}
 
 	public <T extends NamedEntity> IBinding mkStubKey(String name, ContainerEntity parent, java.lang.Class<T> entityType) {
@@ -539,6 +541,81 @@ public class NameResolver {
 			parent = (ContainerEntity) context.top();
 		}
 		return parent;
+	}
+
+
+	/**
+	 * Find a referenced type from its name
+	 * May have to create it if it is not found
+	 */
+	public Type referedType(IASTName name) {
+		Type fmx = null;
+		IBinding bnd = getBinding( name);
+
+		if (bnd == null) {
+			bnd = mkStubKey(name, Type.class);
+		}
+
+		NamedEntity tmp = dico.getEntityByKey(bnd);
+		fmx = (Type) tmp;
+
+		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
+			NamedEntity temp = findInParent(name.toString(), getContext().top(), /*recursive*/true); 
+			fmx = (Type) temp;
+		}
+
+		if (fmx == null) {  // still not found, create it
+			if (isParameterTypeInstanceName(name.toString())) {
+				fmx = referedParameterTypeInstance(bnd, name);
+			}
+			else {
+				QualifiedName qualName = new QualifiedName(name);
+				fmx = dico.ensureFamixType(bnd, qualName.unqualifiedName(), /*owner*/(ContainerEntity)resolveOrCreate(qualName.nameQualifiers().toString(), /*mayBeNull*/false, /*mustBeClass*/false));
+			}
+		}
+
+		return fmx;
+	}
+
+	private boolean isParameterTypeInstanceName(String name) {
+		return (name.indexOf('<') > 0) && (name.endsWith(">"));
+	}
+
+	/**
+	 * Creates a ParameterizedType, if possible in link with its ParameterizableClass
+	 * Puts parameterTypes argument into the ParameterizedType when possible
+	 */
+	private Type referedParameterTypeInstance(IBinding bnd, IASTName name) {
+		String strName = name.toString();
+		int i = strName.indexOf('<');
+		String typName = new QualifiedName(strName.substring(0, i)).unqualifiedName();
+
+		ParameterizedType fmx = null;
+		ParameterizableClass generic = null;
+		try {
+			generic = (ParameterizableClass) findInParent(typName, getContext().top(), /*recursive*/true);
+		}
+		catch (ClassCastException e) {
+			// create a ParameterizedType for an unknown generic
+			// 'generic' var. remains null
+		}
+		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, (ContainerEntity)resolveOrCreate(new QualifiedName(name).nameQualifiers().toString(), /*mayBeNull*/false, /*mustBeClass*/false));
+
+		for (String typArg : strName.substring(i+1, strName.length()-1).split(",")) {
+			typArg = typArg.trim();
+			try {
+				Type arg = (Type) findInParent(typArg, getContext().top(), /*recursive*/true);
+				if (arg != null) {
+					fmx.addArguments(arg);
+				}
+			}
+			catch (ClassCastException e) {
+				// for some reason, findInParent seems to have found an entity with this name but not a Type
+				// just forget about it
+			}
+		}
+		
+		return fmx;
 	}
 
 }

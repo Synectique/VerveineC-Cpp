@@ -12,6 +12,7 @@ import eu.synectique.verveine.core.gen.famix.CFile;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.plugin.VerveineCParser;
 import eu.synectique.verveine.extractor.utils.FileUtil;
+import eu.synectique.verveine.extractor.utils.NameResolver;
 
 public class IncludeVisitor extends AbstractIssueReporterVisitor {
 
@@ -20,7 +21,14 @@ public class IncludeVisitor extends AbstractIssueReporterVisitor {
 	/**
 	 * Prefix to remove from file names
 	 */
-	protected String projectRootFolder;
+	protected String rootFolder;
+
+	/**
+	 * An object responsible for resolving names.
+	 * This implies keeping track of the current context stack as well as handling the CDT IIndex, finding bindings for names,
+	 * or dealing with name (fully-qualified or not)
+	 */
+	protected NameResolver resolver;
 
 	/**
 	 * Full path of the project root
@@ -28,11 +36,11 @@ public class IncludeVisitor extends AbstractIssueReporterVisitor {
 	private String projPath;
 
 	public IncludeVisitor(CDictionary dico, IIndex index, String rootFolder) {
-		super(dico, index, rootFolder);
-		int i = rootFolder.indexOf(VerveineCParser.WORKSPACE_NAME);
-		if (i > 0) {		
-			this.projectRootFolder = rootFolder.substring(i+VerveineCParser.WORKSPACE_NAME.length());
-		}
+		super(dico, index);
+		
+		// similar to what is done in AbstractVisitor, but we don't need many things that it does
+		this.rootFolder = rootFolder;
+		this.resolver = new NameResolver(dico, index);
 	}
 
 	protected String issueMsgTrace() {
@@ -52,7 +60,7 @@ public class IncludeVisitor extends AbstractIssueReporterVisitor {
 	public void visit(ITranslationUnit elt) {
 		String filename = elt.getFile().getFullPath().toString();        // fullPath relative to project directory
 		IBinding key = resolver.mkStubKey(projPath+filename, /*container*/null, CFile.class);   // better not to localize filename for the key
-		currentFile = dico.ensureFamixCFile(key, FileUtil.localized(filename, projectRootFolder));
+		currentFile = dico.ensureFamixCFile(key, FileUtil.localized(filename,  File.separator + VerveineCParser.DEFAULT_PROJECT_NAME + File.separator + VerveineCParser.SOURCE_ROOT_DIR + File.separator) );
 		
 		// overriding superclass visit() to not visit AST but only the children
 		visitChildren(elt);
@@ -69,8 +77,8 @@ public class IncludeVisitor extends AbstractIssueReporterVisitor {
 			includedName = FileUtil.localized(includedName, rootFolder);
 		}
 		else {
-			String includeStr;
-			includeStr = elt.isLocal() ? "\"" : "<";
+			String includeStr = "Error:Unresolved include: ";
+			includeStr += elt.isLocal() ? "\"" : "<";
 			includeStr += elt.getIncludeName();
 			includeStr += elt.isLocal() ? "\"" : ">";
 			addIssues(includeStr);

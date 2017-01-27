@@ -58,7 +58,7 @@ public class VerveineCParser extends VerveineParser {
 
 	public static final String DEFAULT_PROJECT_NAME = "tempProj";
 
-	private static final String SOURCE_ROOT_DIR = "src";
+	public static final String SOURCE_ROOT_DIR = "src";
 
 	/**
 	 * Directory where the project to analyze is located
@@ -445,7 +445,7 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	private void modelComment(String title, Iterable<String> values) {
-		/* TODO deactivated for now:
+		/* TODO convince Synectique that it is a good idea. Deactivated for now:
 		String cmt = title; 
 		for (String v : values) {
 			cmt += " " + v;

@@ -88,32 +88,8 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	}
 
 	@Override
-	protected int visit(ICASTCompositeTypeSpecifier node) {
-		returnedEntity = referedType(node.getName());
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	public int visit(IASTElaboratedTypeSpecifier node) {
-		returnedEntity = referedType(node.getName());
-		return PROCESS_SKIP;
-	}
-
-	@Override
 	public int visit(IASTSimpleDeclSpecifier node) {
 		returnedEntity = dico.ensureFamixPrimitiveType( ((IASTSimpleDeclSpecifier) node).getType());
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTEnumerationSpecifier node) {
-		returnedEntity = referedType(node.getName());
-		return PROCESS_SKIP;
-	}
-
-	@Override
-	protected int visit(IASTNamedTypeSpecifier node) {
-		returnedEntity = referedType(node.getName());
 		return PROCESS_SKIP;
 	}
 
@@ -135,13 +111,9 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 	@Override
 	protected int visit(IASTFunctionDefinition node) {
 		returnedEntity = null;
-
 		node.getDeclarator().accept(this);
-
 		this.getContext().push((BehaviouralEntity)returnedEntity);
-
 		node.getBody().accept(this);
-
 		returnedEntity = this.getContext().pop();
 
 		return PROCESS_SKIP;
@@ -166,82 +138,6 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		returnedEntity = this.getContext().pop();
 
 		return PROCESS_SKIP;
-	}
-
-
-
-
-	/**
-	 * Find a referenced type from its name
-	 * May have to create it if it is not found
-	 */
-	protected Type referedType(IASTName name) {
-		Type fmx = null;
-		IBinding bnd = resolver.getBinding( name);
-
-		if (bnd == null) {
-			bnd = resolver.mkStubKey(name, Type.class);
-		}
-
-		NamedEntity tmp = dico.getEntityByKey(bnd);
-		fmx = (Type) tmp;
-
-		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
-			fmx = (Type) resolver.findInParent(name.toString(), getContext().top(), /*recursive*/true);
-		}
-
-		if (fmx == null) {  // still not found, create it
-			if (isParameterTypeInstanceName(name.toString())) {
-				fmx = referedParameterTypeInstance(bnd, name);
-			}
-			else {
-				QualifiedName qualName = new QualifiedName(name);
-				fmx = dico.ensureFamixType(bnd, qualName.unqualifiedName(), /*owner*/(ContainerEntity)resolver.resolveOrCreate(qualName.nameQualifiers().toString(), /*mayBeNull*/false, /*mustBeClass*/false));
-			}
-		}
-
-		return fmx;
-	}
-
-	/**
-	 * Creates a ParameterizedType, if possible in link with its ParameterizableClass
-	 * Puts parameterTypes argument into the ParameterizedType when possible
-	 */
-	private Type referedParameterTypeInstance(IBinding bnd, IASTName name) {
-		String strName = name.toString();
-		int i = strName.indexOf('<');
-		String typName = new QualifiedName(strName.substring(0, i)).unqualifiedName();
-
-		ParameterizedType fmx = null;
-		ParameterizableClass generic = null;
-		try {
-			generic = (ParameterizableClass) resolver.findInParent(typName, getContext().top(), /*recursive*/true);
-		}
-		catch (ClassCastException e) {
-			// create a ParameterizedType for an unknown generic
-			// 'generic' var. remains null
-		}
-		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, (ContainerEntity)resolver.resolveOrCreate(new QualifiedName(name).nameQualifiers().toString(), /*mayBeNull*/false, /*mustBeClass*/false));
-
-		for (String typArg : strName.substring(i+1, strName.length()-1).split(",")) {
-			typArg = typArg.trim();
-			try {
-				Type arg = (Type) resolver.findInParent(typArg, getContext().top(), /*recursive*/true);
-				if (arg != null) {
-					fmx.addArguments(arg);
-				}
-			}
-			catch (ClassCastException e) {
-				// for some reason, findInParent seems to have found an entity with this name but not a Type
-				// just forget about it
-			}
-		}
-		
-		return fmx;
-	}
-
-	private boolean isParameterTypeInstanceName(String name) {
-		return (name.indexOf('<') > 0) && (name.endsWith(">"));
 	}
 
 	/**

@@ -1,11 +1,15 @@
 package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
@@ -59,7 +63,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		node.getDeclSpecifier().accept(this);
 		referredType = (Type)returnedEntity;
 
-		node.getDeclarator().accept(this);
+		super.visit(node);  // visiting body and declarator
 
 		referredType = null;
 
@@ -200,6 +204,30 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		}
 		returnedEntity = fmx;
 
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(ICASTCompositeTypeSpecifier node) {
+		returnedEntity = resolver.referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	public int visit(IASTElaboratedTypeSpecifier node) {
+		returnedEntity = resolver.referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTEnumerationSpecifier node) {
+		returnedEntity = resolver.referedType(node.getName());
+		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTNamedTypeSpecifier node) {
+		returnedEntity = resolver.referedType(node.getName());
 		return PROCESS_SKIP;
 	}
 

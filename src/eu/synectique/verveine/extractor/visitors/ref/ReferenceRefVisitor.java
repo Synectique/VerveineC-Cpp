@@ -109,7 +109,7 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 	@Override
 	public int visit(IASTElaboratedTypeSpecifier node) {
 		if (inSizeofExpression || inCastExpression || inTemplateArgumentExpression) {
-			Reference ref = referenceToType( referedType(node.getName()) );
+			Reference ref = referenceToType( resolver.referedType(node.getName()) );
 			dico.addSourceAnchor(ref, filename, node.getFileLocation());
 		}
 
@@ -119,7 +119,7 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 	@Override
 	protected int visit(IASTNamedTypeSpecifier node) {
 		if (inSizeofExpression || inCastExpression || inTemplateArgumentExpression) {
-			Reference ref = referenceToType( referedType(node.getName()) );
+			Reference ref = referenceToType( resolver.referedType(node.getName()) );
 			dico.addSourceAnchor(ref, filename, node.getFileLocation());
 		}
 

@@ -8,15 +8,18 @@ import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 
-public abstract class AbstractIssueReporterVisitor extends AbstractVisitor {
+/**
+ * Abstract class for visitors that will collect issues on the AST and report them
+ */
+public abstract class AbstractIssueReporterVisitor extends AbstractDispatcherVisitor {
 
 	/**
-	 * A set of all unresolved includes so that we report them only once
+	 * A _set_ of all unresolved includes so that we report them only once
 	 */
 	protected Set<String> issues;
 
-	public AbstractIssueReporterVisitor(CDictionary dico, IIndex index, String rootFolder) {
-		super(dico, index, rootFolder);
+	public AbstractIssueReporterVisitor(CDictionary dico, IIndex index) {
+		super(dico, index);
 		issues = new HashSet<String>();
 	}
 
