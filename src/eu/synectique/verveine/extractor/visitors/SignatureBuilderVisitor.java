@@ -176,9 +176,13 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 		return PROCESS_SKIP;
 	}
 
+	/*
+	 * Visiting the return type of the behavioural
+	 * To help in Symbol resolution, its best if the return type is not qualified
+	 */
 	@Override
 	public int visit(IASTNamedTypeSpecifier node) {
-		signature += node.getName();
+		signature += new QualifiedName(node.getName()).unqualifiedName();
 		return PROCESS_SKIP;
 	}
 
