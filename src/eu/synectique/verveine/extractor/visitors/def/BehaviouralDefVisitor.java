@@ -1,5 +1,8 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.eclipse.cdt.core.dom.ast.IASTCaseStatement;
 import org.eclipse.cdt.core.dom.ast.IASTCompoundStatement;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
@@ -34,12 +37,13 @@ import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.FileUtil;
+import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
 /**
  * A visitor for Behavioural entities: Functions and methods.
  * To deal with methods, it inherits from {@link ClassMemberDefVisitor}
  * 
- * There are 2 main entry pints in this visitor
+ * There are 2 main entry points in this visitor
  * <ul>
  * <li> visit(IASTStandardFunctionDeclarator)</li>
  * <li> visit(ICASTKnRFunctionDeclarator)</li>
@@ -77,11 +81,30 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	 * Whether to visit only header files (h/hpp) or only c/cpp files
 	 */
 	private boolean headerFiles;
+	
+	/**
+	 * Whether we are in a function definition or declaration.
+	 * This influences whether to create "real" {@link Parameter}s or "potential ones,
+	 * see also {@link BehaviouralDefVisitor#privateCreateParameter()}. 
+	 */
+	private boolean isBehaviouralDefinition;
 
-	public BehaviouralDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
+	/**
+	 * A map that knows which parameters a "real" (or definitive) and which are "potential"
+	 * The key is the parameter IBinding
+	 */
+	private Map<BehaviouralEntity,Boolean[]> definitivePotentialParameters;
+
+	private Boolean[] behaviouralDefinitiveParameters;
+
+	private Parameter[] behaviouralParameters;
+
+ 	public BehaviouralDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
 		inKnRParams = false;
 		headerFiles = true;
+		isBehaviouralDefinition = false;
+		definitivePotentialParameters = new HashMap<BehaviouralEntity, Boolean[]>();
 	}
 
 	protected String msgTrace() {
@@ -139,8 +162,10 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	protected int visit(IASTFunctionDefinition node) {
 		BehaviouralEntity fmx = null;
 
+		isBehaviouralDefinition = true;
 		node.getDeclarator().accept(this);
 		fmx = (BehaviouralEntity) returnedEntity;
+		isBehaviouralDefinition = false;
 
 		// FIXME using pushBehaviouralEntity()/pushMethod() introduces a difference in the handling of the stack (for metrics CYCLO/NOS)
 		// this behaviour was inherited from VerveineJ and would need to be refactored
@@ -192,7 +217,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	@Override
 	protected int visit(IASTSimpleDeclaration node) {
 		if (declarationIsTypedef(node)) {
-			// prune typedefs
+			// prune typedefs because they define pointers to functions, not functions
 			return PROCESS_SKIP;
 		}
 
@@ -302,26 +327,92 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 	@Override
 	protected void visitParameters(IASTNode[] params, BehaviouralEntity fmx) {
-
-		fmx.setNumberOfParameters(params.length);
 		// note that there are 2 ways to get the number of parameters of a BehaviouralEntity in Famix: getNumberOfParameters() and numberOfParameters()
 		// the first returns the attribute numberOfParameters (set here),
 		// the second computes the size of parameter list so does not need to be set per se
+		fmx.setNumberOfParameters(params.length);
+
+		initializeParametersLists(params.length, fmx);
 
 		super.visitParameters(params, fmx);
+		
+		definitivePotentialParameters.put(fmx, behaviouralDefinitiveParameters);
 	}
 
+	/**
+	 * Create a parameter for a behavioural
+	 * Relies on the facts that:
+	 * <ul>
+	 * <li> {@link AbstractVisitor#iParam} is the indice of this parameter in the parent behavioural list of parameters
+	 * <li> {@link #behaviouralDefinitiveParameters} is a List of booleans for parent behavioural indicating whether
+	 * its parameters are definitive or not. Said Booleans can also be null if the parameters were not created yet
+	 * <li> {@link #behaviouralParameters} is an array of the Behavioural's Parameters (if they were already created)
+	 * </ul>
+	 * Creates the parameter and sets/modifies {@link #behaviouralDefinitiveParameters} as needed.
+	 * Three situations of interest:
+	 * <ul>
+	 * <li>Parameter did not exist before and is created;
+	 * <li>Parameter existed as a definitive one and it remains untouched;
+	 * <li>Parameter existed as a "potential" one (from a Function declaration) and is now a definitive one (from a function definition),
+	 * it must be potentially redefined
+	 * </ul>
+	 */
 	protected Parameter privateCreateParameter() {
 		Parameter fmx;
-		fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), getContext().topBehaviouralEntity());
-		fmx.setIsStub(false);
+		
+		if (! paramAlreadyExist(iParam)) {
+			fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), getContext().topBehaviouralEntity());
+			behaviouralDefinitiveParameters[iParam] = isBehaviouralDefinition;
+			fmx.setIsStub(false);
+		}
+		else {
+			Parameter potential = getParam(iParam);
+			if ( isBehaviouralDefinition && (! behaviouralDefinitiveParameters[iParam]) ) {
+				if ( ! potential.getName().equals(nodeName.toString()) ) {
+					// we are creating a "definitive" parameter, previous one existed as a "potential" parameter
+					// but with a different name, so we need to change the parameter
+					dico.removeParameter( potential);
+					fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), getContext().topBehaviouralEntity());
+				}
+				else {
+					fmx = potential;
+				}
+				behaviouralDefinitiveParameters[iParam] = isBehaviouralDefinition;
+			}
+			else {
+				fmx = getParam(iParam);
+			}
+		}
+		
 		// no sourceAnchor for parameter, they sometimes only appear in the .C file
 		// whereas it would seem more natural to store the anchor referent to the .H file ...
 		return fmx;
 	}
 
-
+	
 	// UTILITIES ======================================================================================================
+
+	protected void initializeParametersLists(int nbParams, BehaviouralEntity fmx) {	
+		behaviouralParameters = fmx.getParameters().toArray(new Parameter[nbParams]);
+
+		behaviouralDefinitiveParameters = definitivePotentialParameters.get(fmx);
+		if (behaviouralDefinitiveParameters == null) {
+			behaviouralDefinitiveParameters = new Boolean[nbParams];
+		}
+	}
+
+	private boolean paramAlreadyExist(int iParam) {
+		return (behaviouralDefinitiveParameters != null) && (behaviouralDefinitiveParameters[iParam] != null);
+	}
+
+	protected Parameter getParam(int iParam) {
+		if (behaviouralParameters != null) {
+			return behaviouralParameters[iParam];
+		}
+		else {
+			return null;
+		}
+	}
 
 	protected boolean declarationIsFriend(IASTFunctionDeclarator node) {
 		IASTNode parentDecl = node.getParent();

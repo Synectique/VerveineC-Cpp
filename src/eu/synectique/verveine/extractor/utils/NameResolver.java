@@ -560,8 +560,8 @@ public class NameResolver {
 		fmx = (Type) tmp;
 
 		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
-			NamedEntity temp = findInParent(name.toString(), getContext().top(), /*recursive*/true); 
-			fmx = (Type) temp;
+			tmp = findInParent(name.toString(), getContext().top(), /*recursive*/true); 
+			fmx = (Type) tmp;
 		}
 
 		if (fmx == null) {  // still not found, create it

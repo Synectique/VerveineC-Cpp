@@ -566,7 +566,7 @@ public class CDictionary extends Dictionary<IBinding> {
 
 	/**
 	 * Computes moose name for a Type.
-	 * MooseName is the concatenation of the moosename of the parent package with the simple name of the type
+	 * MooseName is the concatenation of the mooseName of the parent package with the simple name of the type
 	 */
 	static public String mooseName(Type parent, String name) {
 		if (parent != null) {
@@ -579,6 +579,15 @@ public class CDictionary extends Dictionary<IBinding> {
 
 	static protected String concatMooseName(String prefix, String name) {
 		return prefix + MOOSE_NAME_SEPARATOR + name;
+	}
+
+	/**
+	 * Remove a ParameterEntity from the repository
+	 * Parameter is also removed from its parentBehaviouralEntity
+	 */
+	public void removeParameter(Parameter param) {
+		param.setParentBehaviouralEntity(null);
+		super.removeEntity(param);
 	}
 
 }

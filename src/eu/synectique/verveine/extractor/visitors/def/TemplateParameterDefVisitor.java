@@ -1,7 +1,9 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
@@ -15,6 +17,7 @@ import org.eclipse.cdt.core.index.IIndex;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
+import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
@@ -55,17 +58,35 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 
 	@Override
 	protected int visit(ICPPASTFunctionDeclarator node) {
+		if (isFunctionPointer(node)) {
+			// pointer to function declaration
+			// skip it
+			return PROCESS_SKIP;
+		}
+
 		// compute nodeName and binding
 		super.visit( (IASTFunctionDeclarator)node);
 
-		returnedEntity = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
-		// try harder
+		NamedEntity fmx = dico.getEntityByKey(nodeBnd);
+		returnedEntity = fmx;
+
 		if (returnedEntity == null) {
+			// try harder
 			returnedEntity = resolver.ensureBehaviouralFromName(node, nodeBnd, nodeName);
 		}
 
-		// Not visiting children, because assuming there is no template inside a method
+		// Not visiting children, because assuming there is no template INSIDE a method
 		return PROCESS_SKIP;
+	}
+
+	@Override
+	protected int visit(IASTSimpleDeclaration node) {
+		if (declarationIsTypedef(node)) {
+			// prune typedefs because they define pointers to functions, not functions
+			return PROCESS_SKIP;
+		}
+
+		return PROCESS_CONTINUE;
 	}
 
 	@Override
@@ -111,6 +132,10 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 		getContext().pop();
 
 		return PROCESS_SKIP;
+	}
+
+	protected boolean isFunctionPointer(ICPPASTFunctionDeclarator node) {
+		return node.getNestedDeclarator()!=null;
 	}
 
 }

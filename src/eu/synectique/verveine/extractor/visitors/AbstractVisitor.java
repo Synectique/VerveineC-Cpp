@@ -76,6 +76,11 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	 */
 	protected boolean visitHeaders;
 
+	/**
+	 * Indice in the behavioural list of parameters of the current parameter
+	 */
+	protected int iParam;
+
 	public AbstractVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index);
 		this.rootFolder = rootFolder;
@@ -187,8 +192,12 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 	protected void visitParameters(IASTNode[] params, BehaviouralEntity fmx) {
 		getContext().push(fmx);
+		
+		// iParams allow to keep track of which parameter we are processing in the behavioural list of parameters
+		iParam = 0;
 		for (IASTNode param : params) {
 			param.accept(this);
+			iParam++;
 		}
 		getContext().pop();
 	}

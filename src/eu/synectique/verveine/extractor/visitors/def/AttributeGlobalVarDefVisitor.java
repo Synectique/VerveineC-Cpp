@@ -1,6 +1,7 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier.IASTEnumerator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
@@ -9,10 +10,12 @@ import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IVariable;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier.ICPPASTBaseSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.index.IIndex;
 
 import eu.synectique.verveine.core.gen.famix.Attribute;
@@ -51,6 +54,14 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 	 */
 	@Override
 	protected int visit(IASTNamedTypeSpecifier node) {
+		return PROCESS_SKIP;
+	}
+
+	/*
+	 * To avoid type name with "parameter" as in: aType<aParam>
+	 */
+	@Override
+	public int visit(IASTElaboratedTypeSpecifier node) {
 		return PROCESS_SKIP;
 	}
 
@@ -101,8 +112,9 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 	}
 
 	/*
-	 * We should only get here in the case of a variable declaration.
-	 * Is it an attribute or a "global" variable?
+	 * We mostly get here in the case of a variable declaration: an attribute or a "global" variable
+	 * Also reached in case of strange uses of macros :-(
+	 * For example in "void fct() THE_MACRO((MACRO_ARG));" the IASTDeclarator is "((MACRO_ARG))"
 	 */
 	@Override
 	public int visitInternal(IASTDeclarator node) {
@@ -110,19 +122,22 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 		nodeBnd = resolver.getBinding(nodeName);
 		StructuralEntity fmx;
 
-		fmx = ensureVariableKind(nodeBnd, nodeName);
-		dico.setVisibility(fmx, currentVisibility);
+		// In the case of the strange macro use, we found empty names
+		if (nodeName.toString().length() > 0) {
+			fmx = ensureVariableKind(nodeBnd, nodeName);
+			dico.setVisibility(fmx, currentVisibility);
 
-		/* For attributes (ICPPASTDeclarator) the location is that of the parent AST node, i.e. the declaration
-		 * For example, in "int a,b;" the declaration starts at "int" whereas there are 2 declarators: a and b
-		 */
-		dico.addSourceAnchor(fmx, filename, node.getParent().getFileLocation());
+			/* For attributes (ICPPASTDeclarator) the location is that of the parent AST node, i.e. the declaration
+			 * For example, in "int a,b;" the declaration starts at "int" whereas there are 2 declarators: a and b
+			 */
+			dico.addSourceAnchor(fmx, filename, node.getParent().getFileLocation());
+		}
 
 		return PROCESS_SKIP;
 	}
 
 	/**
-	 * ensure proper kind of StructuralEntity (GlobalVariable, Attribute, UnknownVariable) 
+	 * ensure a StructuralEntity of the proper kind (GlobalVariable, Attribute, UnknownVariable) 
 	 */
 	protected StructuralEntity ensureVariableKind(IBinding bnd, IASTName name) {
 		ContainerEntity parent;

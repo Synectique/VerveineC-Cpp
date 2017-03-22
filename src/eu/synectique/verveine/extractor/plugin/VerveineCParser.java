@@ -127,6 +127,11 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	private boolean forceIncludeH;
 
+	/** 
+	 * whether to check for include error and parsing errors
+	 */
+	private boolean errorlog;
+
 	public VerveineCParser() {
 		super();
 		this.argIncludes = new ArrayList<String>();
@@ -135,6 +140,7 @@ public class VerveineCParser extends VerveineParser {
 		this.autoinclude = false;
 		this.windows = false;
 		this.cModel = false;
+		this.errorlog = false;
 		this.includeConfigFile = null;
 		this.userProjectDir = null;
 
@@ -154,6 +160,10 @@ public class VerveineCParser extends VerveineParser {
 		computeIndex(cproject);
 
         try {
+    		if (linkToExisting()) {
+    			// incremental parsing ...
+    		}
+
     		runAllVisitors(dico, cproject);
 
 		} catch (CoreException e) {
@@ -172,13 +182,15 @@ public class VerveineCParser extends VerveineParser {
 		AbstractIssueReporterVisitor issueVisitor;
 		issueVisitor = new IncludeVisitor(dico, index, projectPrefix);
 		cproject.accept(issueVisitor);
-        //modelComment(issueVisitor.nbIssues() + " "+issueVisitor.issueMsgTrace(), issueVisitor.getIssues());
-		issueVisitor.reportIssues();
+		if (errorlog) {
+			issueVisitor.reportIssues();
+		}
 
-		issueVisitor = new ErrorVisitor(dico, index, projectPrefix);
-		cproject.accept(issueVisitor);
-        //modelComment(issueVisitor.nbIssues() + " "+issueVisitor.issueMsgTrace(), issueVisitor.getIssues());
-		issueVisitor.reportIssues();
+		if (errorlog) {
+			issueVisitor = new ErrorVisitor(dico, index, projectPrefix);
+			cproject.accept(issueVisitor);
+			issueVisitor.reportIssues();
+		}
 
 		cproject.accept(new PackageDefVisitor(dico));
 		if (!cModel) {
@@ -405,6 +417,9 @@ public class VerveineCParser extends VerveineParser {
 			else if (arg.equals("-autoinclude")) {
 				autoinclude = true;
 			}
+			else if (arg.equals("-errorlog")) {
+				errorlog = true;
+			}
 			else if (arg.equals("-includeconf")) {
 				includeConfigFile = args[i++].trim();
 			}
@@ -480,6 +495,7 @@ public class VerveineCParser extends VerveineParser {
 		System.err.println("      -I<include-dir>: adds a directory containing include files");
 		System.err.println("      -includeconf <config-file>: adds the directories listed in config-file in the include paths");
 		System.err.println("      -autoinclude: looks for _all_ directories containing .h/.hh files and add them in the include paths");
+		System.err.println("      -errorlog: reports unrelsolved includes and parsing errors");
 		System.err.println("      <eclipse-Cproject-to-parse>: directory containing the C/C++ project to export in MSE");
 		System.exit(0);
 	}

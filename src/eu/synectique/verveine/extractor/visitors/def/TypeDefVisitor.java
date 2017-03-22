@@ -8,6 +8,7 @@ import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.index.IIndex;
@@ -71,6 +72,7 @@ public class TypeDefVisitor extends AbstractVisitor {
 	 */
 	@Override
 	public void visit(ITranslationUnit elt) {
+//		System.err.println("TypeDefVisitor.visit(ITranslationUnit "+ elt.getElementName());
 		super.visit(elt);
 	}
 
@@ -188,8 +190,21 @@ public class TypeDefVisitor extends AbstractVisitor {
 	protected int visit(ICPPASTTemplateDeclaration node) {
 		definitionOfATemplate = true;
 		node.getDeclaration().accept(this);
+		definitionOfATemplate = false;
 
 		return PROCESS_SKIP;
+	}
+
+	/**
+	 * could be a friend class declaration
+	 */
+	protected int visit(ICPPASTElaboratedTypeSpecifier node) {
+		if (node.isFriend()) {
+			IBinding bnd = resolver.mkStubKey(node.getName(), Class.class);
+			Class fmx = dico.ensureFamixClass(bnd, node.getName().toString(), /*owner*/null);
+System.err.println("Found friend class: "+ node.getName().toString()+" isStub="+fmx.getIsStub());
+		}
+		return 0;
 	}
 
 	/*
