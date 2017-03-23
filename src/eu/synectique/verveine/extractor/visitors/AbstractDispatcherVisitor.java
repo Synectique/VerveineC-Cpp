@@ -27,9 +27,11 @@ import org.eclipse.cdt.core.dom.ast.IASTTypeId;
 import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.IASTUnaryExpression;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.c.ICASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorChainInitializer;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTConstructorInitializer;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamedTypeSpecifier;
@@ -390,7 +392,27 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 		return PROCESS_CONTINUE;
 	}
 
-	public int visit(IASTElaboratedTypeSpecifier node) {
+	protected int visit(IASTElaboratedTypeSpecifier node) {
+		/* could also test node.getKind() ???
+		 * - IASTElaboratedTypeSpecifier.k_enum:
+		 * - IASTElaboratedTypeSpecifier.k_struct:
+		 * - IASTElaboratedTypeSpecifier.k_union:
+		 * - ICPPASTElaboratedTypeSpecifier.k_class:
+		 */
+		if (node instanceof ICASTElaboratedTypeSpecifier) {
+			return visit((ICASTElaboratedTypeSpecifier)node);
+		}
+		else if (node instanceof ICPPASTElaboratedTypeSpecifier) {
+			return visit((ICPPASTElaboratedTypeSpecifier)node);
+		}
+		return super.visit(node);
+	}
+
+	protected int visit(ICASTElaboratedTypeSpecifier node) {
+		return PROCESS_CONTINUE;
+	}
+
+	protected int visit(ICPPASTElaboratedTypeSpecifier node) {
 		return PROCESS_CONTINUE;
 	}
 

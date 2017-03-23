@@ -1,22 +1,29 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
 import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
+import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.internal.core.model.Structure;
+import org.eclipse.cdt.internal.core.model.StructureDeclaration;
 
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
+import eu.synectique.verveine.core.gen.famix.Enum;
+import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
@@ -72,7 +79,6 @@ public class TypeDefVisitor extends AbstractVisitor {
 	 */
 	@Override
 	public void visit(ITranslationUnit elt) {
-//		System.err.println("TypeDefVisitor.visit(ITranslationUnit "+ elt.getElementName());
 		super.visit(elt);
 	}
 
@@ -121,38 +127,21 @@ public class TypeDefVisitor extends AbstractVisitor {
 			
 			return PROCESS_SKIP;  // typedef already handled
 		} 
-		// else includes such statement as: "class CAbstractFile;". This needs to be treated (by a reference?)
+		// else includes such statements as: "class XYZ;" and treated by the normal process (i.e. return PROCESS_CONTINUE)
+
 		return PROCESS_CONTINUE;
 	}
-
+	
 	/** Visiting a class definition
 	 */
 	@Override
 	protected int visit(ICPPASTCompositeTypeSpecifier node) {
 		Class fmx;
-		boolean isTemplate = definitionOfATemplate;
-		definitionOfATemplate = false;   // Immediately turn it off because it could pollute visiting the children
 
 		// compute nodeName and binding
 		super.visit(node);
-
-		if (isTemplate) {
-			fmx = dico.ensureFamixParameterizableClass(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top());
-		}
-		else {
-			// if node is a stub with a fully qualified name, its parent is not context.top() :-(
-			fmx = dico.ensureFamixClass(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top());
-		}
-		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
-		fmx.setParentPackage(currentPackage);
-		
-		// dealing with template class/struct
-		if (isTemplate) {
-			dico.addSourceAnchor(fmx, filename, ((ICPPASTTemplateDeclaration)node.getParent().getParent()).getFileLocation());
-		}
-		else {
-			dico.addSourceAnchor(fmx, filename, node.getFileLocation());
-		}
+		fmx = createClass(node);
+		fmx.setIsStub(false);
 
 		this.getContext().push(fmx);
 		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
@@ -172,10 +161,8 @@ public class TypeDefVisitor extends AbstractVisitor {
 
 		// compute nodeName and binding
 		super.visit(node);
-		fmx = dico.ensureFamixClass(nodeBnd, "struct "+nodeName.toString(), (ContainerEntity)getContext().top());
-
-		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
-		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
+		fmx = createClass(node);
+		fmx.setIsStub(false);
 
 		this.getContext().push(fmx);
 		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {
@@ -196,15 +183,40 @@ public class TypeDefVisitor extends AbstractVisitor {
 	}
 
 	/**
-	 * could be a friend class declaration
+	 * a class declaration such as "class XYZ;"
 	 */
-	protected int visit(ICPPASTElaboratedTypeSpecifier node) {
-		if (node.isFriend()) {
-			IBinding bnd = resolver.mkStubKey(node.getName(), Class.class);
-			Class fmx = dico.ensureFamixClass(bnd, node.getName().toString(), /*owner*/null);
-System.err.println("Found friend class: "+ node.getName().toString()+" isStub="+fmx.getIsStub());
+	@Override
+	protected int visit(IASTElaboratedTypeSpecifier node) {
+		NamedEntity ctxt = null;
+
+		nodeName = node.getName();
+		nodeBnd = resolver.getBinding(nodeName);
+		if (nodeBnd == null) {
+			nodeBnd = resolver.mkStubKey(nodeName, Class.class);
 		}
-		return 0;
+
+		if (isCppFriendDeclaration(node)) {
+			ctxt = resolver.getContext().pop();
+		}
+
+		switch (node.getKind()) {
+		case IASTElaboratedTypeSpecifier.k_struct:
+		case IASTElaboratedTypeSpecifier.k_union:
+		case ICPPASTElaboratedTypeSpecifier.k_class:
+			createClass(node);
+			break;
+		case IASTElaboratedTypeSpecifier.k_enum:
+			createEnum(node);
+			break;
+		default:
+			// should not happen
+		}
+
+		if (ctxt != null) {
+			resolver.getContext().push(ctxt);
+		}
+
+		return PROCESS_SKIP;
 	}
 
 	/*
@@ -221,10 +233,7 @@ System.err.println("Found friend class: "+ node.getName().toString()+" isStub="+
 	protected int visit(IASTEnumerationSpecifier node) {
 		eu.synectique.verveine.core.gen.famix.Enum fmx;
 
-		nodeBnd = null;
 		nodeName = node.getName();
-		
-
 		if (nodeName.equals("")) {
 			// case of anonymous enum: it is probably within a typedef and will never be used directly
 			// so the key is mostly irrelevant, only used to find back the type when creating its enumerated values 
@@ -236,10 +245,9 @@ System.err.println("Found friend class: "+ node.getName().toString()+" isStub="+
 				nodeBnd = resolver.mkStubKey(nodeName, eu.synectique.verveine.core.gen.famix.Enum.class);
 			}
 		}
-		fmx = dico.ensureFamixEnum(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top(), /*persistIt*/true);
-		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
 
-		returnedEntity = fmx;
+		fmx = createEnum(node);
+		fmx.setIsStub(false);
 
 		return PROCESS_SKIP;
 	}
@@ -252,8 +260,65 @@ System.err.println("Found friend class: "+ node.getName().toString()+" isStub="+
 		return PROCESS_SKIP;
 	}
 
+	
+	// ---- UTILITIES ----
+	
+	/**
+	 * Common code to create a class that can be a template.
+	 * Used for ICPPASTCompositeTypeSpecifier, ICASTCompositeTypeSpecifier, ICPPASTElaboratedTypeSpecifier
+	 */
+	protected Class createClass(IASTDeclSpecifier node) {
+		Class fmx;
+		boolean isTemplate = definitionOfATemplate;
+		definitionOfATemplate = false;   // Immediately turn it off because it could pollute visiting the children
+
+		if (isTemplate) {
+			fmx = dico.ensureFamixParameterizableClass(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top());
+		}
+		else {
+			// if node is a stub with a fully qualified name, its parent is not context.top() :-(
+			fmx = dico.ensureFamixClass(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top());
+		}
+		fmx.setParentPackage(currentPackage);
+		
+		// dealing with template class/struct
+		if (isTemplate) {
+			dico.addSourceAnchor(fmx, filename, ((ICPPASTTemplateDeclaration)node.getParent().getParent()).getFileLocation());
+		}
+		else {
+			dico.addSourceAnchor(fmx, filename, node.getFileLocation());
+		}
+		return fmx;
+	}
+
+	
+	/**
+	 * Common code to create an enumeratedType.
+	 * Used for IASTEnumerationSpecifier, IASTElaboratedTypeSpecifier
+	 */
+	protected eu.synectique.verveine.core.gen.famix.Enum createEnum(IASTDeclSpecifier node) {
+		eu.synectique.verveine.core.gen.famix.Enum fmx;
+
+		fmx = dico.ensureFamixEnum(nodeBnd, nodeName.toString(), (ContainerEntity)getContext().top(), /*persistIt*/true);
+		dico.addSourceAnchor(fmx, filename, node.getFileLocation());
+
+		returnedEntity = fmx;
+
+		return fmx;
+	}
+
 	protected boolean isFunctionPointerTypedef(IASTSimpleDeclaration node) {
 		return (node.getDeclarators().length>0) &&                       // should always be the case, no?
 				(node.getDeclarators()[0].getNestedDeclarator()!=null);
 	}
+
+	private boolean isCppFriendDeclaration(IASTElaboratedTypeSpecifier node) {
+		if (node instanceof ICPPASTElaboratedTypeSpecifier) {
+			return ((ICPPASTDeclSpecifier) node).isFriend();
+		}
+		else {
+			return false;
+		}
+	}
+
 }

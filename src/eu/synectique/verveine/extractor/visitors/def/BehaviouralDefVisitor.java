@@ -93,18 +93,25 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	 * A map that knows which parameters a "real" (or definitive) and which are "potential"
 	 * The key is the parameter IBinding
 	 */
-	private Map<BehaviouralEntity,Boolean[]> definitivePotentialParameters;
+	private Map<BehaviouralEntity,Boolean[]> mapBehavioural_IsdefinitiveParameters;
 
-	private Boolean[] behaviouralDefinitiveParameters;
+	/**
+	 * A map that knows all the parameters of a behavioural in their correct order
+	 * (BehaviouralEntity.getParameters() is based on a HashSet whichdoes not retain insertion order)
+	 */
+	private Map<BehaviouralEntity,Parameter[]> mapBehavioural_OrderedParameters;
 
-	private Parameter[] behaviouralParameters;
+	private Boolean[] isDefinitiveParameters;
+
+	private Parameter[] orderedParameters;
 
  	public BehaviouralDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
 		inKnRParams = false;
 		headerFiles = true;
 		isBehaviouralDefinition = false;
-		definitivePotentialParameters = new HashMap<BehaviouralEntity, Boolean[]>();
+		mapBehavioural_IsdefinitiveParameters = new HashMap<BehaviouralEntity, Boolean[]>();
+		mapBehavioural_OrderedParameters = new HashMap<BehaviouralEntity, Parameter[]>();
 	}
 
 	protected String msgTrace() {
@@ -332,11 +339,14 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		// the second computes the size of parameter list so does not need to be set per se
 		fmx.setNumberOfParameters(params.length);
 
-		initializeParametersLists(params.length, fmx);
-
+		getParameterMaps(params.length, fmx);
 		super.visitParameters(params, fmx);
-		
-		definitivePotentialParameters.put(fmx, behaviouralDefinitiveParameters);
+		setParameterMaps(fmx);
+	}
+
+	protected void setParameterMaps(BehaviouralEntity fmx) {
+		mapBehavioural_IsdefinitiveParameters.put(fmx, isDefinitiveParameters);
+		mapBehavioural_OrderedParameters.put(fmx, orderedParameters);
 	}
 
 	/**
@@ -344,11 +354,11 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	 * Relies on the facts that:
 	 * <ul>
 	 * <li> {@link AbstractVisitor#iParam} is the indice of this parameter in the parent behavioural list of parameters
-	 * <li> {@link #behaviouralDefinitiveParameters} is a List of booleans for parent behavioural indicating whether
+	 * <li> {@link #isDefinitiveParameters} is a List of booleans for parent behavioural indicating whether
 	 * its parameters are definitive or not. Said Booleans can also be null if the parameters were not created yet
 	 * <li> {@link #behaviouralParameters} is an array of the Behavioural's Parameters (if they were already created)
 	 * </ul>
-	 * Creates the parameter and sets/modifies {@link #behaviouralDefinitiveParameters} as needed.
+	 * Creates the parameter and sets/modifies {@link #isDefinitiveParameters} as needed.
 	 * Three situations of interest:
 	 * <ul>
 	 * <li>Parameter did not exist before and is created;
@@ -362,23 +372,28 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		
 		if (! paramAlreadyExist(iParam)) {
 			fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), getContext().topBehaviouralEntity());
-			behaviouralDefinitiveParameters[iParam] = isBehaviouralDefinition;
-			fmx.setIsStub(false);
+			fmx.setIsStub(! isBehaviouralDefinition);
+			isDefinitiveParameters[iParam] = isBehaviouralDefinition;
+			orderedParameters[iParam] = fmx;
 		}
 		else {
 			Parameter potential = getParam(iParam);
-			if ( isBehaviouralDefinition && (! behaviouralDefinitiveParameters[iParam]) ) {
+			if ( isBehaviouralDefinition && (! isDefinitiveParameters[iParam]) ) {
 				if ( ! potential.getName().equals(nodeName.toString()) ) {
 					// we are creating a "definitive" parameter, previous one existed as a "potential" parameter
 					// but with a different name, so we need to change the parameter
 					dico.removeParameter( potential);
 					fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), getContext().topBehaviouralEntity());
-					fmx.setIsStub(false);
 				}
 				else {
 					fmx = potential;
 				}
-				behaviouralDefinitiveParameters[iParam] = isBehaviouralDefinition;
+				if (fmx.getIsStub() && isBehaviouralDefinition) {
+					fmx.setIsStub(false);
+				}
+
+				isDefinitiveParameters[iParam] = isBehaviouralDefinition;
+				orderedParameters[iParam] = fmx;
 			}
 			else {
 				fmx = getParam(iParam);
@@ -393,22 +408,25 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	
 	// UTILITIES ======================================================================================================
 
-	protected void initializeParametersLists(int nbParams, BehaviouralEntity fmx) {	
-		behaviouralParameters = fmx.getParameters().toArray(new Parameter[nbParams]);
+	protected void getParameterMaps(int nbParams, BehaviouralEntity fmx) {	
+		orderedParameters = mapBehavioural_OrderedParameters.get(fmx);
+		if (orderedParameters == null) {
+			orderedParameters = new Parameter[nbParams];
+		}
 
-		behaviouralDefinitiveParameters = definitivePotentialParameters.get(fmx);
-		if (behaviouralDefinitiveParameters == null) {
-			behaviouralDefinitiveParameters = new Boolean[nbParams];
+		isDefinitiveParameters = mapBehavioural_IsdefinitiveParameters.get(fmx);
+		if (isDefinitiveParameters == null) {
+			isDefinitiveParameters = new Boolean[nbParams];
 		}
 	}
 
 	private boolean paramAlreadyExist(int iParam) {
-		return (behaviouralDefinitiveParameters != null) && (behaviouralDefinitiveParameters[iParam] != null);
+		return (isDefinitiveParameters != null) && (isDefinitiveParameters[iParam] != null);
 	}
 
 	protected Parameter getParam(int iParam) {
-		if (behaviouralParameters != null) {
-			return behaviouralParameters[iParam];
+		if (orderedParameters != null) {
+			return orderedParameters[iParam];
 		}
 		else {
 			return null;
