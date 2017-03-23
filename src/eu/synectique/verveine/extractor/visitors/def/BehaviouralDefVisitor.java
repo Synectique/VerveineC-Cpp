@@ -373,6 +373,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 					// but with a different name, so we need to change the parameter
 					dico.removeParameter( potential);
 					fmx = dico.ensureFamixParameter(nodeBnd, nodeName.toString(), getContext().topBehaviouralEntity());
+					fmx.setIsStub(false);
 				}
 				else {
 					fmx = potential;

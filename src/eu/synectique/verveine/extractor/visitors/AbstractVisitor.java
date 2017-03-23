@@ -3,15 +3,18 @@ package eu.synectique.verveine.extractor.visitors;
 import org.eclipse.cdt.core.dom.ast.ASTVisitor;
 import org.eclipse.cdt.core.dom.ast.IASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
+import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNode;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTSimpleDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ITranslationUnit;
@@ -22,6 +25,7 @@ import eu.synectique.verveine.core.gen.famix.Namespace;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.AnonymousName;
 import eu.synectique.verveine.extractor.utils.CppEntityStack;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.NameResolver;
@@ -33,6 +37,8 @@ import eu.synectique.verveine.extractor.utils.NameResolver;
  * it has a {@link #resolver} to further help recovering FAMIX entities from their name.
  */
 public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
+
+	public static final String ANONYMOUS_PARAMETER_DECLARATION = "--AnonymousParameterDeclaration--";
 
 	/**
 	 * Prefix to remove from file names
@@ -176,10 +182,14 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		nodeBnd = null;
 		nodeName = node.getDeclarator().getName();
 
-		if (nodeName.toString().equals("")) {
+		if (isVoidDecl(node.getDeclSpecifier()) && ! isPointerDecl(node.getDeclarator())) {
+			// declaration is on type "void" but not a pointer (as in "void*")
 			// case of a "mth(void)" declaration, seen as a parameter with no name
-			// also happens for fct/method declaration (as opposed to definition) as in: "mth(int,char*)" (no parameter name)
 			return PROCESS_SKIP;
+		}
+		
+		if (nodeName.toString().length() == 0) {
+			nodeName = new AnonymousName(nodeName, "Parameter"+iParam);
 		}
 
 		nodeBnd = resolver.getBinding(nodeName);
@@ -208,6 +218,20 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	}
 
 	// UTILITIES ======================================================================================================
+
+	private boolean isPointerDecl(IASTDeclarator declarator) {
+		
+		return declarator.getPointerOperators().length > 0;
+	}
+
+	private boolean isVoidDecl(IASTDeclSpecifier declSpecifier) {
+		if (declSpecifier instanceof IASTSimpleDeclSpecifier) {
+			return ((IASTSimpleDeclSpecifier)declSpecifier).getType() == IASTSimpleDeclSpecifier.t_void;
+		}
+		else {
+			return false;
+		}
+	}
 
 	protected boolean declarationIsTypedef(IASTSimpleDeclaration node) {
 		return (node.getDeclSpecifier().getStorageClass() == IASTDeclSpecifier.sc_typedef);
