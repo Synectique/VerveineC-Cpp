@@ -5,13 +5,17 @@ import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDefinition;
+import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.IASTNamedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
 import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
+import org.eclipse.cdt.core.dom.ast.IASTTypeId;
+import org.eclipse.cdt.core.dom.ast.IASTTypeIdExpression;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
+import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateId;
 import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
 
@@ -227,8 +231,17 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 
 	@Override
 	protected int visit(IASTNamedTypeSpecifier node) {
-		returnedEntity = resolver.referedType(node.getName());
+		IASTName name = node.getName();
+		if (name instanceof ICPPASTTemplateId) {
+			name = ((ICPPASTTemplateId) name).getTemplateName();
+		}
+		returnedEntity = resolver.referedType(name);
 		return PROCESS_SKIP;
+	}
+
+	@Override
+	public int visit(IASTTypeId node) {
+		return PROCESS_CONTINUE;
 	}
 
 }

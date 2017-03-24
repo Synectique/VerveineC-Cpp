@@ -560,7 +560,12 @@ public class NameResolver {
 		fmx = (Type) tmp;
 
 		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
-			tmp = findInParent(name.toString(), getContext().top(), /*recursive*/true); 
+			tmp = findInParent(name.toString(), getContext().top(), /*recursive*/true);
+			
+			// in the case of a sizeof(xyz), we can have a variable instead of a type
+			if (tmp instanceof StructuralEntity) {
+				return null;
+			}
 			fmx = (Type) tmp;
 		}
 

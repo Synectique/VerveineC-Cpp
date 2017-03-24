@@ -238,7 +238,9 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 			else if (parent instanceof ICPPASTConstructorChainInitializer) {
 				// FIXME what if returnedType == null but should be Attribute ... ?
 				if ( returnedEntity instanceof Attribute ) {    // hopefully set in visit(ICPPASTConstructorChainInitializer)
-					mthName = ((Attribute)returnedEntity).getDeclaredType().getName();
+					if (((Attribute)returnedEntity).getDeclaredType() != null) {
+						mthName = ((Attribute)returnedEntity).getDeclaredType().getName();
+					}
 				}
 				else {
 					// Constructor name is the name of its class (possibly fully qualified) + name of the class (unqualified) 
