@@ -186,11 +186,8 @@ public class VerveineCParser extends VerveineParser {
 			issueVisitor.reportIssues();
 		}
 
-		if (errorlog) {
-			issueVisitor = new ErrorVisitor(dico, index, projectPrefix);
-			cproject.accept(issueVisitor);
-			issueVisitor.reportIssues();
-		}
+		// 2nd issue reporter
+		issueVisitor = new ErrorVisitor(dico, index, projectPrefix);
 
 		cproject.accept(new PackageDefVisitor(dico));
 		if (!cModel) {
@@ -217,6 +214,11 @@ public class VerveineCParser extends VerveineParser {
 
 		cproject.accept(new CommentDefVisitor(dico, index, projectPrefix));
 		cproject.accept(new PreprocessorStmtDefVisitor(dico, index, projectPrefix));
+
+		if (errorlog) {
+			cproject.accept(issueVisitor);
+			issueVisitor.reportIssues();
+		}
 	}
 
 	private void configWorkspace(IWorkspace workspace) {

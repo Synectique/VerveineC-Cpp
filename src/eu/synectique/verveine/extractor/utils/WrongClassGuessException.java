@@ -1,5 +1,9 @@
 package eu.synectique.verveine.extractor.utils;
 
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 
 /**
@@ -22,6 +26,13 @@ public class WrongClassGuessException extends Exception {
 		}
 		else {
 			System.err.println();
+		}
+
+		for (StackTraceElement stackEntry : new Throwable().getStackTrace()) {
+			if (! (stackEntry.getMethodName().equals("reportWrongClassGuess") || stackEntry.getMethodName().startsWith("getEntry")) ) {
+				System.err.println(" From parser code: " + stackEntry.toString());
+				break;
+			}
 		}
 	}
  
