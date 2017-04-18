@@ -71,6 +71,14 @@ public class CDictionary extends Dictionary<IBinding> {
 		nameToFile = new Hashtable<IBinding,CFile>();
 	}
 
+ 	/**
+ 	 * for debugging purpose
+ 	 * @return number of entities in the repository (hence the dictionary)
+ 	 */
+ 	public int size() {
+ 		return famixRepo.size();
+ 	}
+ 
 	protected NamedEntity getEntityIfNotNull(IBinding key) {
 		if (key == null) {
 			return null;
@@ -397,7 +405,8 @@ public class CDictionary extends Dictionary<IBinding> {
 
 	public Attribute ensureFamixAttribute(IBinding key, String name, Type parent) {
 		Attribute fmx;
-		fmx = (Attribute) getEntityIfNotNull(key);
+		NamedEntity tmp = getEntityIfNotNull(key);
+		fmx = (Attribute) tmp;
 		if (fmx == null) {
 			fmx = super.ensureFamixAttribute(key, name, /*type*/null, parent, /*persistIt*/true);
 		}

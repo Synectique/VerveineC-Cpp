@@ -16,13 +16,9 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTTemplateDeclaration;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
-import org.eclipse.cdt.core.model.ITranslationUnit;
-import org.eclipse.cdt.internal.core.model.Structure;
-import org.eclipse.cdt.internal.core.model.StructureDeclaration;
 
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.ContainerEntity;
-import eu.synectique.verveine.core.gen.famix.Enum;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.Type;
@@ -72,14 +68,6 @@ public class TypeDefVisitor extends AbstractVisitor {
 		if (currentPackage != null) {
 			currentPackage = currentPackage.getParentPackage();    // back to parent package
 		}
-	}
-
-	/*
-	 * be careful, overriden in some subclasses so that this one is not called
-	 */
-	@Override
-	public void visit(ITranslationUnit elt) {
-		super.visit(elt);
 	}
 
 	@Override
