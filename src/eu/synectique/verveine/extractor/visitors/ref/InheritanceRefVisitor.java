@@ -33,7 +33,7 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 		Class subClass = null;
 		// compute nodeName and binding
 		super.visit(node);
-		subClass = (Class) dico.getEntityByKey(nodeBnd);
+		subClass = dico.getEntityByKey(Class.class, nodeBnd);
 
 		getContext().push(subClass);
 		lastInheritance = null;
@@ -59,7 +59,7 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 		if ( (nodeBnd == null) || (nodeBnd instanceof IProblemBinding) ) {
 			nodeBnd = resolver.mkStubKey((IASTName)baseName, Class.class);
 		}
-		supClass = (Type) dico.getEntityByKey(nodeBnd);
+		supClass = dico.getEntityByKey(Type.class, nodeBnd);
 
 		if (supClass == null) {
 			supClass = (Type) resolver.resolveOrCreate( baseName.toString(), /*mayBeNull*/false, /*mustBeClass*/true);

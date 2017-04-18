@@ -109,7 +109,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 
 		nodeBnd = resolver.getBinding(node.getName());
 
-		fmx = (Namespace) dico.getEntityByKey(nodeBnd);
+		fmx = dico.getEntityByKey(Namespace.class, nodeBnd);
 
 		getContext().push(fmx);
 

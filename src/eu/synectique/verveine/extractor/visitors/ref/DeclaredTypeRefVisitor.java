@@ -120,7 +120,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 			}
 		}
 
-		fmx = (StructuralEntity) dico.getEntityByKey(nodeBnd);
+		fmx = dico.getEntityByKey(StructuralEntity.class, nodeBnd);
 		if (fmx != null) {
 			fmx.setDeclaredType(referredType);
 		}
@@ -180,7 +180,7 @@ public class DeclaredTypeRefVisitor extends AbstractRefVisitor {
 		if (super.visit(node) == PROCESS_SKIP) {
 			return PROCESS_SKIP;
 		}
-		fmx = (Parameter) dico.getEntityByKey(nodeBnd);
+		fmx = dico.getEntityByKey(Parameter.class, nodeBnd);
 
 		/*
 		if (fmx == null) {

@@ -76,7 +76,7 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		/* Gets the key (IBinding) of the node to recover the famix type entity */
 		super.visit(node);
 
-		fmx = (Class) dico.getEntityByKey(nodeBnd);
+		fmx = dico.getEntityByKey(Class.class, nodeBnd);
 
 		this.getContext().push(fmx);
 		for (IASTDeclaration decl : node.getDeclarations(/*includeInactive*/true)) {

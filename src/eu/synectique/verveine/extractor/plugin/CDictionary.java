@@ -44,6 +44,7 @@ import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Visibility;
+import eu.synectique.verveine.extractor.utils.WrongClassGuessException;
 
 public class CDictionary extends Dictionary<IBinding> {
 
@@ -78,13 +79,33 @@ public class CDictionary extends Dictionary<IBinding> {
  	public int size() {
  		return famixRepo.size();
  	}
- 
-	protected NamedEntity getEntityIfNotNull(IBinding key) {
+
+	@SuppressWarnings("unchecked")
+ 	public <T extends NamedEntity> T getEntityByKey(Class<T> clazz, IBinding key) {
+ 		NamedEntity found = super.getEntityByKey(key); 
+		if ((found != null) && ! clazz.isInstance(found)) {
+			WrongClassGuessException.reportWrongClassGuess(clazz, found);
+			return null;
+		}
+		else {
+			return (T) found;
+		}
+ 	}
+
+	@SuppressWarnings("unchecked")
+	protected <T extends NamedEntity> T getEntityIfNotNull(Class<T> clazz, IBinding key) {
 		if (key == null) {
 			return null;
 		}
 		else {
-			return keyToEntity.get(key);
+			NamedEntity found = keyToEntity.get(key);
+			if ((found != null) && ! clazz.isInstance(found)) {
+				WrongClassGuessException.reportWrongClassGuess(clazz, found);
+				return null;
+			}
+			else {
+				return (T)found;
+			}
 		}
 	}
 
@@ -257,7 +278,7 @@ public class CDictionary extends Dictionary<IBinding> {
 		UnknownVariable fmx = null;
 		
 		if (key != null) {
-			fmx = (UnknownVariable) getEntityByKey(key);
+			fmx = getEntityByKey(UnknownVariable.class, key);
 		}
 
 		if (fmx == null) {
@@ -304,7 +325,8 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public Type ensureFamixType(IBinding key, String name, ContainerEntity owner) {
-		Type fmx = (Type) getEntityIfNotNull(key);
+		Type fmx = getEntityIfNotNull(Type.class, key);
+
 		if (fmx == null) {
 			fmx = super.ensureFamixType(key, name, owner, /*persistIt*/true);
 		}
@@ -313,8 +335,8 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public eu.synectique.verveine.core.gen.famix.Class ensureFamixClass(IBinding key, String name, ContainerEntity owner) {
-		eu.synectique.verveine.core.gen.famix.Class fmx;
-		fmx = (eu.synectique.verveine.core.gen.famix.Class) getEntityIfNotNull(key);
+		eu.synectique.verveine.core.gen.famix.Class fmx = getEntityIfNotNull(eu.synectique.verveine.core.gen.famix.Class.class, key);
+
 		if (fmx == null) {
 			fmx = super.ensureFamixClass(key, name, owner, /*persistIt*/true);
 		}
@@ -323,8 +345,8 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public ParameterizableClass ensureFamixParameterizableClass(IBinding key, String name, ContainerEntity owner) {
-		ParameterizableClass fmx;
-		fmx = (ParameterizableClass) getEntityIfNotNull(key);
+		ParameterizableClass fmx = getEntityIfNotNull(ParameterizableClass.class, key);
+
 		if (fmx == null) {
 			fmx = super.ensureFamixParameterizableClass(key, name, owner, /*persistIt*/true);
 		}
@@ -333,21 +355,21 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public ParameterType ensureFamixParameterType(IBinding key, String name, ContainerEntity owner) {
-		ParameterType fmx;
-		fmx = (ParameterType) getEntityIfNotNull(key);
+		ParameterType fmx = getEntityIfNotNull(ParameterType.class, key);
+
 		if (fmx == null) {
 			fmx = super.ensureFamixParameterType(key, name, owner, /*persistIt*/true);
 		}
 		return fmx;
 	}
 
- 	public ParameterizedType ensureFamixParameterizedType(IBinding key, String name, ParameterizableClass generic, ContainerEntity owner) {
-		ParameterizedType fmx;
-		fmx = (ParameterizedType) getEntityIfNotNull(key);
+	public ParameterizedType ensureFamixParameterizedType(IBinding key, String name, ParameterizableClass generic, ContainerEntity owner) {
+		ParameterizedType fmx = getEntityIfNotNull(ParameterizedType.class, key);
+
 		if (fmx == null) {
 			fmx = super.ensureFamixParameterizedType(key, name, generic, owner, /*persistIt*/true);
 		}
-		
+
 		return fmx;
 	}
 
@@ -381,8 +403,8 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public Function ensureFamixFunction(IBinding key, String name, String sig, ContainerEntity parent) {
-		Function fmx;
-		fmx = (Function) getEntityIfNotNull(key);
+		Function fmx = getEntityIfNotNull(Function.class, key);
+
 		if (fmx == null) {
 			fmx = super.ensureFamixFunction(key, name, sig, /*returnType*/null, parent, /*persistIt*/true);
 			fmx.setCyclomaticComplexity(1);
@@ -392,8 +414,8 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public Method ensureFamixMethod(IBinding key, String name, String signature, Type parent) {
-		Method fmx;
-		fmx = (Method) getEntityIfNotNull(key);
+		Method fmx = getEntityIfNotNull(Method.class, key);
+
 		if (fmx == null) {
 			fmx = super.ensureFamixMethod(key, name, signature, /*returnType*/null, parent, /*persistIt*/true);
 			fmx.setCyclomaticComplexity(1);
@@ -404,9 +426,8 @@ public class CDictionary extends Dictionary<IBinding> {
 	}
 
 	public Attribute ensureFamixAttribute(IBinding key, String name, Type parent) {
-		Attribute fmx;
-		NamedEntity tmp = getEntityIfNotNull(key);
-		fmx = (Attribute) tmp;
+		Attribute fmx = getEntityIfNotNull(Attribute.class, key);
+
 		if (fmx == null) {
 			fmx = super.ensureFamixAttribute(key, name, /*type*/null, parent, /*persistIt*/true);
 		}
@@ -425,7 +446,7 @@ public class CDictionary extends Dictionary<IBinding> {
 		Parameter fmx = null;
 
 		// --------------- to avoid useless computations if we can
-		fmx = (Parameter)getEntityByKey(bnd);
+		fmx = getEntityByKey(Parameter.class, bnd);
 		if (fmx != null) {
 			return fmx;
 		}

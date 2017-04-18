@@ -42,7 +42,7 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 		/* Gets the key (IBinding) of the node to recover the famix type entity */
 		super.visit(node);
 
-		fmx = (Class) dico.getEntityByKey(nodeBnd);
+		fmx = dico.getEntityByKey(Class.class, nodeBnd);
 
 		/*
 		 * Visiting possible template methods
@@ -67,8 +67,7 @@ public class TemplateParameterDefVisitor extends AbstractVisitor {
 		// compute nodeName and binding
 		super.visit( (IASTFunctionDeclarator)node);
 
-		NamedEntity fmx = dico.getEntityByKey(nodeBnd);
-		returnedEntity = fmx;
+		returnedEntity = dico.getEntityByKey(NamedEntity.class, nodeBnd);
 
 		if (returnedEntity == null) {
 			// try harder

@@ -241,7 +241,7 @@ public class NameResolver {
 		BehaviouralEntity fmx;
 
 		// just in case this is a definition and we already processed the declaration
-		fmx = (BehaviouralEntity) dico.getEntityByKey(nodeBnd);
+		fmx = dico.getEntityByKey(BehaviouralEntity.class, nodeBnd);
 		// try harder
 		if (fmx == null) {
 			fmx = ensureBehaviouralFromName(node, nodeBnd, nodeName);
@@ -509,7 +509,7 @@ public class NameResolver {
 		ContainerEntity parent;
 
 		if (isMethodBinding(bnd)) {
-			parent = (ContainerEntity) dico.getEntityByKey( ((ICPPMethod)bnd).getClassOwner() );
+			parent = dico.getEntityByKey( ContainerEntity.class, ((ICPPMethod)bnd).getClassOwner() );
 			if (parent == null) {
 				// happened once in a badly coded case
 				if (QualifiedName.isFullyQualified(name)) {
@@ -556,17 +556,24 @@ public class NameResolver {
 			bnd = mkStubKey(name, Type.class);
 		}
 
-		NamedEntity tmp = dico.getEntityByKey(bnd);
-		fmx = (Type) tmp;
+		fmx = dico.getEntityByKey(Type.class, bnd);
 
 		if (fmx == null) {	// try to find it in the current context despite the fact that we don't have a IBinding
-			tmp = findInParent(name.toString(), getContext().top(), /*recursive*/true);
+			NamedEntity found = findInParent(name.toString(), getContext().top(), /*recursive*/true);
 			
 			// in the case of a sizeof(xyz), we can have a variable instead of a type
-			if (tmp instanceof StructuralEntity) {
+			if (found instanceof StructuralEntity) {
 				return null;
 			}
-			fmx = (Type) tmp;
+			else if (found instanceof Type) {
+				fmx = (Type) found;
+			}
+			else {
+				if (found != null) {
+					WrongClassGuessException.reportWrongClassGuess(Type.class, found);
+				}
+				fmx = null;
+			}
 		}
 
 		if (fmx == null) {  // still not found, create it
