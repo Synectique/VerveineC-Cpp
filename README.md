@@ -28,14 +28,42 @@ You can now export the project into your plugins.
 
 Choose "Install into host" and finish the export. This will put a new file `verveine.extractor.Cpp_1.0.0.{some-date}.jar` in the "plugins" sub-directory of the Eclipse distribution.
 
-To run the extractor, one must go in said Eclipse distribution directory and execute the "verveineC.sh" shell script.
+In your install directory, you must have something likes this :
+
+ ```
+ app Directory
+└── [drwxr-xr-x  238]  Contents
+    ├── [drwxr-xr-x  612]  Eclipse
+    │   ├── [drwxr-xr-x  102]  .eclipseextension
+    │   ├── [-rw-r--r--   60]  .eclipseproduct
+    │   ├── [drwxr-xr-x  442]  configuration
+    │   ├── [drwxr-xr-x   68]  dropins
+    │   ├── [-rw-r--r--  643]  eclipse.ini
+    │   ├── [drwxr-xr-x 7.4K]  features
+    │   ├── [-rw-r--r-- 6.1K]  notice.html
+    │   ├── [drwxr-xr-x  238]  p2
+    │   ├── [drwxr-xr-x  36K]  plugins
+    │   ├── [drwxr-xr-x  102]  readme
+    ├── [-rw-r--r-- 2.1K]  Info.plist
+    ├── [drwxr-xr-x  102]  MacOS
+    ├── [drwxr-xr-x  102]  Resources
+    └── [drwxr-xr-x  102]  _CodeSignature
+```
+
+Put the folder verveine-launcher into app Directory/Contents/Eclipse.
+
+In some cases, you must include your GCC install's folders in verveine-launcher/includes.vconf
 
 ## Generate a MSE
 
-//TODO
+
+To run the extractor, go into app Directory/Contents/Eclipse/verveine-launcher and execute the command "verveineC.sh pathToDirectoryToParse".
+
+You can add version information by editing verveine-launcher/verveine.vers.
 
 ## Tested setups
 
 Eclipse | CDT | PDE | 
 :-------|:-------|:-------|
 4.5.2 (Mars.2) | 8.8.1.201602051005 | 3.10 |
+4.5.2 (Mars.2) | 8.8.1.201602051005 | 3.11 |
