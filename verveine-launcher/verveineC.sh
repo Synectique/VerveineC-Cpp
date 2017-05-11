@@ -18,4 +18,4 @@ fi
 
 rm -rf ${DEFAULT_WS}
 
-java -cp ../plugins/org.eclipse.equinox.launcher_1.3.100.v20150511-1540.jar  -Xmx4181721088 -Xss1024m  org.eclipse.equinox.launcher.Main -consoleLog -application verveine.extractor.Cpp.Main ${OPT} -includeconf includes.vconf -o default.mse ${DIR_PROJ} | tee verveineC.log 2>&1
+java -cp ../plugins/org.eclipse.equinox.launcher_1.*.jar  -Xmx4181721088 -Xss1024m  org.eclipse.equinox.launcher.Main -consoleLog -application verveine.extractor.Cpp.Main ${OPT} -includeconf includes.vconf -o default.mse ${DIR_PROJ} | tee verveineC.log 2>&1
