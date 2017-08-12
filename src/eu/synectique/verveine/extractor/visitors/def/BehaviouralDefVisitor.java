@@ -37,6 +37,7 @@ import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.FileUtil;
+import eu.synectique.verveine.extractor.utils.WrongClassGuessException;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
 /**
@@ -313,12 +314,18 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		IASTFileLocation defLoc = node.getParent().getFileLocation();
 		dico.addSourceAnchorMulti(fmx, filename, defLoc);
 
-		if (resolver.isDestructorBinding(nodeBnd)) {
-			((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
+		try {
+			if (resolver.isDestructorBinding(nodeBnd)) {
+				((Method)fmx).setKind(CDictionary.DESTRUCTOR_KIND_MARKER);
+			}
+			if (resolver.isConstructorBinding(nodeBnd)) {
+				((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
+			}
 		}
-		if (resolver.isConstructorBinding(nodeBnd)) {
-			((Method)fmx).setKind(Dictionary.CONSTRUCTOR_KIND_MARKER);
+		catch (ClassCastException e) {
+			WrongClassGuessException.reportWrongClassGuess(Method.class, fmx);
 		}
+
 		fmx.setIsStub(false);  // used to say TRUE if could not find a binding. Not too sure ... 
 
 		visitParameters(params, fmx);
@@ -336,7 +343,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	protected void visitParameters(IASTNode[] params, BehaviouralEntity fmx) {
 		// note that there are 2 ways to get the number of parameters of a BehaviouralEntity in Famix: getNumberOfParameters() and numberOfParameters()
 		// the first returns the attribute numberOfParameters (set here),
-		// the second computes the size of parameter list so does not need to be set per se
+		// the second computes the size of parameter list so does not need to (and cannot) be set per se
 		fmx.setNumberOfParameters(params.length);
 
 		getParameterMaps(params.length, fmx);

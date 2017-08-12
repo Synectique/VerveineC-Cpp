@@ -13,7 +13,7 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .,
  lib/akuhn-util-r28011.jar,
- lib/fame-201403040925.jar,
- lib/famix-20170418_1524.jar,
- lib/fast-20170418_1524.jar,
- lib/verveine.core-20170418_1524.jar
+ lib/verveine.core.jar,
+ lib/famix.jar,
+ lib/fast.jar,
+ lib/fame.jar

@@ -41,6 +41,7 @@ import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
+import eu.synectique.verveine.core.gen.file.File;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.StubBinding;
 import eu.synectique.verveine.extractor.utils.Visibility;
@@ -295,6 +296,10 @@ public class CDictionary extends Dictionary<IBinding> {
 		fmx.setParentScope(parent);
 
 		return fmx;
+	}
+
+	public <T extends NamedEntity> T ensureFamixEntity(Class<T> fmxClass, IBinding key, String name) {
+		return super.ensureFamixEntity(fmxClass, key, name, /*persistIt*/true);
 	}
 
 	public Namespace ensureFamixNamespace(IBinding key, String name, ScopingEntity parent) {

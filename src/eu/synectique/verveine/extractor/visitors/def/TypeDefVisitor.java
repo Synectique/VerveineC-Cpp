@@ -191,7 +191,7 @@ public class TypeDefVisitor extends AbstractVisitor {
 		case IASTElaboratedTypeSpecifier.k_struct:
 		case IASTElaboratedTypeSpecifier.k_union:
 		case ICPPASTElaboratedTypeSpecifier.k_class:
-			createClass(node);
+			createClass(node);//ok
 			break;
 		case IASTElaboratedTypeSpecifier.k_enum:
 			createEnum(node);

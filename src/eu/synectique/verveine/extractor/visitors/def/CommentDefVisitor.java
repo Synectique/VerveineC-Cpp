@@ -19,7 +19,7 @@ public class CommentDefVisitor extends AbstractVisitor {
 	}
 	
 	protected String msgTrace() {
-		return "extracting comments";
+		return "creating comments";
 	}
 
 	/*

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry exported="true" kind="lib" path="lib/famix-20170418_1524.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/fast-20170418_1524.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/verveine.core-20170418_1524.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/fame-201403040925.jar" sourcepath="/home/anquetil/Documents/RMod/Tools/workspace/Fame"/>
+	<classpathentry exported="true" kind="lib" path="lib/fame.jar" sourcepath="/Fame"/>
+	<classpathentry exported="true" kind="lib" path="lib/famix.jar" sourcepath="/verveine.core"/>
+	<classpathentry exported="true" kind="lib" path="lib/fast.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/verveine.core.jar" sourcepath="/verveine.core"/>
 	<classpathentry exported="true" kind="lib" path="lib/akuhn-util-r28011.jar"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" output="target/classes" path="src">
@@ -28,5 +28,6 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry combineaccessrules="false" kind="src" path="/verveine.core"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

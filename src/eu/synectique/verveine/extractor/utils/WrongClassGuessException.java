@@ -1,9 +1,5 @@
 package eu.synectique.verveine.extractor.utils;
 
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 
 /**

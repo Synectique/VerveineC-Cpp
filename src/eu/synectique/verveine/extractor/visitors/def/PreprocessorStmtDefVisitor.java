@@ -21,7 +21,7 @@ public class PreprocessorStmtDefVisitor extends AbstractVisitor {
 
 	@Override
 	protected String msgTrace() {
-		return "recording preprocessor statements";
+		return "creating preprocessor statements";
 	}
 
 	@Override
@@ -55,7 +55,7 @@ public class PreprocessorStmtDefVisitor extends AbstractVisitor {
 		IASTName macro = node.getMacroReference();
 		if (macro != null) {
 			PreprocessorIfdef fmx = dico.createFamixPreprocIfdef(macro.toString());
-			fmx.setIsNegated(true);
+			fmx.setNegated(true);
 			setIfdefSourceAnchor(fmx, node.getFileLocation());
 		}
 	}

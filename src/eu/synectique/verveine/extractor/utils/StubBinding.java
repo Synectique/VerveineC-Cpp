@@ -8,7 +8,7 @@ import org.eclipse.cdt.core.dom.ast.DOMException;
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.IScope;
 
-import eu.synectique.verveine.core.gen.famix.NamedEntity;
+import eu.synectique.verveine.core.gen.famix.Entity;
 import eu.synectique.verveine.core.gen.famix.Package;
 
 /**
@@ -38,11 +38,13 @@ public class StubBinding implements IBinding {
 	 * Returns a StubBinding instance that will serve as a key for a Famix Entity.<br>
 	 * First, computes the keyname of the entity (Class name + entity name), then looks in an internal dictionary to see if there is already
 	 * a StubBinding for that keyname, if not creates such StubBinding, returns the StubBinding
-	 * @param clazz Famix class of the entity for which we need a key
-	 * @param id some string identifying as uniquely as possible the entity, within its famix class (e.g. fully qualified package name, name and number of parameter of a method, etc.)
+	 * <p>
+	 * Note: the clazz parameter should really be a subtype of NamedEntity. However, we need it to also accept {@link CFile}, so had to accept all sub-types of Entity :-( 
+	 * @param clazz -- Famix class of the entity for which we need a key
+	 * @param id -- some string identifying as uniquely as possible the entity, within its famix class (e.g. fully qualified package name, name and number of parameter of a method, etc.)
 	 * @return the StubBinding associated with the entity
 	 */
-	public static <T extends NamedEntity>  StubBinding getInstance(Class<T> clazz, String id) {
+	public static <T extends Entity>  StubBinding getInstance(Class<T> clazz, String id) {
 		String key = clazz.getName() + KEY_SEPARATOR + id;
 		StubBinding inst;
 		

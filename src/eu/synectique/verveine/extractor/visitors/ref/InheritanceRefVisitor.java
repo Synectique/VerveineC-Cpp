@@ -22,7 +22,7 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 	}
 
 	protected String msgTrace() {
-		return "recording inheritance relationships";
+		return "creating inheritance relationships";
 	}
 
 	/*
@@ -62,7 +62,7 @@ public class InheritanceRefVisitor extends AbstractVisitor {
 		supClass = dico.getEntityByKey(Type.class, nodeBnd);
 
 		if (supClass == null) {
-			supClass = (Type) resolver.resolveOrCreate( baseName.toString(), /*mayBeNull*/false, /*mustBeClass*/true);
+			supClass = (Class) resolver.resolveOrCreate( baseName.toString(), /*mayBeNull*/false, /*asType*/Class.class);
 		}
 
 		if (supClass != null) { 

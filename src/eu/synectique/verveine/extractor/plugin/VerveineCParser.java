@@ -52,6 +52,8 @@ import eu.synectique.verveine.extractor.visitors.ref.DeclaredTypeRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InheritanceRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InvocationAccessRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.ReferenceRefVisitor;
+import eu.synectique.verveine.extractor.visitors.ref.TypeDefFromRefVisitor;
+
 
 public class VerveineCParser extends VerveineParser {
 	public static final String WORKSPACE_NAME = "tempWS";
@@ -72,6 +74,12 @@ public class VerveineCParser extends VerveineParser {
 			 "/usr/include" ,
 			 "/usr/local/include"
     };
+
+    /**
+     * The name of a file in current directory containing a description of the version of the parser.
+     * Useful for error reporting.
+     */
+	private static final String VERSION_FILE = "verveine.vers";
 
     /**
      * Name of a file containing list of include dirs
@@ -132,6 +140,10 @@ public class VerveineCParser extends VerveineParser {
 	 */
 	private boolean errorlog;
 
+	public static String projectSourcePath() {
+		return File.separator + DEFAULT_PROJECT_NAME + File.separator + SOURCE_ROOT_DIR + File.separator;
+	}
+	
 	public VerveineCParser() {
 		super();
 		this.argIncludes = new ArrayList<String>();
@@ -194,6 +206,7 @@ public class VerveineCParser extends VerveineParser {
 			cproject.accept(new NamespaceDefVisitor(dico, index, projectPrefix));
 		}
 		cproject.accept(new TypeDefVisitor(dico, index, projectPrefix));
+		//cproject.accept(new TypeDefFromRefVisitor(dico, index, projectPrefix));
 
 		BehaviouralDefVisitor behavVisitor = new BehaviouralDefVisitor(dico, index, projectPrefix);		// must be after class definitions
 		behavVisitor.setHeaderFiles(true);
@@ -413,6 +426,9 @@ public class VerveineCParser extends VerveineParser {
 			if (arg.equals("-h")) {
 				usage();
 			}
+			else if (arg.equals("-v")) {
+				version();
+			}
 			else if (arg.startsWith("-c")) {
 				cModel = true;
 			}
@@ -488,10 +504,43 @@ public class VerveineCParser extends VerveineParser {
 		argDefined.put(macro, value);
 	}
 
+	protected void version() {
+		BufferedReader read = null;
+
+		System.out.println("VerveineC version:");
+		try {
+			read = new BufferedReader( new FileReader(VERSION_FILE));
+		} catch (FileNotFoundException e) {
+			System.out.println(" *unknown* (version file not found)");
+
+			System.exit(0);
+		}
+
+		if (read != null) {
+			String line;
+			try {
+				while ( (line=read.readLine()) != null ) {
+					System.out.println("  " + line);
+				}
+			} catch (IOException e) {
+				// ignore
+			}
+		}
+
+		try {
+			read.close();
+		} catch (IOException e) {
+			// ignore
+		}
+
+		System.exit(0);
+	}
+
 	protected void usage() {
 		System.err.println("Usage: VerveineC [<options>] <eclipse-Cproject-to-parse>");
 		System.err.println("Recognized options:");
 		System.err.println("      -h: prints this message");
+		System.err.println("      -v: prints the version");
 		System.err.println("      -o <output-file-name>: changes the name of the output file (default: output.mse)");
 		//System.err.println("      -D<macro>: defines a C/C++ macro");
 		System.err.println("      -I<include-dir>: adds a directory containing include files");

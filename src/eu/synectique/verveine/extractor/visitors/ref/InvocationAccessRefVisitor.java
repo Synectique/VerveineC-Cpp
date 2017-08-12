@@ -34,6 +34,7 @@ import eu.synectique.verveine.core.gen.famix.Method;
 import eu.synectique.verveine.core.gen.famix.NamedEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.core.gen.famix.UnknownBehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.QualifiedName;
@@ -56,7 +57,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 
 	@Override
 	protected String msgTrace() {
-		return "recording accesses to variables and invocations to methods/functions";
+		return "creating accesses to variables and invocations to methods/functions";
 	}
 
 	/**
@@ -150,7 +151,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 			}
 
 			if ( (fmx == null) && (nodeName != null) ) {
-				fmx = resolver.resolveOrCreate(nodeName.toString(), /*mayBeNull*/true, /*mustBeClass*/false);
+				fmx = resolver.resolveOrCreate(nodeName.toString(), /*mayBeNull*/true, UnknownBehaviouralEntity.class);
 			}
 
 			if ( (fmx == null) && (nodeName != null) ) {

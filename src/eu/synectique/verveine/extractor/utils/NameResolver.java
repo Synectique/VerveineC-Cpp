@@ -20,6 +20,7 @@ import eu.synectique.verveine.core.gen.famix.ParameterizedType;
 import eu.synectique.verveine.core.gen.famix.ScopingEntity;
 import eu.synectique.verveine.core.gen.famix.StructuralEntity;
 import eu.synectique.verveine.core.gen.famix.Type;
+import eu.synectique.verveine.core.gen.famix.UnknownContainerEntity;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.visitors.SignatureBuilderVisitor;
 
@@ -83,10 +84,10 @@ public class NameResolver {
 
 		if (qualName.isFullyQualified()) {
 			if ( (entityType == Attribute.class) || (entityType == Method.class) ) {
-				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), /*mayBeNull*/false, /*mustBeClass*/true);
+				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), /*mayBeNull*/false, eu.synectique.verveine.core.gen.famix.Class.class);
 			}
 			else {
-				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), /*mayBeNull*/false, /*mustBeClass*/false);
+				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), /*mayBeNull*/false, UnknownContainerEntity.class);
 			}
 			simpleName = qualName.unqualifiedName();
 		}
@@ -122,10 +123,67 @@ public class NameResolver {
 		if (bnd instanceof ICPPMethod) {
 			return true;
 		}
-		if ( isStubBinding(bnd) && ( ((StubBinding)bnd).getEntityClass().equals(Method.class.getName()) ) ) {
+		if (isConstructorBinding(bnd)) {
 			return true;
 		}
+		if (isDestructorBinding(bnd)) {
+			return true;
+		}
+		if ( isStubBinding(bnd) ) {
+			QualifiedName qn = new QualifiedName( ((StubBinding)bnd).getEntityName() );
+			
+			if (isConstructorName(qn)) {
+				return true;
+			}
+			if (isDestructorName(qn)) {
+				return true;
+			}
+			if ( ((StubBinding)bnd).getEntityClass().equals(Method.class.getName()) ) {
+				return true;
+			}
+		}
 		return false;
+	}
+
+	public boolean isConstructorBinding(IBinding bnd) {
+		if (bnd instanceof ICPPConstructor) {
+			return true;
+		}
+		if (isStubBinding(bnd)) {
+			return isConstructorName( new QualifiedName(((StubBinding)bnd).getEntityName()) );
+		}
+		return false;
+	}
+
+	protected boolean isConstructorName(QualifiedName name) {
+		if (! name.isFullyQualified()) {
+			return false; // not a qualified name, can be a simple, top level, function
+		}
+
+		String simpleName = name.unqualifiedName();
+		int i;
+		// remove parameters from the name
+		i = simpleName.indexOf('(');
+		if (i > 0) {
+			simpleName = simpleName.substring(0, i);
+		}
+
+		return name.nameQualifiers().unqualifiedName().equals(simpleName);  // "className" == methName ?
+	}
+
+	public boolean isDestructorBinding(IBinding bnd) {
+		if ( (bnd instanceof ICPPMethod) && (((ICPPMethod)bnd).isDestructor()) ) {
+			return true;
+		}
+		if (isStubBinding(bnd)) {
+			// simplified test. Could look at the name of the class as in isConstructorBinding(bnd)
+			return isDestructorName( new QualifiedName(((StubBinding)bnd).getEntityName()) );
+		}
+		return false;
+	}
+
+	protected boolean isDestructorName(QualifiedName name) {
+		return name.unqualifiedName().charAt(0) == '~';
 	}
 
 	public boolean isConstructor(BehaviouralEntity fmx) {
@@ -146,41 +204,6 @@ public class NameResolver {
 			return false;
 		}
 		return ((Method)fmx).getKind().equals(CDictionary.DESTRUCTOR_KIND_MARKER);
-	}
-
-	public boolean isConstructorBinding(IBinding bnd) {
-		if (bnd instanceof ICPPConstructor) {
-			return true;
-		}
-		if (isStubBinding(bnd)) {
-			String fullName = ((StubBinding)bnd).getEntityName();
-			int i;
-			// remove parameters from the name
-			i = fullName.indexOf('(');
-			if (i > 0) {
-				fullName = fullName.substring(0, i);
-			}
-
-			String[] parts = fullName.split(QualifiedName.CPP_NAME_SEPARATOR);
-			
-			i = parts.length;
-			if (i < 2) {
-				return false; // not a qualified name, can be a simple, top level, function
-			}
-			return parts[i-2].equals(parts[i-1]);  // className (second to last part) = methName (last part) ?
-		}
-		return false;
-	}
-
-	public boolean isDestructorBinding(IBinding bnd) {
-		if ( (bnd instanceof ICPPMethod) && (((ICPPMethod)bnd).isDestructor()) ) {
-			return true;
-		}
-		if (isStubBinding(bnd)) {
-			// simplified test. Could look at the name of the class as in isConstructorBinding(bnd)
-			return new QualifiedName(((StubBinding)bnd).getEntityName()).unqualifiedName().charAt(0) == '~';
-		}
-		return false;
 	}
 
 	/**
@@ -212,11 +235,11 @@ public class NameResolver {
 			ContainerEntity parent = null;
 			String behavName = SignatureBuilderVisitor.signatureFromAST(node);
 
-			// need to find the parent here (although mkStubKey can do it for us)
-			// because need to know whether it is a method or a function
+			// need to decide whether it is a method or a function
 			QualifiedName qualName = new QualifiedName(name);
 			if (qualName.isFullyQualified()) {
-				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), /*mayBeNull*/false, /*mustBeClass*/false);
+				// assume that a fully qualified BehaviouralEntity name is a method by default 
+				parent = (ContainerEntity) resolveOrCreate(qualName.nameQualifiers(), /*mayBeNull*/false, eu.synectique.verveine.core.gen.famix.Class.class);
 			}
 			else {
 				parent = context.getTopCppNamespace();
@@ -427,21 +450,19 @@ public class NameResolver {
 
 	/**
 	 * Tries to find an entity within the current context, from it's fully qualified name.
-	 * If not found, may return null or create a ContainerEntity (Namespace being the default, Class being another possibility)
-	 * @param mayBeNull -- if not found, return null or try to create a ContainerEntity
-	 * @param mustBeClass -- (ignored if <code>mayBeNull</code> = <code>true</code>) if creating a ContainerEntity, create it as a Class
+	 * If not found, may return null or create an entity of type asEntityType
+	 * @param mayBeNull -- if not found, return null or enforce creating an entity
 	 */
-	public NamedEntity resolveOrCreate( String name, boolean mayBeNull, boolean mustBeClass) {
-		return resolveOrCreate(new QualifiedName(name), mayBeNull, mustBeClass);
+	public <T extends ContainerEntity> NamedEntity resolveOrCreate( String name, boolean mayBeNull, Class<T> asEntityType) {
+		return resolveOrCreate(new QualifiedName(name), mayBeNull, asEntityType);
 	}
 
 	/**
 	 * Tries to find an entity within the current context, from it's fully qualified name.
-	 * If not found, may return null or create a ContainerEntity (Namespace being the default, Class being another possibility)
-	 * @param mayBeNull -- if not found, return null or try to create a ContainerEntity
-	 * @param mustBeClass -- (ignored if <code>mayBeNull</code> = <code>true</code>) if creating a ContainerEntity, create it as a Class
+	 * If not found, may return null or create an entity of type asEntityType
+	 * @param mayBeNull -- if not found, return null or enforce creating an entity
 	 */
-	public NamedEntity resolveOrCreate( QualifiedName name, boolean mayBeNull, boolean mustBeClass) {
+	public <T extends ContainerEntity> NamedEntity resolveOrCreate( QualifiedName name, boolean mayBeNull, Class<T> asEntityType) {
 		NamedEntity tmp;
 		String simpleName;
 		ContainerEntity parent = null;
@@ -455,7 +476,7 @@ public class NameResolver {
 
 		if (name.isFullyQualified()) {
 			// parent is described by nameQualifiers, no recursive search in it
-			parent = (ContainerEntity)resolveOrCreate(name.nameQualifiers(), /*mayBeNull*/false, /*mustBeClass*/false);
+			parent = (ContainerEntity)resolveOrCreate(name.nameQualifiers(), /*mayBeNull*/false, UnknownContainerEntity.class);
 			recursive = false;
 		}
 		else {			
@@ -479,24 +500,12 @@ public class NameResolver {
 			if (recursive) {
 				// if search was recursive and we did not find, create new entity at top level
 				// this is the heuristic that gave the best results for now
-				// notably, it gives preferences to Namespace creation (over Class) in the following independant of the top context
 				parent = null;
 			}
 
-			if ( (parent != null) && (! (parent instanceof Namespace)) ) {
-				// if parent is not a Namespace (probably a class or method), create a Class because can't have a namespace inside a class or a method
-				mustBeClass = true;
-			}
-
-			if (mustBeClass) {
-				bnd = mkStubKey(simpleName, parent, eu.synectique.verveine.core.gen.famix.Class.class);
-				tmp = dico.ensureFamixClass(bnd, simpleName, parent);
-			}
-			else {
-				bnd = mkStubKey(simpleName, parent, Namespace.class);
-				tmp = dico.ensureFamixNamespace(bnd, simpleName, (ScopingEntity) parent);
-			}
-				
+				bnd = mkStubKey(simpleName, parent, asEntityType);
+				tmp = dico.ensureFamixEntity(asEntityType, bnd, simpleName);
+				tmp.setBelongsTo( parent);
 		}
 
 		return tmp;
@@ -513,7 +522,7 @@ public class NameResolver {
 			if (parent == null) {
 				// happened once in a badly coded case
 				if (QualifiedName.isFullyQualified(name)) {
-					parent = (ContainerEntity) resolveOrCreate( QualifiedName.parentNameFromEntityFullname(name.toString()), /*mayBeNull*/false, /*mustBeClass*/true );
+					parent = (ContainerEntity) resolveOrCreate( QualifiedName.parentNameFromEntityFullname(name.toString()), /*mayBeNull*/false, eu.synectique.verveine.core.gen.famix.Class.class );
 				}
 				else {
 					parent = (ContainerEntity) context.top();
@@ -522,7 +531,7 @@ public class NameResolver {
 		}
 		else {
 			if (QualifiedName.isFullyQualified(name)) {
-				parent = (ContainerEntity) resolveOrCreate( QualifiedName.parentNameFromEntityFullname(name.toString()), /*mayBeNull*/false, /*mustBeClass*/false );
+				parent = (ContainerEntity) resolveOrCreate( QualifiedName.parentNameFromEntityFullname(name.toString()), /*mayBeNull*/false, UnknownContainerEntity.class );
 			}
 			else {
 				parent = (ContainerEntity) context.top();
@@ -535,7 +544,7 @@ public class NameResolver {
 		ContainerEntity parent;
 		QualifiedName qualName = new QualifiedName(name);
 		if (qualName.isFullyQualified()) {
-			parent = (ContainerEntity) resolveOrCreate( qualName.nameQualifiers(), /*mayBeNull*/false, /*mustBeClass*/true);
+			parent = (ContainerEntity) resolveOrCreate( qualName.nameQualifiers(), /*mayBeNull*/false, eu.synectique.verveine.core.gen.famix.Class.class);
 		}
 		else {
 			parent = (ContainerEntity) context.top();
@@ -582,7 +591,7 @@ public class NameResolver {
 			}
 			else {
 				QualifiedName qualName = new QualifiedName(name);
-				fmx = dico.ensureFamixType(bnd, qualName.unqualifiedName(), /*owner*/(ContainerEntity)resolveOrCreate(qualName.nameQualifiers().toString(), /*mayBeNull*/false, /*mustBeClass*/false));
+				fmx = dico.ensureFamixType(bnd, qualName.unqualifiedName(), /*owner*/(ContainerEntity)resolveOrCreate(qualName.nameQualifiers().toString(), /*mayBeNull*/false, UnknownContainerEntity.class));
 			}
 		}
 
@@ -611,7 +620,7 @@ public class NameResolver {
 			// create a ParameterizedType for an unknown generic
 			// 'generic' var. remains null
 		}
-		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, (ContainerEntity)resolveOrCreate(new QualifiedName(name).nameQualifiers().toString(), /*mayBeNull*/false, /*mustBeClass*/false));
+		fmx = dico.ensureFamixParameterizedType(bnd, typName, generic, (ContainerEntity)resolveOrCreate(new QualifiedName(name).nameQualifiers().toString(), /*mayBeNull*/false, UnknownContainerEntity.class));
 
 		for (String typArg : strName.substring(i+1, strName.length()-1).split(",")) {
 			typArg = typArg.trim();

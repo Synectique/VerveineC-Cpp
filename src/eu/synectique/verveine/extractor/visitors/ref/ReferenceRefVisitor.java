@@ -34,7 +34,7 @@ public class ReferenceRefVisitor extends AbstractRefVisitor {
 
 	@Override
 	protected String msgTrace() {
-		return "recording references to classes";
+		return "creating references to classes";
 	}
 
 	/**
