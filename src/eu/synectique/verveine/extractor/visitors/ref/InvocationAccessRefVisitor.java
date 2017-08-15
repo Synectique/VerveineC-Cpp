@@ -2,6 +2,7 @@ package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
+import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
@@ -104,7 +105,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		}
 
 		// try to identify (or create if a stub) the Behavioural being invoked
-		Invocation invok = resolveInvokFromName(node, children[children.length - 1]);
+		Invocation invok = resolveInvokFromName(node, node.getFunctionNameExpression());
 
 		// sometimes there is no function name in the node therefore, no fmx to invok
 		// this happens when the result of the call is casted, this creates 2 IASTFunctionCallExpression
@@ -138,12 +139,12 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		}
 	}
 
-	protected Invocation resolveInvokFromName(IASTFunctionCallExpression node, IASTNode invokNode) {
+	protected Invocation resolveInvokFromName(IASTFunctionCallExpression node, IASTExpression iastExpression) {
 		Invocation invok = null;
 		NamedEntity fmx = null;
 
-		if (invokNode instanceof IASTName) {
-			nodeName = (IASTName)invokNode;
+		if (iastExpression instanceof IASTName) {
+			nodeName = (IASTName)iastExpression;
 			nodeBnd = resolver.getBinding( nodeName );
 
 			if (nodeBnd != null) {
@@ -343,6 +344,10 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		return PROCESS_SKIP;
 	}
 
+	/**
+	 * Tries to create an Association from a nodeName found in a nodeParent.
+	 * May fail and will return <code>null</code>
+	 */
 	protected Association associationToName(IASTName nodeName, IASTNode nodeParent) {
 		NamedEntity fmx = null;
 		Association assoc = null;

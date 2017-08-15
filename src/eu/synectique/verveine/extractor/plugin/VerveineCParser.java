@@ -52,7 +52,6 @@ import eu.synectique.verveine.extractor.visitors.ref.DeclaredTypeRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InheritanceRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.InvocationAccessRefVisitor;
 import eu.synectique.verveine.extractor.visitors.ref.ReferenceRefVisitor;
-import eu.synectique.verveine.extractor.visitors.ref.TypeDefFromRefVisitor;
 
 
 public class VerveineCParser extends VerveineParser {
