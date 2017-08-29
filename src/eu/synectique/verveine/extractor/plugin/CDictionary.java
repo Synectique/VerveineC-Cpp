@@ -309,8 +309,7 @@ public class CDictionary extends Dictionary<IBinding> {
 		return fmx;
 	}
 
-	public Package ensureFamixPackage(String name, Package parent) {
-		IBinding key = StubBinding.getInstance(Package.class, mooseName(parent, name));
+	public Package ensureFamixPackage(IBinding key, String name, Package parent) {
 		Package fmx = super.ensureFamixEntity(Package.class, key, name, /*persitIt*/true);
 		fmx.setIsStub(false);
 		if (parent != null) {

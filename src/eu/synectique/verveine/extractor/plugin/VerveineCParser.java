@@ -200,7 +200,7 @@ public class VerveineCParser extends VerveineParser {
 		// 2nd issue reporter
 		issueVisitor = new ErrorVisitor(dico, index, projectPrefix);
 
-		cproject.accept(new PackageDefVisitor(dico));
+		cproject.accept(new PackageDefVisitor(dico, index, projectPrefix));
 		if (!cModel) {
 			cproject.accept(new NamespaceDefVisitor(dico, index, projectPrefix));
 		}

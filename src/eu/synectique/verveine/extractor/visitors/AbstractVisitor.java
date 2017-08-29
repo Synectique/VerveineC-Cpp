@@ -16,11 +16,14 @@ import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTVisibilityLabel;
 import org.eclipse.cdt.core.index.IIndex;
+import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.core.runtime.Path;
 
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.Class;
 import eu.synectique.verveine.core.gen.famix.Namespace;
+import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.SourcedEntity;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
@@ -28,10 +31,11 @@ import eu.synectique.verveine.extractor.utils.AnonymousName;
 import eu.synectique.verveine.extractor.utils.CppEntityStack;
 import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.utils.NameResolver;
+import eu.synectique.verveine.extractor.utils.StubBinding;
 
 /**
  * Visitor that gets the {@link #nodeBnd} and {@link #nodeName} for the main entities.
- * It manages the context stack and the current filename.
+ * It manages the context stack, the current path, and the current filename.
  * It also tries to recover the FAMIX entities from the IBindings and
  * it has a {@link #resolver} to further help recovering FAMIX entities from their name.
  */
@@ -43,6 +47,11 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	 * Prefix to remove from file names
 	 */
 	protected String rootFolder;
+
+	/**
+	 * Current path of the directory being visited (used to compute packages StubBinding)
+	 */
+	protected Path currentPath;
 
 	/**
 	 * An object responsible for resolving names.
@@ -90,8 +99,25 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 		super(dico, index);
 		this.rootFolder = rootFolder;
 		this.resolver = new NameResolver(dico, index);
+		currentPath = new Path("");
 	}
 
+	protected void enterPath(ICContainer elt) {
+		currentPath = (Path) currentPath.append(elt.getElementName());
+
+	    if (currentPath.segmentCount() > 2) {  // i.e. skip the project directories: tempProj/src
+	    	nodeBnd = StubBinding.getInstance(Package.class, currentPath.toString());
+	    }
+	    else {
+	    	nodeBnd = null;
+	    }
+	}
+
+	protected void leavePath(ICContainer elt) {
+		currentPath = (Path) currentPath.removeLastSegments(1);
+	}
+
+	
 	/*
 	 * be creful, overriden in some subclasses so that this one is not called
 	 */

@@ -7,7 +7,6 @@ import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTSimpleDeclaration;
-import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.dom.ast.c.ICASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTCompositeTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTDeclSpecifier;
@@ -31,13 +30,13 @@ public class TypeDefVisitor extends AbstractVisitor {
 	/**
 	 * The file directory being visited at any given time
 	 */
-	protected Package currentPackage = null;
+	protected Package currentPackage;
 
 	/**
 	 * used between {@link #visit(ICPPASTTemplateDeclaration)} and {@link #visit(ICPPASTCompositeTypeSpecifier)}
 	 * to mark class definitions that are FAMIXParameterizableClass
 	 */
-	protected boolean definitionOfATemplate = false;
+	protected boolean definitionOfATemplate;
 
 	// CONSTRUCTOR ==========================================================================================================================
 
@@ -48,6 +47,8 @@ public class TypeDefVisitor extends AbstractVisitor {
 	 */
 	public TypeDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
 		super(dico, index, rootFolder);
+		currentPackage = null;
+		definitionOfATemplate = false;
 	}
 
 	protected String msgTrace() {
@@ -59,15 +60,21 @@ public class TypeDefVisitor extends AbstractVisitor {
 	 */
 	@Override
 	public void visit(ICContainer elt) {
-		IBinding key = resolver.mkStubKey(elt.getElementName(), currentPackage, Package.class);
 
-		currentPackage = dico.getEntityByKey(Package.class, key);
+		enterPath(elt);
+		if (nodeBnd != null) {
+			currentPackage = dico.getEntityByKey(Package.class, nodeBnd);
+		}
+		else {
+			currentPackage = null;
+		}
 
 		super.visit(elt);                                // visit children
 
 		if (currentPackage != null) {
 			currentPackage = currentPackage.getParentPackage();    // back to parent package
 		}
+		leavePath(elt);
 	}
 
 	@Override
