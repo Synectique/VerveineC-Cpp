@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Verveine-C/Cpp
 Bundle-SymbolicName: verveine.extractor.Cpp;singleton:=true
-Bundle-Version: 1.1.1.qualifier
+Bundle-Version: 1.2.1.qualifier
 Bundle-Activator: eu.synectique.verveine.extractor.plugin.Activator
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.cdt.core;bundle-version="5.11.0",
