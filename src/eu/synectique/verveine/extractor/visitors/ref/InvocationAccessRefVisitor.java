@@ -2,7 +2,6 @@ package eu.synectique.verveine.extractor.visitors.ref;
 
 import org.eclipse.cdt.core.dom.ast.IASTBinaryExpression;
 import org.eclipse.cdt.core.dom.ast.IASTCastExpression;
-import org.eclipse.cdt.core.dom.ast.IASTExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFieldReference;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionCallExpression;
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
@@ -39,8 +38,38 @@ import eu.synectique.verveine.core.gen.famix.UnknownBehaviouralEntity;
 import eu.synectique.verveine.core.gen.famix.UnknownVariable;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.utils.QualifiedName;
+import eu.synectique.verveine.extractor.visitors.AbstractDispatcherVisitor;
+import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
 public class InvocationAccessRefVisitor extends AbstractRefVisitor {
+
+	/**
+	 * A small visitor to set correctly the {@link AbstractVisitor#nodeName} of the function call depending on the type of the IASTExpression
+	 */
+	protected class FunctionCallNameVisitor extends AbstractDispatcherVisitor {
+
+		public FunctionCallNameVisitor() {
+			super(/*dico*/null, /*index*/null);
+			InvocationAccessRefVisitor.this.nodeName = null;
+			InvocationAccessRefVisitor.this.nodeBnd = null;
+		}
+
+		@Override
+		protected String msgTrace() {
+			return null;
+		}
+
+		@Override
+		public int visit(IASTName expr) {
+			InvocationAccessRefVisitor.this.nodeName = expr;
+			return PROCESS_SKIP;
+		}
+
+		protected int visit(IASTFieldReference expr) {
+			InvocationAccessRefVisitor.this.nodeName = expr.getFieldName();
+			return PROCESS_SKIP;
+		}
+	}
 
 	protected static final String EMPTY_ARGUMENT_NAME = "__Empty_Argument__";
 
@@ -105,7 +134,8 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		}
 
 		// try to identify (or create if a stub) the Behavioural being invoked
-		Invocation invok = resolveInvokFromName(node, node.getFunctionNameExpression());
+		node.getFunctionNameExpression().accept(new FunctionCallNameVisitor());
+		Invocation invok = resolveInvokFromName( node);
 
 		// sometimes there is no function name in the node therefore, no fmx to invok
 		// this happens when the result of the call is casted, this creates 2 IASTFunctionCallExpression
@@ -139,43 +169,45 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		}
 	}
 
-	protected Invocation resolveInvokFromName(IASTFunctionCallExpression node, IASTExpression iastExpression) {
+	/**
+	 * Creates the appropriate invocation from the IASTFunctionCallExpression.<br>
+	 * Mainly useful to find out whether we are calling a Behavioural or a pointer to a Behavioural.
+	 * Assumes the nodeName as already been correctly set because the resolve part depends on it.
+	 */
+	protected Invocation resolveInvokFromName(IASTFunctionCallExpression node) {
 		Invocation invok = null;
 		NamedEntity fmx = null;
 
-		if (iastExpression instanceof IASTName) {
-			nodeName = (IASTName)iastExpression;
-			nodeBnd = resolver.getBinding( nodeName );
+		nodeBnd = resolver.getBinding( nodeName );
 
-			if (nodeBnd != null) {
-				fmx = dico.getEntityByKey(nodeBnd);
+		if (nodeBnd != null) {
+			fmx = dico.getEntityByKey(nodeBnd);
+		}
+
+		if ( (fmx == null) && (nodeName != null) ) {
+			fmx = resolver.resolveOrCreate(nodeName.toString(), /*mayBeNull*/true, UnknownBehaviouralEntity.class);
+		}
+
+		if ( (fmx == null) && (nodeName != null) ) {
+			fmx = makeStubBehavioural(nodeName.toString(), node.getArguments().length, /*isMethod*/false);
+		}
+
+		if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
+			// found a class instead of a behavioral. May happen, for example in the case of a "throw ClassName(...)"
+			fmx = makeStubBehavioural(fmx.getName(), node.getArguments().length, /*isMethod*/true);
+		}
+
+		// now create the invocation
+		if (fmx != null) {
+			if (fmx instanceof BehaviouralEntity) {
+				invok = invocationOfBehavioural((BehaviouralEntity) fmx);
+				dico.addSourceAnchor(invok, filename, node.getFileLocation());
 			}
-
-			if ( (fmx == null) && (nodeName != null) ) {
-				fmx = resolver.resolveOrCreate(nodeName.toString(), /*mayBeNull*/true, UnknownBehaviouralEntity.class);
-			}
-
-			if ( (fmx == null) && (nodeName != null) ) {
-				fmx = makeStubBehavioural(nodeName.toString(), node.getArguments().length, /*isMethod*/false);
-			}
-
-			if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
-				// found a class instead of a behavioral. May happen, for example in the case of a "throw ClassName(...)"
-				fmx = makeStubBehavioural(fmx.getName(), node.getArguments().length, /*isMethod*/true);
-			}
-
-			// now create the invocation
-			if (fmx != null) {
-				if (fmx instanceof BehaviouralEntity) {
-					invok = invocationOfBehavioural((BehaviouralEntity) fmx);
-					dico.addSourceAnchor(invok, filename, node.getFileLocation());
-				}
-				else if (fmx instanceof StructuralEntity) {
-					// fmx is probably a pointer to a BehavioralEntity
-					String stubSig =  resolver.mkStubSig(fmx.getName(), node.getArguments().length);
-					invok = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx, stubSig);
-					dico.addSourceAnchor(invok, filename, node.getFileLocation());
-				}
+			else if (fmx instanceof StructuralEntity) {
+				// fmx is probably a pointer to a BehavioralEntity
+				String stubSig =  resolver.mkStubSig(fmx.getName(), node.getArguments().length);
+				invok = (DereferencedInvocation) dereferencedInvocation( (StructuralEntity)fmx, stubSig);
+				dico.addSourceAnchor(invok, filename, node.getFileLocation());
 			}
 		}
 
@@ -348,7 +380,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	 * Tries to create an Association from a nodeName found in a nodeParent.
 	 * May fail and will return <code>null</code>
 	 */
-	protected Association associationToName(IASTName nodeName, IASTNode nodeParent) {
+ 	protected Association associationToName(IASTName nodeName, IASTNode nodeParent) {
 		NamedEntity fmx = null;
 		Association assoc = null;
 
