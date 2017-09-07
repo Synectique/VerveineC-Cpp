@@ -53,7 +53,7 @@ import eu.synectique.verveine.extractor.utils.QualifiedName;
  */
 public class SignatureBuilderVisitor extends AbstractVisitor {
 
-	public static final String CPP_FCT_RETURN_SEPARATOR = "->";
+	public static final String CPP_FCT_RETURN_SEPARATOR = ":";
 
 	protected String signature;
 
