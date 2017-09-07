@@ -188,10 +188,6 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 			fmx = resolver.resolveOrCreate(nodeName.toString(), /*mayBeNull*/true, UnknownBehaviouralEntity.class);
 		}
 
-		if ( (fmx == null) && (nodeName != null) ) {
-			fmx = makeStubBehavioural(nodeName.toString(), node.getArguments().length, /*isMethod*/false);
-		}
-
 		if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
 			// found a class instead of a behavioral. May happen, for example in the case of a "throw ClassName(...)"
 			fmx = makeStubBehavioural(fmx.getName(), node.getArguments().length, /*isMethod*/true);
