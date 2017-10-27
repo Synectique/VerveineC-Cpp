@@ -541,20 +541,21 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 	}
 
+	private static int depth = 0;
 	/**
 	 * Computes moose name for a Namespace child.
 	 * MooseName is the concatenation of the moosename of the parent Namescape with the simple name of the child
 	 */
 	static public String mooseName(Namespace parent, String name) {
 		String ret;
-		
+		depth++;
 		if (parent != null) {
 			ret = concatMooseName( mooseName((Namespace)parent.getParentScope(), parent.getName()) , name);
 		}
 		else {
 			ret = name;
 		}
-
+		depth --;
 		return ret;
 	}
 	

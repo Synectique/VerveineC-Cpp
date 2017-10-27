@@ -1,6 +1,7 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
 import org.eclipse.cdt.core.dom.ast.IASTDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTName;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPASTNamespaceDefinition;
 import org.eclipse.cdt.core.index.IIndex;
 
@@ -29,7 +30,7 @@ public class NamespaceDefVisitor extends AbstractVisitor {
 	@Override
 	public int visit(ICPPASTNamespaceDefinition node) {
 		Namespace fmx;
-		nodeName = node.getName();
+		IASTName localNodeName = nodeName = node.getName();
 		if (! nodeName.toString().equals("")) {
 			nodeBnd = resolver.getBinding(nodeName);
 
@@ -39,11 +40,12 @@ public class NamespaceDefVisitor extends AbstractVisitor {
 			this.getContext().push(fmx);
 		}
 
+		// may change global nodeName
 		for (IASTDeclaration decl : node.getDeclarations()) {
 			decl.accept(this);
 		}
 
-		if (! nodeName.toString().equals("")) {
+		if (! localNodeName.toString().equals("")) {
 			getContext().pop();
 		}
 
