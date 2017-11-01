@@ -1,5 +1,6 @@
 package eu.synectique.verveine.extractor.visitors;
 
+import org.eclipse.cdt.core.dom.ast.IASTDeclSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTElaboratedTypeSpecifier;
 import org.eclipse.cdt.core.dom.ast.IASTEnumerationSpecifier;
@@ -53,7 +54,7 @@ import eu.synectique.verveine.extractor.utils.QualifiedName;
  */
 public class SignatureBuilderVisitor extends AbstractVisitor {
 
-	public static final String CPP_FCT_RETURN_SEPARATOR = ":";
+	public static final String CPP_FCT_RETURN_SEPARATOR = "->";
 
 	protected String signature;
 
@@ -106,7 +107,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	}
 
 	/**
-	 * This method could be more elegent ( "instanceof" replaced by direct call to "parent.accept(this)" ), but it protects against infinite recursion:
+	 * This method could be more elegant ( "instanceof" replaced by direct call to "parent.accept(this)" ), but it protects against infinite recursion:
 	 * here we visit the parent which could cause the FuctionDeclaration node to be visited again ...
 	 * 
 	 * In this method, we remove this risk by allowing only those parents that we now we can deal with
@@ -157,7 +158,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 		}
 		return PROCESS_CONTINUE;
 	}
-
+/*
 	@Override
 	public int visit(ICASTCompositeTypeSpecifier node) {
 		signature += node.getName();
@@ -179,7 +180,7 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	/*
 	 * Visiting the return type of the behavioural
 	 * To help in Symbol resolution, its best if the return type is not qualified
-	 */
+	 * /
 	@Override
 	public int visit(IASTNamedTypeSpecifier node) {
 		signature += new QualifiedName(node.getName()).unqualifiedName();
@@ -194,5 +195,13 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 		}
 		return PROCESS_SKIP;
 	}
+*/
+
+@Override
+public int visit(IASTDeclSpecifier node) {
+	signature += node.getRawSignature();
+
+	return PROCESS_SKIP;
+}
 
 }

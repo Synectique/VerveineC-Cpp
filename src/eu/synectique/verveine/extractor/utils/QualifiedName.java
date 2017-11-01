@@ -40,7 +40,8 @@ public class QualifiedName implements Iterable<String> {
 		int iNameSeparator = 0;
 		int iFctReturnSeparator = 0;
 		int partStart = 0;
-		
+		// FIXME fails for getAisTacticalData():inline aistactical::AisTacticalData::Ref
+		//       thinks it is fullyqualified
 		while ( (i < fullname.length()) && (iFctReturnSeparator < SignatureBuilderVisitor.CPP_FCT_RETURN_SEPARATOR.length()) ){
 			char c = fullname.charAt(i);
 			i++;
@@ -110,6 +111,9 @@ public class QualifiedName implements Iterable<String> {
 		if (QualifiedName.isFullyQualified(fullname)) {
 			int i;
 			i = fullname.indexOf('(');
+			if (i < 0) {
+				System.out.println("ouups "+fullname);
+			}
 			i = fullname.substring(0, i).lastIndexOf(QualifiedName.CPP_NAME_SEPARATOR);
 			return fullname.substring(i+QualifiedName.CPP_NAME_SEPARATOR.length());
 		}

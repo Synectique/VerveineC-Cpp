@@ -2,6 +2,9 @@ package verveine.extractor.Cpp;
 
 import eu.synectique.verveine.extractor.utils.QualifiedName;
 
+/*
+ * NOT A JUNIT TEST -- run as a normal application
+ */
 public class QualifiedNameTest {
 
 	public static void main(String[] args) throws Error {
