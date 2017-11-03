@@ -2,9 +2,14 @@ package eu.synectique.verveine.extractor.utils;
 
 import org.eclipse.cdt.core.dom.ast.IASTFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IASTName;
+import org.eclipse.cdt.core.dom.ast.IASTParameterDeclaration;
+import org.eclipse.cdt.core.dom.ast.IASTStandardFunctionDeclarator;
 import org.eclipse.cdt.core.dom.ast.IBinding;
+import org.eclipse.cdt.core.dom.ast.IFunction;
+import org.eclipse.cdt.core.dom.ast.IParameter;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPConstructor;
 import org.eclipse.cdt.core.dom.ast.cpp.ICPPMethod;
+import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.core.runtime.CoreException;
 
@@ -252,6 +257,29 @@ public class NameResolver {
 				bnd = mkStubKey(behavName, (ContainerEntity) parent, Function.class);
 			}
 		}
+		else {
+			if ( ! (bnd instanceof IFunction) ) {
+				System.err.println("OUUUPS *** for function:"+node.getRawSignature()+ " // bnd.class="+bnd.getClass());
+			}
+			else {
+				int nodeNParams = 0;
+				int bndNParams = ((IFunction)bnd).getParameters().length;
+				if (node instanceof IASTStandardFunctionDeclarator) {
+					IASTParameterDeclaration[] paramDecls = ((IASTStandardFunctionDeclarator)node).getParameters();
+					nodeNParams = paramDecls.length;
+					if ( (nodeNParams == 1) && paramDecls[0].getRawSignature().equals("void")) {
+						nodeNParams = 0;
+					}
+				}
+				else if (node instanceof ICASTKnRFunctionDeclarator) {
+					nodeNParams = ((ICASTKnRFunctionDeclarator)node).getParameterNames().length;
+				}
+				if ( bndNParams != nodeNParams) {
+					System.err.println("OUUUPS *** for function:"+node.getRawSignature()+ " // bnd="+bndNParams+" node="+nodeNParams);
+				}
+			}
+		}
+
 		return bnd;
 	}
 

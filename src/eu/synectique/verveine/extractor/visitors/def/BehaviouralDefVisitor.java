@@ -428,7 +428,13 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 	}
 
 	private boolean paramAlreadyExist(int iParam) {
-		return (isDefinitiveParameters != null) && (isDefinitiveParameters[iParam] != null);
+		try {
+			return (isDefinitiveParameters != null) && (isDefinitiveParameters[iParam] != null);
+		}
+		catch (ArrayIndexOutOfBoundsException e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 	protected Parameter getParam(int iParam) {
