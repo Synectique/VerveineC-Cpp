@@ -183,8 +183,18 @@ public class AttributeGlobalVarDefVisitor extends ClassMemberDefVisitor {
 			fmx = dico.ensureFamixAttribute(bnd, name.toString(), (Type) parent);
 			break;
 		case UNKNOWN:
+			try {			
 			fmx = dico.ensureFamixUnknownVariable(bnd, name.toString(), (Package) parent);
+			break;}  catch( ClassCastException ex) {  
+			// issue #910 hack
+			// faced a case where an expected UnknownVariable was finally resolved as an Attribute.
+			// don't know the parser enough to understand precisely where it goes wrong
+			// my solution here is to give a try to resolve as an Attribute first.
+			// if it raise an error, go on with the initial behavior
+			fmx = dico.ensureFamixAttribute(bnd, name.toString(), (Type) parent);
 			break;
+			}
+		
 		}
 
 		fmx.setIsStub(false);

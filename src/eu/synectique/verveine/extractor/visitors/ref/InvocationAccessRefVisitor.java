@@ -331,9 +331,11 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 	@Override
 	protected int visit(IASTUnaryExpression node) {
 		inAmpersandUnaryExpression = (node.getOperator() == ICPPASTUnaryExpression.op_amper);
-		node.getOperand().accept(this);
-		inAmpersandUnaryExpression = false;
-
+		// issue #855. Got a null pointer here from time to time. Quick fix was to add a condition
+		if (node.getOperand() != null) {
+			node.getOperand().accept(this);
+			inAmpersandUnaryExpression = false;
+		}
 		return PROCESS_SKIP;
 	}
 
