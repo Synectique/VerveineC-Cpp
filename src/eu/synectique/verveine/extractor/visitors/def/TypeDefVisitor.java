@@ -116,7 +116,7 @@ public class TypeDefVisitor extends AbstractVisitor {
 				aliasType.setIsStub(false);
 				aliasType.setParentPackage(currentPackage);
 				aliasType.setAliasedType(concreteType);
-
+				dico.addSourceAnchor(aliasType, filename, node.getFileLocation());
 				declarator.accept(this);
 			}
 			
