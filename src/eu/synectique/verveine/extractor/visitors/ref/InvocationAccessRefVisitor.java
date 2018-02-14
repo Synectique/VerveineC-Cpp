@@ -185,7 +185,7 @@ public class InvocationAccessRefVisitor extends AbstractRefVisitor {
 		}
 
 		if ( (fmx == null) && (nodeName != null) ) {
-			fmx = resolver.resolveOrCreate(nodeName.toString(), /*mayBeNull*/true, UnknownBehaviouralEntity.class);
+			fmx = resolver.resolveOrCreate(nodeName.toString(), /*mayBeNull*/false, UnknownBehaviouralEntity.class);
 		}
 
 		if (fmx instanceof eu.synectique.verveine.core.gen.famix.Class) {
