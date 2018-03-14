@@ -299,6 +299,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 	protected BehaviouralEntity visitFunctionDeclarator(IASTFunctionDeclarator node, IASTNode[] params) {
 		BehaviouralEntity fmx;
+		String tmpFilename;
 		Type classCtxt = null;
 
 		if (declarationIsFriend(node)) {
@@ -312,7 +313,12 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 		// parent node is a SimpleDeclaration or a FunctionDefinition
 		IASTFileLocation defLoc = node.getParent().getFileLocation();
-		dico.addSourceAnchorMulti(fmx, filename, defLoc);
+		// We can be in case where the function declaration being processed belongs to a file imported using an #includes statement
+		// In such a case, filename instance variable will be initialized with location of the file "including" the external file. 
+		// We should not use filename to generate the source anchor entity, as this is not reliable.
+		// Instead, we should recompute a file location based on the current processed ast node.
+		tmpFilename = FileUtil.localized(defLoc.getFileName(), rootFolder);
+		dico.addSourceAnchorMulti(fmx, tmpFilename, defLoc);
 
 		try {
 			if (resolver.isDestructorBinding(nodeBnd)) {

@@ -9,6 +9,7 @@ import org.eclipse.cdt.core.dom.ast.IBinding;
 
 import ch.akuhn.fame.Repository;
 import eu.synectique.verveine.core.Dictionary;
+import eu.synectique.verveine.core.gen.famix.AbstractFileAnchor;
 import eu.synectique.verveine.core.gen.famix.Association;
 import eu.synectique.verveine.core.gen.famix.Attribute;
 import eu.synectique.verveine.core.gen.famix.BehaviouralEntity;
@@ -173,7 +174,7 @@ public class CDictionary extends Dictionary<IBinding> {
 		else {
 			int beg = anchor.getNodeOffset();
 			int end = beg + anchor.getNodeLength();
-
+			
 			return addSourceAnchorMulti( fmx, filename, beg, end);
 		}
 	}
@@ -193,13 +194,17 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 
 		// check if we already have this filename in the MultipleFileAnchor
-		/*for (AbstractFileAnchor f : mfa.getAllFiles()) {
+		for (AbstractFileAnchor f : mfa.getAllFiles()) {
 			if ( f.getFileName().equals(filename) ) {
 				// note: Could check also the position in the file ...
 				return mfa;
 			}
-		}*/
+		}
 
+
+		
+		
+		
 		mfa.addAllFiles( createIndexedSourceAnchor(filename, start, end) );
 
 		return mfa;
