@@ -313,10 +313,10 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 		// parent node is a SimpleDeclaration or a FunctionDefinition
 		IASTFileLocation defLoc = node.getParent().getFileLocation();
-		// We can be in case where the function declaration being processed belongs to a file imported using an #includes statement
-		// In such a case, filename instance variable will be initialized with location of the file "including" the external file. 
-		// We should not use filename to generate the source anchor entity, as this is not reliable.
-		// Instead, we should recompute a file location based on the current processed ast node.
+		/* We can be in case where the function declaration being processed belongs to a file imported using an #includes statement
+		 In such a case, filename instance variable will be initialized with location of the file "including" the external file. 
+		 We should not use filename to generate the source anchor entity, as this is not reliable.
+		 Instead, we should recompute a file location based on the current processed ast node.*/
 		tmpFilename = FileUtil.localized(defLoc.getFileName(), rootFolder);
 		dico.addSourceAnchorMulti(fmx, tmpFilename, defLoc);
 

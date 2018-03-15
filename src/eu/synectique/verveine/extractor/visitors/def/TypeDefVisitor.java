@@ -23,6 +23,7 @@ import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.core.gen.famix.Type;
 import eu.synectique.verveine.core.gen.famix.TypeAlias;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
+import eu.synectique.verveine.extractor.utils.FileUtil;
 import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
 
 public class TypeDefVisitor extends AbstractVisitor {
@@ -264,6 +265,7 @@ public class TypeDefVisitor extends AbstractVisitor {
 	 */
 	protected Class createClass(IASTDeclSpecifier node) {
 		Class fmx;
+		String tmpFilename;
 		boolean isTemplate = definitionOfATemplate;
 		definitionOfATemplate = false;   // Immediately turn it off because it could pollute visiting the children
 
@@ -281,7 +283,12 @@ public class TypeDefVisitor extends AbstractVisitor {
 			dico.addSourceAnchor(fmx, filename, ((ICPPASTTemplateDeclaration)node.getParent().getParent()).getFileLocation());
 		}
 		else {
-			dico.addSourceAnchor(fmx, filename, node.getFileLocation());
+			/* We can be in a case where the class declaration being processed belongs to a file imported using an #includes statement
+			 In such a case, filename instance variable will be initialized with location of the file "including" the external file. 
+			 We should not use filename to generate the source anchor entity, as this is not reliable.
+			 Instead, we should recompute a file location based on the current processed ast node.*/
+			tmpFilename = FileUtil.localized( node.getFileLocation().getFileName(), rootFolder);
+			dico.addSourceAnchor(fmx, tmpFilename, node.getFileLocation());
 		}
 		return fmx;
 	}
