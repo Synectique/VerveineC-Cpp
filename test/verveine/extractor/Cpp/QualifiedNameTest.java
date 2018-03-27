@@ -18,6 +18,7 @@ public class QualifiedNameTest {
 		testQualifiedTemplate();
 		testUnqualifiedFct();
 		testQualifiedFct();
+		System.out.println("Everything went as planned!");
 	}
 
 	protected static void testEmpty() {

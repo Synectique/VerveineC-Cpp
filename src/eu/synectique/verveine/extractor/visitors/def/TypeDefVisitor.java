@@ -85,6 +85,7 @@ public class TypeDefVisitor extends AbstractVisitor {
 
 		if (declarationIsTypedef(node)) {
 			boolean functionPointerTypedef = false;
+			String tmpFilename;
 
 			if (isFunctionPointerTypedef(node)) {
 				concreteType = null;  // TODO create a FunctionPointer special type?
@@ -117,7 +118,12 @@ public class TypeDefVisitor extends AbstractVisitor {
 				aliasType.setIsStub(false);
 				aliasType.setParentPackage(currentPackage);
 				aliasType.setAliasedType(concreteType);
-				dico.addSourceAnchor(aliasType, filename, node.getFileLocation());
+				/* We can be in a case where the class declaration being processed belongs to a file imported using an #includes statement
+				 In such a case, filename instance variable will be initialized with location of the file "including" the external file. 
+				 We should not use filename to generate the source anchor entity, as this is not reliable.
+				 Instead, we should recompute a file location based on the current processed ast node.*/
+				tmpFilename = FileUtil.localized( node.getFileLocation().getFileName(), rootFolder);
+				dico.addSourceAnchor(aliasType, tmpFilename, node.getFileLocation());
 				declarator.accept(this);
 			}
 			
@@ -278,16 +284,18 @@ public class TypeDefVisitor extends AbstractVisitor {
 		}
 		fmx.setParentPackage(currentPackage);
 		
+		/* We can be in a case where the class declaration being processed belongs to a file imported using an #includes statement
+		 In such a case, filename instance variable will be initialized with location of the file "including" the external file. 
+		 We should not use filename to generate the source anchor entity, as this is not reliable.
+		 Instead, we should recompute a file location based on the current processed ast node.*/
+		tmpFilename = FileUtil.localized( node.getFileLocation().getFileName(), rootFolder);
 		// dealing with template class/struct
 		if (isTemplate) {
-			dico.addSourceAnchor(fmx, filename, ((ICPPASTTemplateDeclaration)node.getParent().getParent()).getFileLocation());
+		
+			dico.addSourceAnchor(fmx, tmpFilename, ((ICPPASTTemplateDeclaration)node.getParent().getParent()).getFileLocation());
 		}
 		else {
-			/* We can be in a case where the class declaration being processed belongs to a file imported using an #includes statement
-			 In such a case, filename instance variable will be initialized with location of the file "including" the external file. 
-			 We should not use filename to generate the source anchor entity, as this is not reliable.
-			 Instead, we should recompute a file location based on the current processed ast node.*/
-			tmpFilename = FileUtil.localized( node.getFileLocation().getFileName(), rootFolder);
+	
 			dico.addSourceAnchor(fmx, tmpFilename, node.getFileLocation());
 		}
 		return fmx;
