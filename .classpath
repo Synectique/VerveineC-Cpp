@@ -3,7 +3,7 @@
 	<classpathentry exported="true" kind="lib" path="lib/fame.jar" sourcepath="/Fame"/>
 	<classpathentry exported="true" kind="lib" path="lib/famix.jar" sourcepath="/verveine.core"/>
 	<classpathentry exported="true" kind="lib" path="lib/fast.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/verveine.core.jar" sourcepath="/verveine.core"/>
+	<classpathentry exported="true" kind="lib" path="lib/verveine.core.jar" sourcepath="try/verveine.core"/>
 	<classpathentry exported="true" kind="lib" path="lib/akuhn-util-r28011.jar"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" output="target/classes" path="src">

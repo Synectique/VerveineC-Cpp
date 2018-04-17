@@ -131,11 +131,12 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	@Override
 	public int visit(ICPPASTNamespaceDefinition node) {
 		Namespace fmx;
+	
 
 		nodeBnd = resolver.getBinding(node.getName());
 
 		fmx = dico.getEntityByKey(Namespace.class, nodeBnd);
-
+		
 		getContext().push(fmx);
 
 		return PROCESS_CONTINUE;
