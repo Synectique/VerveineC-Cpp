@@ -1,6 +1,6 @@
 package verveine.extractor.Cpp;
 
-import eu.synectique.verveine.extractor.utils.QualifiedName;
+import fr.verveine.utils.QualifiedName;
 
 /*
  * NOT A JUNIT TEST -- run as a normal application

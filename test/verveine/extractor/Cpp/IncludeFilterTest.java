@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringBufferInputStream;
 
-import eu.synectique.verveine.extractor.utils.IncludeToLowerFilterStream;
-import eu.synectique.verveine.extractor.utils.IncludeWithHExtensionFilterStream;
+import fr.verveine.utils.IncludeToLowerFilterStream;
+import fr.verveine.utils.IncludeWithHExtensionFilterStream;
 
 @SuppressWarnings("deprecation")
 public class IncludeFilterTest {

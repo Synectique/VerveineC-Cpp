@@ -3,12 +3,11 @@ Bundle-ManifestVersion: 2
 Bundle-Name: Verveine-C/Cpp
 Bundle-SymbolicName: verveine.extractor.Cpp;singleton:=true
 Bundle-Version: 1.2.4.qualifier
-Bundle-Activator: eu.synectique.verveine.extractor.plugin.Activator
-Require-Bundle: org.eclipse.core.runtime,
- org.eclipse.cdt.core;bundle-version="5.11.0",
- org.eclipse.core.resources;bundle-version="3.10.1",
+Bundle-Activator: fr.verveine.plugin.Activator
+Require-Bundle: org.eclipse.cdt.core;bundle-version="5.11.0",
  org.eclipse.cdt.managedbuilder.core;bundle-version="8.3.0",
- org.junit
+ org.eclipse.core.runtime;bundle-version="3.11.1",
+ org.eclipse.core.resources;bundle-version="3.10.1"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: .,
