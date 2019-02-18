@@ -81,6 +81,18 @@ public class CDictionary extends Dictionary<IBinding> {
  		return famixRepo.size();
  	}
 
+ 	public void mapEntityToKey(IBinding key, NamedEntity arg1) {
+ 		/*here for debug purpose*/
+ 		super.mapEntityToKey( key,  arg1);
+ 		
+ 	}
+ 	
+ 	public void mapEntityToName(String arg0, NamedEntity arg1) {
+ 		/*here for debug purpose*/
+ 		super.mapEntityToName( arg0,  arg1);
+ 		
+ 	}
+ 	
 	@SuppressWarnings("unchecked")
  	public <T extends NamedEntity> T getEntityByKey(Class<T> clazz, IBinding key) {
  		NamedEntity found = super.getEntityByKey(key); 
@@ -308,6 +320,12 @@ public class CDictionary extends Dictionary<IBinding> {
 
 	public Namespace ensureFamixNamespace(IBinding key, String name, ScopingEntity parent) {
 		Namespace fmx = super.ensureFamixNamespace(key, name);
+		/*System.out.println(this.getEntityByKey(key));
+		if ((parent != null) && (fmx.getParentScope() !=null)) {
+			if (parent != fmx.getParentScope()) {
+				fmx.getName();
+			}
+		}*/
 		if (parent != null) {
 			fmx.setParentScope(parent);
 		}

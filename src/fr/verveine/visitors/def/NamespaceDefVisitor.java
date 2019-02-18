@@ -36,7 +36,7 @@ public class NamespaceDefVisitor extends AbstractVisitor {
 
 			fmx = dico.ensureFamixNamespace(nodeBnd, nodeName.toString(), (Namespace) this.getContext().top());
 			fmx.setIsStub(false);
-
+			
 			this.getContext().push(fmx);
 		}
 
