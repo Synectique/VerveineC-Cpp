@@ -234,9 +234,14 @@ public class NameResolver {
 	public IBinding getFunctionBinding(IASTFunctionDeclarator node, IASTName name) {
 		IBinding bnd;
 		
+		if (name == null) {
+			return null;
+		}
+
 		bnd = getBinding(name);   // generic getBinding method
 
 		if (bnd == null) {
+			// assuming we did not find the binding because it is a function/method and we need its signature
 			ContainerEntity parent = null;
 			String behavName = SignatureBuilderVisitor.signatureFromAST(node);
 
@@ -304,6 +309,10 @@ public class NameResolver {
 		String sig;
 		ContainerEntity parent;
 		BehaviouralEntity fmx;
+
+		if ( (bnd==null) && (name == null) ) {
+			return null;
+		}
 
 		// get behavioural name and parent
 		if (bnd instanceof StubBinding) {

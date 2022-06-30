@@ -54,6 +54,7 @@ import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
 
 import fr.verveine.plugin.CDictionary;
+import fr.verveine.utils.Trace;
 
 
 /**
@@ -123,10 +124,12 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	public void visit(ICProject project) {
+		Trace.trace("  AbstractDispatcherVisitor.visit(ICProject " + project.getElementName());
 		visitChildren(project);
 	}
 
 	public void visit(ICContainer cont) {
+		Trace.trace("  AbstractDispatcherVisitor.visit(ICContainer " + cont.getElementName());
 		visitChildren(cont);
 	}
 
@@ -134,6 +137,7 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	public void visit(ITranslationUnit elt) {
+		Trace.trace("  AbstractDispatcherVisitor.visit(ITranslationUnit " + elt.getElementName());
 		// this is the method merging ICElementVisitor and ASTVisitor
 
 		// visit children (ICElementVisitor) ...
@@ -336,10 +340,12 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 	}
 
 	protected int visit(ICPPASTFunctionDefinition node) {
+//		Trace.trace("AbstractDispatcherVisitor.visit(ICPPASTFunctionDefinition " + node.getDeclarator().getRawSignature());
 		return this.visit( (IASTFunctionDefinition)node);
 	}
 
 	protected int visit(IASTFunctionDefinition node) {
+		Trace.trace("  AbstractDispatcherVisitor.visit(IASTFunctionDefinition " + node.getDeclarator().getRawSignature());
 		return PROCESS_CONTINUE;
 	}
 

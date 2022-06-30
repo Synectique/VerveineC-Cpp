@@ -188,9 +188,7 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	@Override
 	protected int visit(IASTFunctionDeclarator node) {
 		nodeName = node.getName();
-		nodeBnd = /*FunctionBinding.getInstance( */resolver.getFunctionBinding(node, nodeName); //node.get
-
-		// bug in CDT when creating bindings, e.g. r_unref/0 has the same binding as r_unref/1
+		nodeBnd = resolver.getFunctionBinding(node, nodeName);
 
 		return PROCESS_CONTINUE;
 	}

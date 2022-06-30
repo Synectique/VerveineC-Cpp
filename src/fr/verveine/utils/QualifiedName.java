@@ -104,6 +104,9 @@ public class QualifiedName implements Iterable<String> {
 	}
 
 	static public boolean isFullyQualified(IASTName name) {
+		if (name == null) {
+			return false;
+		}
 		return isFullyQualified(name.toString());
 	}
 

@@ -18,6 +18,7 @@ import org.eclipse.cdt.core.dom.ast.gnu.c.ICASTKnRFunctionDeclarator;
 
 import fr.verveine.plugin.CDictionary;
 import fr.verveine.utils.QualifiedName;
+import fr.verveine.utils.Trace;
 
 /**
  * A visitor specialized in reconstructing the signature of a method/function.
@@ -71,12 +72,11 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	}
 
 	static public String signatureFromAST(IASTFunctionDeclarator node) {
-		String behavName;
 		// for behavioral, we put the full signature in the key to have better chance of recovering it
 		SignatureBuilderVisitor sigVisitor = new SignatureBuilderVisitor();
 		node.accept(sigVisitor);
-		behavName = sigVisitor.getSignature();
-		return behavName;
+
+		return sigVisitor.getSignature();
 	}
 
 	//  MAIN ENTRY POINTS --------------------------------------------------------------------------------------------
@@ -84,12 +84,17 @@ public class SignatureBuilderVisitor extends AbstractVisitor {
 	@Override
 	protected int visit(IASTStandardFunctionDeclarator node) {
 		// name
-		signature = new QualifiedName(node.getName()).unqualifiedName();
-		// parameters
-		visitParameters(node.getParameters());
-		// return type
-		visitParent(node.getParent());
 
+		if (node.getName() != null) {
+			signature = new QualifiedName(node.getName()).unqualifiedName();
+			// parameters
+			visitParameters(node.getParameters());
+			// return type
+			visitParent(node.getParent());
+		}
+		else {
+			signature = null;
+		}
 		return PROCESS_SKIP;
 	}
 

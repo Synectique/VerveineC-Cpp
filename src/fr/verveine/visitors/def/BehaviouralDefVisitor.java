@@ -38,6 +38,7 @@ import eu.synectique.verveine.core.gen.famix.Parameter;
 import eu.synectique.verveine.core.gen.famix.Type;
 import fr.verveine.plugin.CDictionary;
 import fr.verveine.utils.FileUtil;
+import fr.verveine.utils.Trace;
 import fr.verveine.utils.WrongClassGuessException;
 import fr.verveine.visitors.AbstractVisitor;
 
@@ -142,7 +143,11 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 		// get node name and bnd
 		super.visit( node); // node.getParameters()
-		if (nodeBnd instanceof IVariable) {
+		if (nodeBnd == null) {
+			// could not find the function (may happening if it is a actually a macro
+			returnedEntity = null;
+		}
+		else if (nodeBnd instanceof IVariable) {
 			// declaration of a function pointer such as var in "int (*var)(int param1, char param2)"
 			returnedEntity = null;
 		}
@@ -188,8 +193,11 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		getContext().setLastReference(null);
 		getContext().setTopMethodCyclo(1);
 		getContext().setTopMethodNOS(0);
-
-		node.getBody().accept(this);
+		
+		if (node.getBody() != null) {
+			// for method: Constructor() = delete;
+			node.getBody().accept(this);
+		}
 
 		fmx.setNumberOfStatements(getContext().getTopMethodNOS());
 		fmx.setCyclomaticComplexity(getContext().getTopMethodCyclo());
