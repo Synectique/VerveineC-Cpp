@@ -81,6 +81,18 @@ public class CDictionary extends Dictionary<IBinding> {
  		return famixRepo.size();
  	}
 
+ 	public void mapEntityToKey(IBinding key, NamedEntity arg1) {
+ 		/*here for debug purpose*/
+ 		super.mapEntityToKey( key,  arg1);
+ 		
+ 	}
+ 	
+ 	public void mapEntityToName(String arg0, NamedEntity arg1) {
+ 		/*here for debug purpose*/
+ 		super.mapEntityToName( arg0,  arg1);
+ 		
+ 	}
+ 	
 	@SuppressWarnings("unchecked")
  	public <T extends NamedEntity> T getEntityByKey(Class<T> clazz, IBinding key) {
  		NamedEntity found = super.getEntityByKey(key); 
@@ -308,6 +320,12 @@ public class CDictionary extends Dictionary<IBinding> {
 
 	public Namespace ensureFamixNamespace(IBinding key, String name, ScopingEntity parent) {
 		Namespace fmx = super.ensureFamixNamespace(key, name);
+		/*System.out.println(this.getEntityByKey(key));
+		if ((parent != null) && (fmx.getParentScope() !=null)) {
+			if (parent != fmx.getParentScope()) {
+				fmx.getName();
+			}
+		}*/
 		if (parent != null) {
 			fmx.setParentScope(parent);
 		}
@@ -546,21 +564,18 @@ public class CDictionary extends Dictionary<IBinding> {
 		}
 	}
 
-	private static int depth = 0;
 	/**
 	 * Computes moose name for a Namespace child.
 	 * MooseName is the concatenation of the moosename of the parent Namescape with the simple name of the child
 	 */
 	static public String mooseName(Namespace parent, String name) {
 		String ret;
-		depth++;
 		if (parent != null) {
 			ret = concatMooseName( mooseName((Namespace)parent.getParentScope(), parent.getName()) , name);
 		}
 		else {
 			ret = name;
 		}
-		depth --;
 		return ret;
 	}
 	

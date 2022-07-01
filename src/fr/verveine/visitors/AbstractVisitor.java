@@ -131,11 +131,12 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	@Override
 	public int visit(ICPPASTNamespaceDefinition node) {
 		Namespace fmx;
+	
 
 		nodeBnd = resolver.getBinding(node.getName());
 
 		fmx = dico.getEntityByKey(Namespace.class, nodeBnd);
-
+		
 		getContext().push(fmx);
 
 		return PROCESS_CONTINUE;
@@ -188,7 +189,9 @@ public abstract class AbstractVisitor extends AbstractDispatcherVisitor {
 	@Override
 	protected int visit(IASTFunctionDeclarator node) {
 		nodeName = node.getName();
-		nodeBnd = resolver.getFunctionBinding(node, nodeName);
+		nodeBnd = /*FunctionBinding.getInstance( */resolver.getFunctionBinding(node, nodeName); //node.get
+
+		// bug in CDT when creating bindings, e.g. r_unref/0 has the same binding as r_unref/1
 
 		return PROCESS_CONTINUE;
 	}

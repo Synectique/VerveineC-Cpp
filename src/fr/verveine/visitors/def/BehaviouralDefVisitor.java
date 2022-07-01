@@ -143,6 +143,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 
 		// get node name and bnd
 		super.visit( node); // node.getParameters()
+
 		if (nodeBnd == null) {
 			// could not find the function (may happening if it is a actually a macro
 			returnedEntity = null;

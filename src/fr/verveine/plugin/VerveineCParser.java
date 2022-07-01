@@ -6,7 +6,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -191,20 +190,25 @@ public class VerveineCParser extends VerveineParser {
 		 * Note that the order is important, the visitors are not independent */
 
 		AbstractIssueReporterVisitor issueVisitor;
+
 		issueVisitor = new IncludeVisitor(dico, index, projectPrefix);
 		cproject.accept(issueVisitor);
 		if (errorlog) {
 			issueVisitor.reportIssues();
 		}
 
-		// 2nd issue reporter
+		// another issue reporter
 		issueVisitor = new ErrorVisitor(dico, index, projectPrefix);
 
 		cproject.accept(new PackageDefVisitor(dico, index, projectPrefix));
 		if (!cModel) {
 			cproject.accept(new NamespaceDefVisitor(dico, index, projectPrefix));
 		}
+		
 		cproject.accept(new TypeDefVisitor(dico, index, projectPrefix));
+		if (!cModel) {
+			cproject.accept(new InheritanceRefVisitor(dico, index, projectPrefix));
+		}
 		//cproject.accept(new TypeDefFromRefVisitor(dico, index, projectPrefix));
 
 		BehaviouralDefVisitor behavVisitor = new BehaviouralDefVisitor(dico, index, projectPrefix);		// must be after class definitions
@@ -215,11 +219,8 @@ public class VerveineCParser extends VerveineParser {
 		if (!cModel) {
 			cproject.accept(new TemplateParameterDefVisitor(dico, index, projectPrefix));	// must be after method definitions (possible template)
 		}
-		cproject.accept(new AttributeGlobalVarDefVisitor(dico, index, projectPrefix));			// must be after class/struct/enum definitions
 
-		if (!cModel) {
-			cproject.accept(new InheritanceRefVisitor(dico, index, projectPrefix));
-		}
+		cproject.accept(new AttributeGlobalVarDefVisitor(dico, index, projectPrefix));			// must be after class/struct/enum definitions
 		cproject.accept(new DeclaredTypeRefVisitor(dico, index, projectPrefix));
 		cproject.accept(new InvocationAccessRefVisitor(dico, index, projectPrefix));
 		cproject.accept(new ReferenceRefVisitor(dico, index, projectPrefix));
@@ -250,7 +251,6 @@ public class VerveineCParser extends VerveineParser {
 		IWorkspaceRoot root = workspace.getRoot();
 		// we make a directory at the workspace root to copy source files
 		IPath eclipseProjPath = root.getRawLocation().removeLastSegments(1).append(WORKSPACE_NAME).append(projName);
-		eclipseProjPath.toFile().mkdirs();
 
 		final IProject project = root.getProject(projName);
 		try {
@@ -264,6 +264,7 @@ public class VerveineCParser extends VerveineParser {
 			exc.printStackTrace();
 		}
 
+		eclipseProjPath.toFile().mkdirs();  // not really needed
 		IProjectDescription eclipseProjDesc = workspace.newProjectDescription(project.getName());
 		eclipseProjDesc.setLocation(eclipseProjPath);
 
@@ -416,8 +417,6 @@ public class VerveineCParser extends VerveineParser {
 	}
 
 	public void setOptions(String[] args) {
-		modelComment("Program call arguments:", Arrays.asList(args));
-
 		int i = 0;
 		while (i < args.length && args[i].trim().startsWith("-")) {
 		    String arg = args[i++].trim();
@@ -474,16 +473,6 @@ public class VerveineCParser extends VerveineParser {
 				}
 			}
 		}
-	}
-
-	private void modelComment(String title, Iterable<String> values) {
-		/* TODO convince Synectique that it is a good idea. Deactivated for now:
-		String cmt = title; 
-		for (String v : values) {
-			cmt += " " + v;
-		}
-		dico.createFamixComment(cmt);
-		 */
 	}
 
 	private void parseMacroDefinition(String arg) {
