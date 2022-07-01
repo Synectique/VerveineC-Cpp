@@ -43,6 +43,7 @@ import eu.synectique.verveine.core.gen.famix.Type;
 import fr.verveine.plugin.CDictionary;
 import fr.verveine.utils.QualifiedName;
 import fr.verveine.utils.StubBinding;
+import fr.verveine.utils.Trace;
 import fr.verveine.visitors.AbstractVisitor;
 
 /**
@@ -113,7 +114,9 @@ public abstract class AbstractRefVisitor extends AbstractVisitor {
 		returnedEntity = null;
 		node.getDeclarator().accept(this);
 		this.getContext().push((BehaviouralEntity)returnedEntity);
-		node.getBody().accept(this);
+		if (node.getBody() != null) {
+			node.getBody().accept(this);
+		}
 		returnedEntity = this.getContext().pop();
 
 		return PROCESS_SKIP;

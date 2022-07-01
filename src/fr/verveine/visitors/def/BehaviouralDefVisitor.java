@@ -196,7 +196,7 @@ public class BehaviouralDefVisitor extends ClassMemberDefVisitor {
 		getContext().setTopMethodNOS(0);
 		
 		if (node.getBody() != null) {
-			// for method: Constructor() = delete;
+			// for method: someMethod() = delete;
 			node.getBody().accept(this);
 		}
 

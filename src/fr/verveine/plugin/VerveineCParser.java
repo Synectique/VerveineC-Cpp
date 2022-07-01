@@ -36,6 +36,7 @@ import eu.synectique.verveine.core.gen.famix.CppSourceLanguage;
 import eu.synectique.verveine.core.gen.famix.SourceLanguage;
 import fr.verveine.utils.Constants;
 import fr.verveine.utils.FileUtil;
+import fr.verveine.utils.Trace;
 import fr.verveine.visitors.AbstractIssueReporterVisitor;
 import fr.verveine.visitors.ErrorVisitor;
 import fr.verveine.visitors.IncludeVisitor;
@@ -188,7 +189,8 @@ public class VerveineCParser extends VerveineParser {
 		/*Having very specialized visitors helps because each one is simpler
 		 * so it is worth the impact on execution time
 		 * Note that the order is important, the visitors are not independent */
-
+Trace.off();
+		
 		AbstractIssueReporterVisitor issueVisitor;
 
 		issueVisitor = new IncludeVisitor(dico, index, projectPrefix);
