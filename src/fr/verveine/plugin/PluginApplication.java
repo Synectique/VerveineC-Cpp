@@ -16,6 +16,7 @@ public class PluginApplication implements IApplication {
 		verveine.setOptions(appArgs);
 		if (verveine.parse()) {
 			verveine.emitMSE();
+			System.out.println("done exporting model (" + verveine.nbEntities() + " entitites)");
 		}
 		else {
 			System.err.println("Error in model creation, aborting");

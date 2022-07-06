@@ -541,4 +541,7 @@ Trace.off();
 		System.exit(0);
 	}
 
+	public int nbEntities() {
+		return dico.size();
+	}
 }
