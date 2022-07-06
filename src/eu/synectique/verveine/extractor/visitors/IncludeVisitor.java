@@ -1,35 +1,36 @@
 package eu.synectique.verveine.extractor.visitors;
 
 import java.io.File;
+import java.io.PrintStream;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.eclipse.cdt.core.dom.ast.IBinding;
 import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.core.runtime.IStatus;
 
 import eu.synectique.verveine.core.gen.famix.CFile;
+import eu.synectique.verveine.extractor.plugin.Activator;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
 import eu.synectique.verveine.extractor.plugin.VerveineCParser;
 import eu.synectique.verveine.extractor.utils.FileUtil;
-import eu.synectique.verveine.extractor.utils.NameResolver;
-import eu.synectique.verveine.extractor.utils.StubBinding;
 
-public class IncludeVisitor extends AbstractIssueReporterVisitor {
+public class IncludeVisitor extends AbstractVisitor {
 
 	protected CFile currentFile;
 
 	/**
 	 * Prefix to remove from file names
 	 */
-	protected String rootFolder;
+	protected String projectRootFolder;
 
 	/**
-	 * An object responsible for resolving names.
-	 * This implies keeping track of the current context stack as well as handling the CDT IIndex, finding bindings for names,
-	 * or dealing with name (fully-qualified or not)
+	 * A set of all unresolved includes so that we report them only once
 	 */
-	protected NameResolver resolver;
+	protected Set<String> unresolvedIncludes;
 
 	/**
 	 * Full path of the project root
@@ -37,15 +38,16 @@ public class IncludeVisitor extends AbstractIssueReporterVisitor {
 	private String projPath;
 
 	public IncludeVisitor(CDictionary dico, IIndex index, String rootFolder) {
-		super(dico, index);
-		
-		// similar to what is done in AbstractVisitor, but we don't need many things that it does
-		this.rootFolder = rootFolder;
-		this.resolver = new NameResolver(dico, index);
+		super(dico, index, rootFolder);
+		unresolvedIncludes = new HashSet<String>();
+		int i = rootFolder.indexOf(VerveineCParser.WORKSPACE_NAME);
+		if (i > 0) {		
+			this.projectRootFolder = rootFolder.substring(i+VerveineCParser.WORKSPACE_NAME.length());
+		}
 	}
 
-	protected String issueMsgTrace() {
-		return "unresolved includes";
+	protected String msgTrace() {
+		return "checking unresolved includes";
 	}
 
 	public void visit(ICProject project) {
@@ -60,8 +62,8 @@ public class IncludeVisitor extends AbstractIssueReporterVisitor {
 	@Override
 	public void visit(ITranslationUnit elt) {
 		String filename = elt.getFile().getFullPath().toString();        // fullPath relative to project directory
-		IBinding key = mkCFileStubKey(projPath+filename);   // better not to localize filename for the key
-		currentFile = dico.ensureFamixCFile(key, FileUtil.localized(filename,  VerveineCParser.projectSourcePath() ) );
+		IBinding key = resolver.mkStubKey(projPath+filename, /*container*/null, CFile.class);   // better not to localize filename for the key
+		currentFile = dico.ensureFamixCFile(key, FileUtil.localized(filename, projectRootFolder));
 		
 		// overriding superclass visit() to not visit AST but only the children
 		visitChildren(elt);
@@ -74,29 +76,39 @@ public class IncludeVisitor extends AbstractIssueReporterVisitor {
 	
 		if (elt.isResolved()) {
 			includedName = elt.getFullFileName();                       // fullpath relative to the entire file system
-			key = mkCFileStubKey(includedName);
+			key = resolver.mkStubKey(includedName, /*container*/null, CFile.class);
 			includedName = FileUtil.localized(includedName, rootFolder);
 		}
 		else {
-			String includeStr = "Error:Unresolved include: ";
-			includeStr += elt.isLocal() ? "\"" : "<";
+			String includeStr;
+			includeStr = elt.isLocal() ? "\"" : "<";
 			includeStr += elt.getIncludeName();
 			includeStr += elt.isLocal() ? "\"" : ">";
-			addIssues(includeStr);
-
+			if (! unresolvedIncludes.contains(includeStr)) {
+				unresolvedIncludes.add(includeStr);
+			}
 			includedName = elt.getIncludeName();
-			key = mkCFileStubKey(includedName);
+			key = resolver.mkStubKey(includedName, /*container*/null, CFile.class);
 		}
 
 		included = dico.ensureFamixCFile(key, includedName);
 		dico.addFamixInclude(currentFile, included);
 	}
 
-	/**
-	 * a Special cas of {@link NameResolver#mkStubKey(String, Class)} for CFile which are not NamedEntities
-	 */
-	public IBinding mkCFileStubKey(String name) {
-		return StubBinding.getInstance(CFile.class, name);
+	public int nbUnresolvedIncludes() {
+		return unresolvedIncludes.size();
 	}
 
+	public void reportUnresolvedIncludes() {
+		if (nbUnresolvedIncludes() > 0) {
+			Activator.log(IStatus.WARNING, "There were "+nbUnresolvedIncludes()+" unresolved includes");
+			for (String str : unresolvedIncludes) {
+				Activator.log(IStatus.WARNING, "  "+ str);
+			}
+		}
+	}
+
+	public Iterable<String> getUnresolvedIncludes() {
+		return unresolvedIncludes;
+	}
 }

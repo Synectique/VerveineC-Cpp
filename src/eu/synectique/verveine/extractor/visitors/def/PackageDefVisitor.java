@@ -1,24 +1,29 @@
 package eu.synectique.verveine.extractor.visitors.def;
 
-
-import org.eclipse.cdt.core.index.IIndex;
 import org.eclipse.cdt.core.model.ICContainer;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 
 import eu.synectique.verveine.core.gen.famix.Package;
 import eu.synectique.verveine.extractor.plugin.CDictionary;
-import eu.synectique.verveine.extractor.visitors.AbstractVisitor;
+import eu.synectique.verveine.extractor.visitors.AbstractDispatcherVisitor;
 
-public class PackageDefVisitor extends AbstractVisitor {
+public class PackageDefVisitor extends AbstractDispatcherVisitor {
 
 	/**
 	 * The file directory being visited at any given time
 	 */
-	protected eu.synectique.verveine.core.gen.famix.Package currentPackage;
+	protected eu.synectique.verveine.core.gen.famix.Package currentPackage = null;
 
-	public PackageDefVisitor(CDictionary dico, IIndex index, String rootFolder) {
-		super(dico, index, rootFolder);
-		currentPackage = null;
+	/**
+	 * Leading directory are the path of the project.
+	 * We do not create packages for these, so we must remember how deep in the directory hierarchy we are,
+	 * to know when to create packages
+	 */
+	protected int nbOfLeadingDirectory;
+
+	public PackageDefVisitor(CDictionary dico) {
+		super(dico, null);
+		nbOfLeadingDirectory = 2;  // i.e. tempProj/src
 	}
 
 	protected String msgTrace() {
@@ -31,20 +36,22 @@ public class PackageDefVisitor extends AbstractVisitor {
 	@Override
 	public void visit(ICContainer elt) {
 		Package fmx = null;
+		
+		nbOfLeadingDirectory--; // one directory less
 
-		enterPath(elt);
-		if (nodeBnd != null) {
-			fmx = dico.ensureFamixPackage(nodeBnd, elt.getElementName(), currentPackage);
+		if (nbOfLeadingDirectory < 0) {
+			fmx = dico.ensureFamixPackage(elt.getElementName(), currentPackage);
 			fmx.setIsStub(false);
 			currentPackage = fmx;
 		}
-
-		super.visit(elt);   // visiting children
-
-		if (currentPackage != null) {
-			currentPackage = currentPackage.getParentPackage();
+		
+		super.visit(elt);
+		
+		if (nbOfLeadingDirectory < 0) {
+			currentPackage = fmx.getParentPackage();
 		}
-		leavePath(elt);
+
+		nbOfLeadingDirectory++; // going up one directory
 	}
 
 
