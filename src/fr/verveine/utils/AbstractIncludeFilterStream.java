@@ -66,6 +66,7 @@ public abstract class AbstractIncludeFilterStream extends FilterInputStream {
 			read = this.read();
 		}
 		return i;
+
 	}
 
 	@Override

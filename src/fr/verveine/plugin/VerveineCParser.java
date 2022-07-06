@@ -28,6 +28,7 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 
 import eu.synectique.verveine.core.VerveineParser;
@@ -52,7 +53,6 @@ import fr.verveine.visitors.ref.DeclaredTypeRefVisitor;
 import fr.verveine.visitors.ref.InheritanceRefVisitor;
 import fr.verveine.visitors.ref.InvocationAccessRefVisitor;
 import fr.verveine.visitors.ref.ReferenceRefVisitor;
-
 
 public class VerveineCParser extends VerveineParser {
 	public static final String WORKSPACE_NAME = "tempWS";
@@ -242,7 +242,7 @@ Trace.off();
 		try {
 			workspace.setDescription(workspaceDesc);
 		} catch (CoreException exc) {
-			System.err.println("Error trying to set workspace description: " + exc.getMessage());
+			Activator.log(IStatus.ERROR, "Error trying to set workspace description: " + exc.getMessage());
 		}
 
 	}
@@ -262,7 +262,7 @@ Trace.off();
 				project.refreshLocal(IResource.DEPTH_INFINITE, Constants.NULL_PROGRESS_MONITOR);
 			}
 		} catch (Exception exc) {
-			System.err.println("project path=" + project.getFullPath().toString());
+			Activator.log(IStatus.ERROR, "Error deleting project path=" + project.getFullPath().toString());
 			exc.printStackTrace();
 		}
 
@@ -284,7 +284,7 @@ Trace.off();
 				project.open(Constants.NULL_PROGRESS_MONITOR);
 			}
 		} catch (Exception exc) {
-			System.err.println("Error ("+exc.getClass().getSimpleName()+") in Project creation: " + exc.getMessage());
+			Activator.log(IStatus.ERROR, "Error ("+exc.getClass().getSimpleName()+") in Project creation: " + exc.getMessage());
 			exc.printStackTrace();
 		}
 
@@ -293,7 +293,7 @@ Trace.off();
 
 		File projSrc = new File(sourcePath);
 		if (! projSrc.exists()) {
-			System.err.println("Project directory "+sourcePath+ " not found !");
+			Activator.log(IStatus.ERROR, "Project directory "+sourcePath+ " not found !");
 			return null;
 		}
 		FileUtil.copySourceFilesInProject(project, SOURCE_ROOT_DIR, projSrc, /*toLowerCase*/windows, /*addHExtension*/forceIncludeH);
@@ -370,7 +370,7 @@ Trace.off();
 		try {
 			read = new BufferedReader( new FileReader(confFileName));
 		} catch (FileNotFoundException e) {
-			System.err.println("Could not read Include Paths configuration file: " + confFileName);
+			Activator.log(IStatus.WARNING, "Could not read Include Paths configuration file: " + confFileName);
 			e.printStackTrace();
 		}
 
@@ -381,7 +381,7 @@ Trace.off();
 					lines.add(line);
 				}
 			} catch (IOException e) {
-				System.err.println("Error reading Include Paths configuration file: " + confFileName);
+				Activator.log(IStatus.WARNING, "Problem reading Include Paths configuration file: " + confFileName);
 				e.printStackTrace();
 				lines = new ArrayList<>();
 			}
@@ -460,7 +460,7 @@ Trace.off();
 					i--;         // 1 will be added at the beginning of the loop ("args[i++]")
 				}
 				else {
-					System.err.println("** Unrecognized option: " + arg);
+					Activator.log(IStatus.WARNING, "** Unrecognized option: " + arg);
 					usage();
 				}
 			}
@@ -477,6 +477,7 @@ Trace.off();
 		}
 	}
 
+    
 	private void parseMacroDefinition(String arg) {
 		int i;
 		String macro;
@@ -527,7 +528,8 @@ Trace.off();
 	}
 
 	protected void usage() {
-		System.err.println("Usage: VerveineC [<options>] <eclipse-Cproject-to-parse>");
+	    // TDO should use `Activator.log(IStatus.INFO,...` as it was before
+	    System.err.println("Usage: VerveineC [<options>] <eclipse-Cproject-to-parse>");
 		System.err.println("Recognized options:");
 		System.err.println("      -h: prints this message");
 		System.err.println("      -v: prints the version");

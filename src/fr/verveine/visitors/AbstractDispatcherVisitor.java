@@ -52,6 +52,7 @@ import org.eclipse.cdt.core.model.IInclude;
 import org.eclipse.cdt.core.model.IParent;
 import org.eclipse.cdt.core.model.ITranslationUnit;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IStatus;
 
 import fr.verveine.plugin.CDictionary;
 import fr.verveine.utils.Trace;
@@ -146,7 +147,7 @@ public abstract class AbstractDispatcherVisitor extends ASTVisitor implements IC
 			// ... then visit AST (ASTVisitor)
 			elt.getAST(index, ITranslationUnit.AST_CONFIGURE_USING_SOURCE_CONTEXT | ITranslationUnit.AST_SKIP_INDEXED_HEADERS).accept(this);
 		} catch (CoreException e) {
-			System.err.println("*** Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ elt.getElementName() );
+			Activator.log(IStatus.ERROR, "Got CoreException (\""+ e.getMessage() +"\") while getting AST of "+ elt.getElementName() );
 		}
 	}
 
